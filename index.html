@@ -1255,12 +1255,14 @@ function buildPlanJobCard(job, idx) {
 
     <div class="form-group">
       <label class="form-label">Customer</label>
-      <select class="form-select" onchange="handleCustomerSelect(this,${idx})">
-        <option value="">Select customer...</option>
-        ${CUSTOMERS_LIST.map(c => `<option value="${esc(c)}"${job.customer===c?' selected':''}>${esc(c)}</option>`).join('')}
-        <option value="__other__"${job.customer && !CUSTOMERS_LIST.includes(job.customer) ? ' selected' : ''}>Other (type below)</option>
-      </select>
-      <input type="text" class="form-input" id="customerOther_${idx}" style="margin-top:8px;${job.customer && !CUSTOMERS_LIST.includes(job.customer) ? '' : 'display:none;'}" value="${esc(job.customer && !CUSTOMERS_LIST.includes(job.customer) ? job.customer : '')}" placeholder="Enter customer name..." onchange="updatePlanField(${idx},'customer',this.value);updatePriceSuggestion(${idx})">
+      <div class="autocomplete-wrapper">
+        <input type="text" class="form-input" value="${esc(job.customer||'')}" placeholder="Type to search or enter name..."
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="customerAutocomplete(this, ${idx})"
+          onfocus="customerAutocomplete(this, ${idx})"
+          onchange="updatePlanField(${idx},'customer',this.value);updatePriceSuggestion(${idx})">
+        <div class="autocomplete-list" id="ac_customer_${idx}" style="display:none;"></div>
+      </div>
     </div>
 
     <div class="form-group">
@@ -1380,15 +1382,41 @@ function updatePlanMaterial(jobIdx, matIdx, field, value) {
 }
 
 function handleCustomerSelect(selectEl, idx) {
-  const val = selectEl.value;
-  const otherInput = document.getElementById('customerOther_' + idx);
-  if (val === '__other__') {
-    if (otherInput) { otherInput.style.display = 'block'; otherInput.focus(); }
-  } else {
-    if (otherInput) otherInput.style.display = 'none';
-    updatePlanField(idx, 'customer', val);
-    updatePriceSuggestion(idx);
-  }
+  // legacy - no longer used
+}
+
+function customerAutocomplete(input, idx) {
+  const val = input.value.trim();
+  const dropdown = document.getElementById('ac_customer_' + idx);
+  if (!dropdown) return;
+
+  const matches = val.length === 0
+    ? CUSTOMERS_LIST.slice(0, 50)
+    : CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 20);
+
+  dropdown.innerHTML = '';
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+  matches.forEach(name => {
+    const d = document.createElement('div');
+    // Bold the matching part
+    if (val.length > 0) {
+      const idx2 = name.toLowerCase().indexOf(val.toLowerCase());
+      d.innerHTML = esc(name.slice(0, idx2)) + `<strong>${esc(name.slice(idx2, idx2 + val.length))}</strong>` + esc(name.slice(idx2 + val.length));
+    } else {
+      d.textContent = name;
+    }
+    d.onclick = () => {
+      input.value = name;
+      input.dispatchEvent(new Event('change'));
+      dropdown.style.display = 'none';
+    };
+    dropdown.appendChild(d);
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none';
+  }, { once: true });
 }
 
 function refreshMatTotal(jobIdx) {
