@@ -474,9 +474,12 @@
 <body>
 
 <div class="app-header">
-  <div>
-    <div class="app-header h1" style="font-size:18px;font-weight:700;">PMG Driver App</div>
-    <div class="subtitle" id="headerSubtitle">Select your name to start</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div>
+      <div class="app-header h1" style="font-size:18px;font-weight:700;">PMG Driver App</div>
+      <div class="subtitle" id="headerSubtitle">Select your name to start</div>
+    </div>
+    <span id="syncIndicator" style="font-size:14px;opacity:0.8;" title="Sync status"></span>
   </div>
   <button class="gear-btn" onclick="showGear()" title="Richard's View">⚙️</button>
 </div>
@@ -530,10 +533,11 @@
     </div>
   </div>
   <div id="richardMain" style="display:none;">
-    <div class="view-tabs">
-      <button class="view-tab active" id="tabPlan" onclick="switchRichardTab('plan')">📋 Plan Jobs</button>
+    <div class="view-tabs" style="flex-wrap:wrap;">
+      <button class="view-tab active" id="tabPlan" onclick="switchRichardTab('plan')">📋 Plan</button>
       <button class="view-tab" id="tabReview" onclick="switchRichardTab('review')">📊 End of Day</button>
-      <button class="view-tab" id="tabExport" onclick="switchRichardTab('export')">🖨️ Haultech Export</button>
+      <button class="view-tab" id="tabExport" onclick="switchRichardTab('export')">🖨️ Export</button>
+      <button class="view-tab" id="tabSettings" onclick="switchRichardTab('settings')">⚙️ Settings</button>
     </div>
 
     <!-- PLAN TAB -->
@@ -550,6 +554,7 @@
 
     <!-- REVIEW TAB -->
     <div id="richardReview" style="display:none;">
+      <button class="btn btn-navy btn-full" style="margin-bottom:16px;" onclick="sendEODSummaryToJim()">📊 Send Summary to Jim</button>
       <div id="reviewContent"></div>
     </div>
 
@@ -557,11 +562,25 @@
     <div id="richardExport" style="display:none;">
       <div class="section-header">
         <h2>Haultech Export</h2>
-        <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-navy btn-sm no-print" onclick="downloadCSV()">📤 Download CSV</button>
+          <button class="btn btn-outline btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        </div>
       </div>
       <div id="exportContent"></div>
     </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="richardSettings" style="display:none;">
+      <div id="settingsContent"></div>
+    </div>
   </div>
+</div>
+
+<!-- PHOTO FULLSCREEN OVERLAY -->
+<div id="photoOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+  <img id="photoOverlayImg" style="max-width:100%;max-height:85vh;border-radius:8px;">
+  <button onclick="document.getElementById('photoOverlay').style.display='none'" style="margin-top:16px;background:white;border:none;border-radius:8px;padding:12px 28px;font-size:16px;font-weight:700;cursor:pointer;">✕ Close</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -763,8 +782,14 @@ function setData(key, val) {
   localStorage.setItem(key, JSON.stringify(val));
 }
 
-function getDrivers() { return getData('pmg_drivers', DEFAULT_DRIVERS); }
-function getVehicles() { return getData('pmg_vehicles', DEFAULT_VEHICLES); }
+function getDrivers() {
+  if (typeof cloudConfig !== 'undefined' && cloudConfig && cloudConfig.drivers && cloudConfig.drivers.length) return cloudConfig.drivers.map(d => d.name);
+  return getData('pmg_drivers', DEFAULT_DRIVERS);
+}
+function getVehicles() {
+  if (typeof cloudConfig !== 'undefined' && cloudConfig && cloudConfig.vehicles && cloudConfig.vehicles.length) return cloudConfig.vehicles;
+  return getData('pmg_vehicles', DEFAULT_VEHICLES);
+}
 function getAddressBook() { return getData('pmg_address_book', []); }
 function getCustomers() { return getData('pmg_customers', []); }
 function getPricingHistory() { return getData('pmg_pricing_history', []); }
@@ -921,7 +946,7 @@ function buildDriverJobCard(job, idx) {
   div.innerHTML = `
     <div class="job-card-header">
       <div>
-        <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''}</div>
+        <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''} ${job.signature ? '<span class="badge badge-green" style="margin-left:6px;">✅ Signed</span>' : ''}</div>
         <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
       </div>
       <div style="text-align:right;">
@@ -949,6 +974,36 @@ function buildDriverJobCard(job, idx) {
         <label class="form-label">Ticket Number</label>
         <input type="text" class="form-input" value="${esc(job.ticketNo || '')}" placeholder="Enter ticket no." onchange="updateJobField(${idx}, 'ticketNo', this.value)">
       </div>
+
+      <!-- PHOTO -->
+      <div class="form-group">
+        <label class="form-label">Photo</label>
+        <div id="photoArea_${idx}">
+          ${job.photo ? `<img src="${job.photo}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('${job.photo.substring(0,30)}',${idx})">
+          <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="triggerPhotoInput(${idx})">📷 Replace</button>` : `<button class="btn btn-outline btn-sm" onclick="triggerPhotoInput(${idx})">📷 Add Photo</button>`}
+        </div>
+        <input type="file" accept="image/*" capture="environment" id="photoInput_${idx}" style="display:none;" onchange="handlePhotoCapture(${idx}, this)">
+      </div>
+
+      <!-- SIGNATURE -->
+      <div class="form-group">
+        <label class="form-label">Signature</label>
+        <div id="sigArea_${idx}">
+          ${job.signature
+            ? `<div style="display:flex;align-items:center;gap:10px;"><span class="badge badge-green">✅ Signed</span><img src="${job.signature}" style="height:40px;border:1px solid var(--grey-200);border-radius:4px;background:white;"><button class="btn btn-outline btn-sm" onclick="showSigPad(${idx})">Re-sign</button></div>`
+            : `<button class="btn btn-outline btn-sm" onclick="showSigPad(${idx})">✍️ Add Signature</button>`
+          }
+        </div>
+        <div id="sigPad_${idx}" style="display:none;margin-top:8px;">
+          <canvas id="sigCanvas_${idx}" style="width:100%;height:160px;border:2px solid var(--navy);border-radius:8px;background:white;touch-action:none;"></canvas>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-navy btn-sm" onclick="saveSig(${idx})">✓ Done</button>
+            <button class="btn btn-outline btn-sm" onclick="clearSig(${idx})">Clear</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('sigPad_${idx}').style.display='none'">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
         <label class="form-label">Notes</label>
         <textarea class="form-textarea" placeholder="Any notes..." onchange="updateJobField(${idx}, 'notes', this.value)">${esc(job.notes || '')}</textarea>
@@ -1180,12 +1235,15 @@ function checkPassword() {
 
 function switchRichardTab(tab) {
   state.richardTab = tab;
-  ['plan','review','export'].forEach(t => {
-    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
-    document.getElementById('richard' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = t === tab ? 'block' : 'none';
+  ['plan','review','export','settings'].forEach(t => {
+    const te = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const pe = document.getElementById('richard' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (te) te.classList.toggle('active', t === tab);
+    if (pe) pe.style.display = t === tab ? 'block' : 'none';
   });
   if (tab === 'review') renderReview();
   if (tab === 'export') renderExport();
+  if (tab === 'settings') renderSettings();
 }
 
 function buildRichardDriverTabs() {
@@ -1247,7 +1305,10 @@ function buildPlanJobCard(job, idx) {
   div.innerHTML = `
     <div class="plan-job-header">
       <div class="plan-job-title">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;margin-right:8px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`}</div>
-      <button class="remove-job-btn" onclick="removePlanJob(${idx})">✕</button>
+      <div style="display:flex;gap:6px;">
+        <button class="remove-job-btn" style="background:var(--navy);" onclick="duplicatePlanJob(${idx})" title="Repeat this job">🔁</button>
+        <button class="remove-job-btn" onclick="removePlanJob(${idx})">✕</button>
+      </div>
     </div>
 
     <div class="form-group">
@@ -1571,7 +1632,7 @@ function addPlanJob() {
   const defMat = MATERIALS[0].value;
   state.planJobs[date][state.selectedPlanDriver].push({
     jobNumber,
-    customer: '', vehicle: '', collectedFrom: '', deliveredTo: '',
+    customer: '', vehicle: (typeof cloudConfig !== 'undefined' && cloudConfig && cloudConfig.drivers ? (cloudConfig.drivers.find(d => d.name === state.selectedPlanDriver) || {}).vehicle || '' : ''), collectedFrom: '', deliveredTo: '',
     materials: [{ product: defMat, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(defMat) }],
     price: '', ticketNo: '', notes: '', status: 'pending', onTheFly: false
   });
@@ -1585,25 +1646,7 @@ function removePlanJob(idx) {
   showToast('Job removed');
 }
 
-function saveAllJobs() {
-  const date = document.getElementById('planDate')?.value || todayStr();
-  if (!state.planJobs[date]) return;
-  setJobsForDate(date, state.planJobs[date]);
-
-  // Save all addresses and customers
-  Object.values(state.planJobs[date]).forEach(jobs => {
-    jobs.forEach(j => {
-      saveAddress(j.collectedFrom);
-      saveAddress(j.deliveredTo);
-      saveCustomer(j.customer);
-      if (j.price && j.customer && j.materials && j.materials[0]) {
-        savePricing(j.customer, j.materials[0].product, j.price);
-      }
-    });
-  });
-
-  showToast('✅ All jobs saved!');
-}
+// saveAllJobs defined below with cloud sync
 
 // ============================================================
 // AUTOCOMPLETE
@@ -1877,6 +1920,480 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// ============================================================
+// CLOUD SYNC
+// ============================================================
+const API_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
+const API_KEY = 'pmg2026driver';
+const API_HDRS = { 'X-PMG-Key': API_KEY };
+const API_HDRS_JSON = { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' };
+let cloudConfig = null;
+let _pollTimer = null;
+let _lastPollData = '';
+
+function setSyncStatus(s) {
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  if (s === 'syncing') { el.textContent = '🔄'; el.title = 'Syncing…'; }
+  else if (s === 'ok') { el.textContent = '✅'; el.title = 'Synced'; }
+  else { el.textContent = '📡'; el.title = 'Offline'; }
+}
+
+async function cloudFetchConfig() {
+  setSyncStatus('syncing');
+  try {
+    const r = await fetch(API_URL + '/config', { headers: API_HDRS });
+    if (!r.ok) throw new Error();
+    const cfg = await r.json();
+    cloudConfig = cfg;
+    setData('pmg_cloud_config', cfg);
+    setSyncStatus('ok');
+    return cfg;
+  } catch(e) {
+    setSyncStatus('offline');
+    cloudConfig = getData('pmg_cloud_config', null);
+    return cloudConfig;
+  }
+}
+
+async function cloudFetchJobs(date) {
+  setSyncStatus('syncing');
+  try {
+    const r = await fetch(`${API_URL}/jobs/${date}`, { headers: API_HDRS });
+    if (!r.ok) throw new Error();
+    const jobs = await r.json();
+    setJobsForDate(date, jobs);
+    setSyncStatus('ok');
+    return jobs;
+  } catch(e) {
+    setSyncStatus('offline');
+    return getJobsForDate(date);
+  }
+}
+
+async function cloudPutJobs(date, jobs) {
+  setSyncStatus('syncing');
+  try {
+    const r = await fetch(`${API_URL}/jobs/${date}`, {
+      method: 'PUT', headers: API_HDRS_JSON, body: JSON.stringify(jobs)
+    });
+    if (!r.ok) throw new Error();
+    setJobsForDate(date, jobs);
+    setSyncStatus('ok');
+    return true;
+  } catch(e) {
+    setSyncStatus('offline');
+    setJobsForDate(date, jobs);
+    return false;
+  }
+}
+
+async function cloudPutConfig(config) {
+  setSyncStatus('syncing');
+  try {
+    const r = await fetch(`${API_URL}/config`, {
+      method: 'PUT', headers: API_HDRS_JSON, body: JSON.stringify(config)
+    });
+    if (!r.ok) throw new Error();
+    cloudConfig = config;
+    setData('pmg_cloud_config', config);
+    setSyncStatus('ok');
+    return true;
+  } catch(e) {
+    setSyncStatus('offline');
+    cloudConfig = config;
+    setData('pmg_cloud_config', config);
+    return false;
+  }
+}
+
+function getCloudDrivers() {
+  if (cloudConfig && cloudConfig.drivers && cloudConfig.drivers.length) return cloudConfig.drivers.map(d => d.name);
+  return getData('pmg_drivers', DEFAULT_DRIVERS);
+}
+function getCloudVehicles() {
+  if (cloudConfig && cloudConfig.vehicles && cloudConfig.vehicles.length) return cloudConfig.vehicles;
+  return DEFAULT_VEHICLES;
+}
+function getDriverDefaultVehicle(name) {
+  if (cloudConfig && cloudConfig.drivers) {
+    const d = cloudConfig.drivers.find(d => d.name === name);
+    if (d && d.vehicle) return d.vehicle;
+  }
+  return '';
+}
+
+function startPolling(date) {
+  stopPolling();
+  _pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${API_URL}/jobs/${date}`, { headers: API_HDRS });
+      if (!r.ok) return;
+      const jobs = await r.json();
+      const serialized = JSON.stringify(jobs);
+      if (_lastPollData !== serialized) {
+        _lastPollData = serialized;
+        setJobsForDate(date, jobs);
+        if (state.currentDriver && document.getElementById('driverJobs') && document.getElementById('driverJobs').style.display !== 'none') {
+          renderDriverJobs();
+        }
+        if (state.richardTab === 'review') renderReview();
+      }
+      setSyncStatus('ok');
+    } catch(e) { setSyncStatus('offline'); }
+  }, 60000);
+}
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+// Override DOMContentLoaded to init cloud
+document.addEventListener('DOMContentLoaded', async () => {
+  await cloudFetchConfig();
+  // Re-build grids with cloud drivers
+  buildDriverGrid();
+  buildRichardDriverTabs();
+  const today = todayStr();
+  await cloudFetchJobs(today);
+  _lastPollData = JSON.stringify(getJobsForDate(today));
+  loadPlanJobsFromStorage();
+  startPolling(today);
+
+  // Override date change to refetch from cloud
+  const planDate = document.getElementById('planDate');
+  if (planDate) {
+    planDate.addEventListener('change', async () => {
+      const date = planDate.value;
+      await cloudFetchJobs(date);
+      stopPolling();
+      startPolling(date);
+      loadPlanJobsFromStorage();
+      renderPlanJobs();
+    });
+  }
+}, { once: true });
+
+// Override getDrivers/getVehicles to use cloud when available
+const _origGetDrivers = getDrivers;
+const _origGetVehicles = getVehicles;
+
+// ============================================================
+// SETTINGS TAB
+// ============================================================
+function renderSettings() {
+  const container = document.getElementById('settingsContent');
+  if (!container) return;
+  const cfg = cloudConfig || { drivers: DEFAULT_DRIVERS.map(n => ({ name: n, vehicle: '', phone: '' })), vehicles: DEFAULT_VEHICLES };
+  const drivers = cfg.drivers || [];
+  const vehicles = getVehicles();
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">Driver Settings</div>
+      <div id="driverSettingsRows">
+        ${drivers.map((d, i) => `
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 36px;gap:8px;align-items:center;margin-bottom:10px;" id="dsr_${i}">
+            <input class="form-input" value="${esc(d.name||'')}" placeholder="Name" oninput="updateDriverSettingRow(${i},'name',this.value)">
+            <select class="form-select" onchange="updateDriverSettingRow(${i},'vehicle',this.value)">
+              <option value="">No default</option>
+              ${vehicles.map(v => `<option${d.vehicle===v?' selected':''}>${esc(v)}</option>`).join('')}
+            </select>
+            <input class="form-input" value="${esc(d.phone||'')}" placeholder="447921..." oninput="updateDriverSettingRow(${i},'phone',this.value)">
+            <button class="btn btn-danger btn-sm" onclick="removeDriverSettingRow(${i})">🗑</button>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="addDriverSettingRow()">➕ Add Driver</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Telegram (EOD Summary)</div>
+      <div class="form-group">
+        <label class="form-label">Bot Token</label>
+        <input class="form-input" id="tgTokenInput" value="${esc(getData('pmg_telegram_token','')||'')}" placeholder="123456:ABC-..." oninput="setData('pmg_telegram_token',this.value)">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" style="font-size:16px;padding:16px;margin-top:8px;" onclick="saveSettings()">💾 Save Settings</button>
+  `;
+  // Store working copy in state
+  state._settingsDrivers = JSON.parse(JSON.stringify(drivers));
+  state._settingsVehicles = vehicles;
+}
+
+function updateDriverSettingRow(i, field, val) {
+  if (!state._settingsDrivers) return;
+  if (!state._settingsDrivers[i]) state._settingsDrivers[i] = {};
+  state._settingsDrivers[i][field] = val;
+}
+
+function addDriverSettingRow() {
+  if (!state._settingsDrivers) state._settingsDrivers = [];
+  state._settingsDrivers.push({ name: '', vehicle: '', phone: '' });
+  renderSettings();
+}
+
+function removeDriverSettingRow(i) {
+  if (!state._settingsDrivers) return;
+  state._settingsDrivers.splice(i, 1);
+  renderSettings();
+}
+
+async function saveSettings() {
+  const cfg = cloudConfig || {};
+  cfg.drivers = (state._settingsDrivers || []).filter(d => d.name && d.name.trim());
+  cfg.vehicles = cfg.vehicles || DEFAULT_VEHICLES;
+  const ok = await cloudPutConfig(cfg);
+  cloudConfig = cfg;
+  buildDriverGrid();
+  buildRichardDriverTabs();
+  showToast(ok ? '✅ Settings saved!' : '⚠️ Saved locally (offline)');
+}
+
+// switchRichardTab already updated above to handle settings tab
+
+// ============================================================
+// SAVE ALL JOBS — override with cloud sync + WhatsApp
+// ============================================================
+async function saveAllJobs() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  if (!state.planJobs[date]) return;
+  const jobs = state.planJobs[date];
+  setJobsForDate(date, jobs);
+
+  // Save addresses and customers
+  Object.values(jobs).forEach(dJobs => {
+    (dJobs || []).forEach(j => {
+      saveAddress(j.collectedFrom);
+      saveAddress(j.deliveredTo);
+      saveCustomer(j.customer);
+      if (j.price && j.customer && j.materials && j.materials[0]) savePricing(j.customer, j.materials[0].product, j.price);
+    });
+  });
+
+  const ok = await cloudPutJobs(date, jobs);
+  showToast(ok ? '✅ Jobs saved & synced!' : '⚠️ Saved locally (offline)');
+
+  // WhatsApp notifications
+  const cfg = cloudConfig;
+  if (cfg && cfg.drivers) {
+    const dateLabel = formatDate(date);
+    for (const d of cfg.drivers) {
+      if (!d.phone || !d.phone.trim()) continue;
+      const driverJobs = jobs[d.name] || [];
+      if (driverJobs.length === 0) continue;
+      const msg = `Hi ${d.name}, you have ${driverJobs.length} job${driverJobs.length !== 1 ? 's' : ''} planned for ${dateLabel}. Open the app: https://jimpmgr-crypto.github.io/pmg-driver-app/`;
+      const send = confirm(`Send WhatsApp to ${d.name} (${d.phone})?\nThey have ${driverJobs.length} job(s) for ${dateLabel}.`);
+      if (send) {
+        const num = d.phone.replace(/\D/g, '');
+        window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    }
+  }
+}
+
+// ============================================================
+// DUPLICATE / REPEAT JOB
+// ============================================================
+function duplicatePlanJob(idx) {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  if (!state.planJobs[date]) return;
+  const jobs = state.planJobs[date][state.selectedPlanDriver] || [];
+  if (!jobs[idx]) return;
+  const copy = JSON.parse(JSON.stringify(jobs[idx]));
+  copy.jobNumber = generateJobNumber(date);
+  copy.status = 'pending';
+  copy.ticketNo = '';
+  copy.signature = null;
+  copy.photo = null;
+  copy.submitted = false;
+  jobs.push(copy);
+  renderPlanJobs();
+  showToast('🔁 Job duplicated');
+}
+
+// ============================================================
+// PHOTO CAPTURE
+// ============================================================
+function triggerPhotoInput(idx) {
+  document.getElementById('photoInput_' + idx)?.click();
+}
+
+function showPhotoOverlay(_, idx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[idx];
+  if (!job || !job.photo) return;
+  const overlay = document.getElementById('photoOverlay');
+  const img = document.getElementById('photoOverlayImg');
+  img.src = job.photo;
+  overlay.style.display = 'flex';
+}
+
+function handlePhotoCapture(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      const ratio = Math.min(1, MAX / img.width);
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      // Save to job
+      const jobs = getJobsForDate(state.currentDate);
+      if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
+        jobs[state.currentDriver][idx].photo = base64;
+        setJobsForDate(state.currentDate, jobs);
+        // Upload to cloud
+        const photoId = `${state.currentDate.replace(/-/g,'')}_${state.currentDriver.replace(/\s/g,'')}_${idx}`;
+        fetch(`${API_URL}/photos/${photoId}`, {
+          method: 'PUT', headers: API_HDRS_JSON, body: JSON.stringify({ data: base64 })
+        }).catch(() => {});
+      }
+      // Re-render photo area
+      const area = document.getElementById('photoArea_' + idx);
+      if (area) {
+        area.innerHTML = `<img src="${base64}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('',${idx})">
+        <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="triggerPhotoInput(${idx})">📷 Replace</button>`;
+      }
+      showToast('📷 Photo saved');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// SIGNATURE PAD
+// ============================================================
+const _sigState = {};
+
+function showSigPad(idx) {
+  const padDiv = document.getElementById('sigPad_' + idx);
+  if (!padDiv) return;
+  padDiv.style.display = 'block';
+  const canvas = document.getElementById('sigCanvas_' + idx);
+  if (!canvas) return;
+  // Set real pixel size
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width || 320;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1a2744';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  _sigState[idx] = { drawing: false, ctx, canvas };
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  function start(e) { e.preventDefault(); const p = getPos(e); _sigState[idx].drawing = true; ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+  function move(e) { e.preventDefault(); if (!_sigState[idx].drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  function end(e) { e.preventDefault(); _sigState[idx].drawing = false; }
+
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function clearSig(idx) {
+  const canvas = document.getElementById('sigCanvas_' + idx);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function saveSig(idx) {
+  const canvas = document.getElementById('sigCanvas_' + idx);
+  if (!canvas) return;
+  const sig = canvas.toDataURL('image/png');
+  const jobs = getJobsForDate(state.currentDate);
+  if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
+    jobs[state.currentDriver][idx].signature = sig;
+    setJobsForDate(state.currentDate, jobs);
+    // Push to cloud
+    cloudPutJobs(state.currentDate, jobs);
+  }
+  // Update sig area display
+  const area = document.getElementById('sigArea_' + idx);
+  if (area) {
+    area.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span class="badge badge-green">✅ Signed</span><img src="${sig}" style="height:40px;border:1px solid var(--grey-200);border-radius:4px;background:white;"><button class="btn btn-outline btn-sm" onclick="showSigPad(${idx})">Re-sign</button></div>`;
+  }
+  document.getElementById('sigPad_' + idx).style.display = 'none';
+  // Update header badge
+  const header = document.querySelector(`#driverJob_${idx} .job-num`);
+  if (header && !header.innerHTML.includes('Signed')) {
+    header.innerHTML += ' <span class="badge badge-green">✅ Signed</span>';
+  }
+  showToast('✅ Signature saved');
+}
+
+// ============================================================
+// EOD SUMMARY
+// ============================================================
+async function sendEODSummaryToJim() {
+  const token = getData('pmg_telegram_token', '');
+  if (!token) { alert('Add your Telegram bot token in the Settings tab first'); switchRichardTab('settings'); return; }
+  const date = document.getElementById('planDate')?.value || todayStr();
+  const jobs = getJobsForDate(date);
+  const drivers = Object.keys(jobs);
+  let totalJobs = 0, submitted = 0, unpriced = [], variances = [];
+  drivers.forEach(driver => {
+    (jobs[driver] || []).forEach((job, i) => {
+      totalJobs++;
+      if (job.submitted) submitted++;
+      if (!job.price) unpriced.push(job.jobNumber || `${driver} Job ${i+1}`);
+      (job.materials || []).forEach(m => {
+        if (m.actualWeight && m.qty) {
+          const planned = parseFloat(m.qty) || 0;
+          const actual = parseFloat(m.actualWeight) || 0;
+          if (planned > 0 && Math.abs(actual - planned) / planned > 0.1) {
+            variances.push(`${job.jobNumber||driver}: ${m.product} planned ${planned}t actual ${actual}t`);
+          }
+        }
+      });
+    });
+  });
+  const summary = `🚛 PMG End of Day — ${formatDate(date)}\n\nDrivers active: ${drivers.length}\nJobs: ${totalJobs} total (${submitted} submitted, ${totalJobs - submitted} pending)\n${unpriced.length ? `\n⚠️ Unpriced jobs:\n${unpriced.join('\n')}` : '✅ All jobs priced'}\n${variances.length ? `\n📊 Weight variances >10%:\n${variances.join('\n')}` : ''}`;
+
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: '8507984330', text: summary })
+    });
+    const res = await r.json();
+    if (res.ok) showToast('📊 Summary sent to Jim!');
+    else { alert('Telegram error: ' + res.description); }
+  } catch(e) { alert('Failed to send — check your bot token in Settings'); }
+}
+
+// ============================================================
+// DOWNLOAD CSV
+// ============================================================
+async function downloadCSV() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  try {
+    const r = await fetch(`${API_URL}/export/${date}`, { headers: API_HDRS });
+    if (!r.ok) throw new Error();
+    const csv = await r.text();
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `pmg-jobs-${date}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('📤 CSV downloaded');
+  } catch(e) {
+    showToast('⚠️ Could not fetch export — save jobs first');
+  }
+}
 </script>
 </body>
 </html>
