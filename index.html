@@ -960,32 +960,65 @@ function buildDriverJobCard(job, idx) {
   return div;
 }
 
-function renderMaterialsDisplay(materials, idx) {
+function renderMaterialsDisplay(materials, jobIdx) {
   if (!materials || materials.length === 0) return '<div style="color:var(--grey-400);font-size:14px;">No materials set</div>';
   const prices = getMaterialPrices();
-  let html = materials.map(m => {
+  let html = materials.map((m, mi) => {
     const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
     const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
     const displayQty = hasActual ? m.actualWeight : (m.qty || '');
     const lt = (parseFloat(displayQty) || 0) * up;
-    return `<div class="material-row" style="align-items:flex-start;">
-      <div>
+    return `<div class="material-row" style="align-items:flex-start;padding:10px 0;">
+      <div style="flex:1;">
         <div class="material-name">${esc(m.product || '')}</div>
-        <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">
+        <div style="font-size:13px;margin-top:4px;">
           ${hasActual
-            ? `Planned: ${esc(m.qty||'\u2014')} ${esc(m.unit||'')} &nbsp;\u2022&nbsp; <span style="color:var(--amber-dark);font-weight:600;">Actual: ${esc(m.actualWeight)} ${esc(m.unit||'')}</span>`
-            : `${esc(m.qty||'')} ${esc(m.unit||'')}`
+            ? `<span style="color:var(--amber-dark);font-weight:700;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span>
+               <span style="color:var(--grey-400);font-size:11px;margin-left:6px;">(planned: ${esc(m.qty||'—')})</span>
+               <button onclick="clearActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--grey-400);font-size:11px;cursor:pointer;margin-left:4px;text-decoration:underline;">Change</button>`
+            : `<span style="color:var(--grey-600);">${esc(m.qty||'—')} ${esc(m.unit||'')}</span>
+               <button onclick="enterActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--amber-dark);font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;text-decoration:underline;">⚖️ Change</button>`
           }
         </div>
+        <div id="actualWeightInput_${jobIdx}_${mi}" style="display:none;margin-top:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Actual Weight</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" class="form-input" style="max-width:120px;border-color:var(--amber);" placeholder="${esc(m.qty||'0')}" min="0" step="0.01" id="actualWeightVal_${jobIdx}_${mi}">
+            <span style="color:var(--grey-600);font-size:13px;">${esc(m.unit||'')}</span>
+            <button class="btn btn-primary btn-sm" onclick="confirmActualWeight(${jobIdx},${mi})">✓ Confirm</button>
+          </div>
+        </div>
       </div>
-      <div style="text-align:right;flex-shrink:0;">
+      <div style="text-align:right;flex-shrink:0;padding-left:8px;">
         ${lt > 0 ? `<div style="font-size:13px;color:var(--green);font-weight:600;">\u00a3${lt.toFixed(2)}</div>` : ''}
       </div>
     </div>`;
   }).join('');
   const total = calcMaterialsTotal(materials);
-  if (total > 0) html += `<div style="display:flex;justify-content:space-between;border-top:1px solid var(--grey-200);padding-top:8px;margin-top:4px;font-weight:700;color:var(--navy);font-size:14px;"><span>Materials Total</span><span>\u00a3${total.toFixed(2)}</span></div>`;
+  if (total > 0) html += `<div style="display:flex;justify-content:space-between;border-top:2px solid var(--grey-200);padding-top:8px;margin-top:4px;font-weight:700;color:var(--navy);font-size:14px;"><span>Total</span><span>\u00a3${total.toFixed(2)}</span></div>`;
   return html;
+}
+
+function enterActualWeight(jobIdx, matIdx) {
+  document.getElementById('actualWeightInput_' + jobIdx + '_' + matIdx).style.display = 'block';
+  document.getElementById('actualWeightVal_' + jobIdx + '_' + matIdx).focus();
+}
+
+function clearActualWeight(jobIdx, matIdx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  if (job && job.materials && job.materials[matIdx]) {
+    delete job.materials[matIdx].actualWeight;
+    setJobsForDate(state.currentDate, jobs);
+    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+  }
+}
+
+function confirmActualWeight(jobIdx, matIdx) {
+  const input = document.getElementById('actualWeightVal_' + jobIdx + '_' + matIdx);
+  const val = input ? input.value.trim() : '';
+  if (!val) { showToast('Enter a weight first'); return; }
+  saveMaterialField(jobIdx, matIdx, 'actualWeight', val);
 }
 
 function toggleMaterialEdit(idx) {
@@ -1015,20 +1048,11 @@ function addMaterialRowData(jobIdx, matIdx, data) {
       </select>
       <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">&#128465;</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:8px;align-items:end;">
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--grey-400);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Planned Qty</div>
-        <div style="display:flex;gap:6px;">
-          <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
-          <select class="form-select" style="width:90px;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
-            ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Actual Weight ⚖️</div>
-        <input type="number" class="form-input" style="border-color:var(--amber);" value="${esc(data.actualWeight||'')}" placeholder="e.g. 18.4" min="0" step="0.01" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'actualWeight', this.value)">
-      </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
+      <select class="form-select" style="width:100px;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
+        ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
+      </select>
     </div>
   `;
   container.appendChild(row);
