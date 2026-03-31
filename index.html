@@ -1043,9 +1043,14 @@ function addMaterialRowData(jobIdx, matIdx, data) {
   row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--grey-100);';
   row.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-      <select class="form-select" style="flex:1;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'product', this.value)">
-        ${buildMaterialOptions(data.product)}
-      </select>
+      <div class="autocomplete-wrapper" style="flex:1;">
+        <input type="text" class="form-input" value="${esc(data.product||'')}" placeholder="Type or search material..."
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="materialAutocomplete(this,${jobIdx},${matIdx},'driver')"
+          onfocus="materialAutocomplete(this,${jobIdx},${matIdx},'driver')"
+          onchange="saveMaterialField(${jobIdx},${matIdx},'product',this.value)">
+        <div class="autocomplete-list" id="ac_drvmat_${jobIdx}_${matIdx}" style="display:none;"></div>
+      </div>
       <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">&#128465;</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
@@ -1338,9 +1343,14 @@ function renderPlanMaterials(materials, jobIdx) {
     const lt = (parseFloat(m.qty) || 0) * (parseFloat(up) || 0);
     return `<div style="padding:10px 0;border-bottom:1px solid var(--grey-100);" id="planMat_${jobIdx}_${mi}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-        <select class="form-select" style="flex:1;" onchange="updatePlanMaterial(${jobIdx},${mi},'product',this.value);refreshMatPriceRow(${jobIdx},${mi})">
-          ${buildMaterialOptions(m.product)}
-        </select>
+        <div class="autocomplete-wrapper" style="flex:1;">
+          <input type="text" class="form-input" value="${esc(m.product||'')}" placeholder="Type or search material..."
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="materialAutocomplete(this,${jobIdx},${mi},'plan')"
+            onfocus="materialAutocomplete(this,${jobIdx},${mi},'plan')"
+            onchange="updatePlanMaterial(${jobIdx},${mi},'product',this.value);refreshMatPriceRow(${jobIdx},${mi})">
+          <div class="autocomplete-list" id="ac_planmat_${jobIdx}_${mi}" style="display:none;"></div>
+        </div>
         <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removePlanMaterial(${jobIdx},${mi})">&#128465;</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;">
@@ -1383,6 +1393,72 @@ function updatePlanMaterial(jobIdx, matIdx, field, value) {
 
 function handleCustomerSelect(selectEl, idx) {
   // legacy - no longer used
+}
+
+function materialAutocomplete(input, jobIdx, matIdx, mode) {
+  const val = input.value.trim();
+  const dropId = mode === 'plan' ? `ac_planmat_${jobIdx}_${matIdx}` : `ac_drvmat_${jobIdx}_${matIdx}`;
+  const dropdown = document.getElementById(dropId);
+  if (!dropdown) return;
+
+  let items;
+  if (val.length === 0) {
+    // Show all grouped
+    items = MATERIALS.filter(m => m.value !== '__other__');
+  } else {
+    items = MATERIALS.filter(m => m.value !== '__other__' && (m.label.toLowerCase().includes(val.toLowerCase()) || m.group.toLowerCase().includes(val.toLowerCase())));
+  }
+
+  dropdown.innerHTML = '';
+
+  if (items.length === 0) {
+    // Nothing matched — show free-text option
+    const d = document.createElement('div');
+    d.innerHTML = `<span style="color:var(--grey-400);font-style:italic;">Use "<strong>${esc(val)}</strong>" as custom material</span>`;
+    d.onclick = () => { input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; };
+    dropdown.appendChild(d);
+    dropdown.style.display = 'block';
+    return;
+  }
+
+  // Group results
+  const groups = {};
+  const order = [];
+  items.forEach(m => {
+    if (!groups[m.group]) { groups[m.group] = []; order.push(m.group); }
+    groups[m.group].push(m);
+  });
+
+  order.forEach(grp => {
+    if (val.length === 0) {
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:10px;font-weight:700;color:var(--grey-400);text-transform:uppercase;letter-spacing:0.5px;padding:6px 14px 2px;background:var(--grey-50);pointer-events:none;';
+      hdr.textContent = grp;
+      dropdown.appendChild(hdr);
+    }
+    groups[grp].forEach(m => {
+      const d = document.createElement('div');
+      if (val.length > 0) {
+        const i = m.label.toLowerCase().indexOf(val.toLowerCase());
+        d.innerHTML = i >= 0
+          ? esc(m.label.slice(0,i)) + `<strong>${esc(m.label.slice(i,i+val.length))}</strong>` + esc(m.label.slice(i+val.length))
+          : esc(m.label);
+      } else {
+        d.textContent = m.label;
+      }
+      d.onclick = () => {
+        input.value = m.value;
+        input.dispatchEvent(new Event('change'));
+        dropdown.style.display = 'none';
+      };
+      dropdown.appendChild(d);
+    });
+  });
+
+  dropdown.style.display = 'block';
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none';
+  }, { once: true });
 }
 
 function customerAutocomplete(input, idx) {
