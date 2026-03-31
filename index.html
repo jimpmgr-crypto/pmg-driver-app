@@ -498,7 +498,7 @@
     </div>
     <div id="jobsList"></div>
     <div style="margin-top:8px;">
-      <button class="btn btn-outline btn-full" onclick="addDriverJob()">➕ Add On-the-fly Job</button>
+      <button class="btn btn-outline btn-full" onclick="addDriverJob()">➕ Add Another Job</button>
     </div>
     <div style="margin-top:16px;">
       <button class="btn btn-green btn-full" style="font-size:17px;padding:18px;" onclick="submitDaySheet()">✅ Submit Day Sheet</button>
@@ -544,7 +544,7 @@
       </div>
       <div class="driver-tabs" id="richardDriverTabs"></div>
       <div id="richardJobsContainer"></div>
-      <button class="btn btn-outline btn-full" onclick="addPlanJob()" style="margin-bottom:16px;">➕ Add Job for this Driver</button>
+      <button class="btn btn-outline btn-full" onclick="addPlanJob()" style="margin-bottom:16px;">➕ Add Another Job for this Driver</button>
       <button class="btn btn-primary btn-full" style="font-size:16px;padding:16px;" onclick="saveAllJobs()">💾 Save All Jobs</button>
     </div>
 
@@ -572,7 +572,9 @@
 // ============================================================
 const DEFAULT_DRIVERS = ['John Bowman','Neil May','Ian Slater','Richard Whittaker'];
 const DEFAULT_VEHICLES = ['YJ13 GRF','PN25 FLF','PN25 AMU','EY15 BOV','DX12 RFN','YX02 DVT'];
-const PRODUCTS = ['MOT Type 1','MOT Type 3','Grit Sand','Recycled Sand','Topsoil','Crushed Concrete 6F2','40mm Blue Slate','20mm Blue Slate','Grab Hire','Tipping'];
+const PRODUCTS = ['Type 1 MOT','Type 3 MOT','Topsoil','Sharp Sand','Building Sand','Concrete Mix','Hardcore','Scalpings','Crusher Run','Grit Sand','6F2','6F5','Drainage Stone','Recycled Concrete','Clay','Spoil','Tarmac','Sand & Gravel Mix','Gabion Stone','Pea Gravel'];
+const CUSTOMERS_LIST = ['Rowland Homes','Barratt Homes','Taylor Wimpey','Persimmon Homes','Bellway Homes','Miller Homes','Jones Homes','Story Homes','Keepmoat','Gleeson Homes','Redrow','McCarthy Stone','Vistry Group','Countryside Partnerships','Network Rail','National Highways','Lancashire County Council','Preston City Council','Wyre Council','Fylde Council'];
+const DEFAULT_MATERIAL_PRICES = {'Type 1 MOT':28,'Type 3 MOT':26,'Topsoil':35,'Sharp Sand':32,'Building Sand':30,'Concrete Mix':120,'Hardcore':18,'Scalpings':20,'Crusher Run':22,'Grit Sand':30,'6F2':24,'6F5':22,'Drainage Stone':40,'Recycled Concrete':15,'Clay':12,'Spoil':10,'Tarmac':85,'Sand & Gravel Mix':28,'Gabion Stone':45,'Pea Gravel':50};
 const UNITS = ['Tonnes','Cubes','Units'];
 const PASSWORD = 'richard';
 
@@ -624,6 +626,28 @@ function suggestPrice(customer, product) {
   const hist = getPricingHistory();
   const match = hist.find(h => h.customer === customer && h.product === product);
   return match ? match.price : null;
+}
+function getMaterialPrices() { return Object.assign({}, DEFAULT_MATERIAL_PRICES, getData('pmg_material_prices', {})); }
+function setMaterialPrice(product, price) {
+  const custom = getData('pmg_material_prices', {});
+  custom[product] = parseFloat(price) || 0;
+  setData('pmg_material_prices', custom);
+}
+function getMaterialPrice(product) { return getMaterialPrices()[product] || 0; }
+function calcMaterialsTotal(materials) {
+  const prices = getMaterialPrices();
+  return (materials || []).reduce((sum, m) => {
+    const qty = parseFloat(m.qty) || 0;
+    const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
+    return sum + qty * up;
+  }, 0);
+}
+function generateJobNumber(date) {
+  const ds = (date || todayStr()).replace(/-/g,'');
+  const key = 'pmg_job_counter_' + ds;
+  const n = (getData(key, 0) || 0) + 1;
+  setData(key, n);
+  return 'PMG-' + ds + '-' + String(n).padStart(3,'0');
 }
 
 // ============================================================
@@ -714,7 +738,7 @@ function buildDriverJobCard(job, idx) {
   div.innerHTML = `
     <div class="job-card-header">
       <div>
-        <div class="job-num">Job ${idx + 1} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''}</div>
+        <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''}</div>
         <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
       </div>
       <div style="text-align:right;">
@@ -979,7 +1003,7 @@ function buildPlanJobCard(job, idx) {
 
   div.innerHTML = `
     <div class="plan-job-header">
-      <div class="plan-job-title">Job ${idx + 1}</div>
+      <div class="plan-job-title">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;margin-right:8px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`}</div>
       <button class="remove-job-btn" onclick="removePlanJob(${idx})">✕</button>
     </div>
 
@@ -993,12 +1017,12 @@ function buildPlanJobCard(job, idx) {
 
     <div class="form-group">
       <label class="form-label">Customer</label>
-      <div class="autocomplete-wrapper">
-        <input type="text" class="form-input" value="${esc(job.customer||'')}" placeholder="Customer name..."
-          oninput="autocomplete(this, getCustomers(), ${idx}, 'customer')"
-          onchange="updatePlanField(${idx}, 'customer', this.value); updatePriceSuggestion(${idx})">
-        <div class="autocomplete-list" id="ac_customer_${idx}" style="display:none;"></div>
-      </div>
+      <select class="form-select" onchange="handleCustomerSelect(this,${idx})">
+        <option value="">Select customer...</option>
+        ${CUSTOMERS_LIST.map(c => `<option value="${esc(c)}"${job.customer===c?' selected':''}>${esc(c)}</option>`).join('')}
+        <option value="__other__"${job.customer && !CUSTOMERS_LIST.includes(job.customer) ? ' selected' : ''}>Other (type below)</option>
+      </select>
+      <input type="text" class="form-input" id="customerOther_${idx}" style="margin-top:8px;${job.customer && !CUSTOMERS_LIST.includes(job.customer) ? '' : 'display:none;'}" value="${esc(job.customer && !CUSTOMERS_LIST.includes(job.customer) ? job.customer : '')}" placeholder="Enter customer name..." onchange="updatePlanField(${idx},'customer',this.value);updatePriceSuggestion(${idx})">
     </div>
 
     <div class="form-group">
@@ -1059,25 +1083,40 @@ function buildPlanJobCard(job, idx) {
 }
 
 function renderPlanMaterials(materials, jobIdx) {
-  if (!materials || materials.length === 0) return '';
-  return materials.map((m, mi) => `
-    <div class="material-edit-row" id="planMat_${jobIdx}_${mi}">
-      <select class="form-select" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'product', this.value)">
-        ${PRODUCTS.map(p => `<option ${m.product===p?'selected':''}>${esc(p)}</option>`).join('')}
-      </select>
-      <input type="number" class="form-input" value="${esc(m.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'qty', this.value)">
-      <select class="form-select" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'unit', this.value)">
-        ${UNITS.map(u => `<option ${m.unit===u?'selected':''}>${u}</option>`).join('')}
-      </select>
-      <button class="btn btn-danger btn-sm" onclick="removePlanMaterial(${jobIdx}, ${mi})">🗑</button>
-    </div>
-  `).join('');
+  if (!materials || materials.length === 0) {
+    return '<div style="color:var(--grey-400);font-size:13px;padding:8px 0;">No materials added yet.</div>';
+  }
+  const prices = getMaterialPrices();
+  const rows = materials.map((m, mi) => {
+    const up = m.unitPrice !== undefined ? m.unitPrice : (prices[m.product] || 0);
+    const lt = (parseFloat(m.qty) || 0) * (parseFloat(up) || 0);
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--grey-100);" id="planMat_${jobIdx}_${mi}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <select class="form-select" style="flex:1;" onchange="updatePlanMaterial(${jobIdx},${mi},'product',this.value);refreshMatPriceRow(${jobIdx},${mi})">
+          ${PRODUCTS.map(p => `<option value="${esc(p)}"${m.product===p?' selected':''}>${esc(p)}</option>`).join('')}
+        </select>
+        <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removePlanMaterial(${jobIdx},${mi})">&#128465;</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;">
+        <input type="number" class="form-input" style="width:70px;padding:10px;" value="${esc(String(m.qty||''))}" placeholder="Qty" min="0" step="0.1" onchange="updatePlanMaterial(${jobIdx},${mi},'qty',this.value)">
+        <span style="color:var(--grey-400);">&#215;</span>
+        <span style="color:var(--grey-600);">&pound;</span>
+        <input type="number" class="form-input" style="width:75px;padding:10px;" value="${esc(String(up||''))}" placeholder="£/t" min="0" step="0.01" title="Unit price — edits save for next time" onchange="updatePlanMaterial(${jobIdx},${mi},'unitPrice',this.value);setMaterialPrice('${esc(m.product)}',this.value)">
+        <span style="color:var(--grey-400);">=</span>
+        <span style="font-weight:700;color:var(--green);min-width:60px;text-align:right;font-size:14px;" id="lineTotal_${jobIdx}_${mi}">${lt>0?'\u00a3'+lt.toFixed(2):'&mdash;'}</span>
+      </div>
+    </div>`;
+  }).join('');
+  const total = calcMaterialsTotal(materials);
+  const totalRow = `<div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--grey-200);padding-top:10px;margin-top:4px;"><span style="font-size:13px;color:var(--grey-600);">Materials Total</span><strong style="font-size:16px;color:var(--navy);" id="matTotal_${jobIdx}">${total>0?'\u00a3'+total.toFixed(2):'&mdash;'}</strong></div>`;
+  return rows + totalRow;
 }
 
 function addPlanMaterial(jobIdx) {
   const jobs = getPlanJobsForCurrentDriver();
   if (!jobs[jobIdx].materials) jobs[jobIdx].materials = [];
-  jobs[jobIdx].materials.push({ product: PRODUCTS[0], qty: '', unit: 'Tonnes' });
+  const product = PRODUCTS[0];
+  jobs[jobIdx].materials.push({ product, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(product) });
   document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
 }
 
@@ -1093,6 +1132,50 @@ function updatePlanMaterial(jobIdx, matIdx, field, value) {
     jobs[jobIdx].materials[matIdx][field] = value;
   }
   updatePriceSuggestion(jobIdx);
+  if (field === 'qty' || field === 'unitPrice') refreshMatTotal(jobIdx);
+}
+
+function handleCustomerSelect(selectEl, idx) {
+  const val = selectEl.value;
+  const otherInput = document.getElementById('customerOther_' + idx);
+  if (val === '__other__') {
+    if (otherInput) { otherInput.style.display = 'block'; otherInput.focus(); }
+  } else {
+    if (otherInput) otherInput.style.display = 'none';
+    updatePlanField(idx, 'customer', val);
+    updatePriceSuggestion(idx);
+  }
+}
+
+function refreshMatTotal(jobIdx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  const job = jobs[jobIdx];
+  if (!job) return;
+  const prices = getMaterialPrices();
+  (job.materials || []).forEach((m, mi) => {
+    const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
+    const lt = (parseFloat(m.qty) || 0) * up;
+    const el = document.getElementById('lineTotal_' + jobIdx + '_' + mi);
+    if (el) el.textContent = lt > 0 ? '\u00a3' + lt.toFixed(2) : '\u2014';
+  });
+  const total = calcMaterialsTotal(job.materials);
+  const tel = document.getElementById('matTotal_' + jobIdx);
+  if (tel) tel.textContent = total > 0 ? '\u00a3' + total.toFixed(2) : '\u2014';
+}
+
+function refreshMatPriceRow(jobIdx, matIdx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  const job = jobs[jobIdx];
+  if (!job || !job.materials || !job.materials[matIdx]) return;
+  const product = job.materials[matIdx].product;
+  const storedPrice = getMaterialPrice(product);
+  job.materials[matIdx].unitPrice = storedPrice;
+  const container = document.getElementById('planMat_' + jobIdx + '_' + matIdx);
+  if (container) {
+    const numInputs = container.querySelectorAll('input[type="number"]');
+    if (numInputs[1]) numInputs[1].value = storedPrice || '';
+  }
+  refreshMatTotal(jobIdx);
 }
 
 function updatePlanField(idx, field, value) {
@@ -1136,9 +1219,11 @@ function addPlanJob() {
   const date = document.getElementById('planDate')?.value || todayStr();
   if (!state.planJobs[date]) state.planJobs[date] = getJobsForDate(date);
   if (!state.planJobs[date][state.selectedPlanDriver]) state.planJobs[date][state.selectedPlanDriver] = [];
+  const jobNumber = generateJobNumber(date);
   state.planJobs[date][state.selectedPlanDriver].push({
+    jobNumber,
     customer: '', vehicle: '', collectedFrom: '', deliveredTo: '',
-    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes' }],
+    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(PRODUCTS[0]) }],
     price: '', ticketNo: '', notes: '', status: 'pending', onTheFly: false
   });
   renderPlanJobs();
@@ -1251,7 +1336,7 @@ function renderReview() {
       card.innerHTML = `
         <div class="review-job-header">
           <div>
-            <strong>Job ${idx+1} — ${esc(job.customer||'Unknown')}</strong>
+            <strong>${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;margin-right:6px;">${esc(job.jobNumber)}</span>` : `Job ${idx+1} \u2014`} ${esc(job.customer||'Unknown')}</strong>
             ${isOTF ? '<span class="badge badge-orange" style="margin-left:8px;">ON THE FLY</span>' : ''}
             ${submitted ? '<span class="badge badge-green" style="margin-left:8px;">SUBMITTED</span>' : '<span class="badge badge-grey" style="margin-left:8px;">NOT YET SUBMITTED</span>'}
           </div>
@@ -1309,7 +1394,7 @@ function renderExport() {
     const jobs = allJobs[driver] || [];
     jobs.forEach((job, idx) => {
       (job.materials || [{ product: '', qty: '', unit: '' }]).forEach(m => {
-        rows.push({ driver, job: idx+1, customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
+        rows.push({ driver, job: idx+1, jobNum: job.jobNumber || '', customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
       });
     });
   });
@@ -1327,15 +1412,15 @@ function renderExport() {
     <table class="export-table">
       <thead>
         <tr>
-          <th>Driver</th><th>Job</th><th>Customer</th><th>From</th><th>To</th>
+          <th>Job No.</th><th>Driver</th><th>Customer</th><th>From</th><th>To</th>
           <th>Product</th><th>Qty</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
         </tr>
       </thead>
       <tbody>
         ${rows.map(r => `
           <tr>
+            <td>${r.jobNum ? esc(r.jobNum) : r.job}${r.otf ? ' <span class="badge badge-orange">OTF</span>' : ''}</td>
             <td>${esc(r.driver)}</td>
-            <td>${r.job}${r.otf ? ' <span class="badge badge-orange">OTF</span>' : ''}</td>
             <td>${esc(r.customer||'')}</td>
             <td>${esc(r.from||'')}</td>
             <td>${esc(r.to||'')}</td>
