@@ -1267,12 +1267,13 @@ function buildPlanJobCard(job, idx) {
       <label class="form-label">Collected From</label>
       <div class="input-with-btn">
         <div class="autocomplete-wrapper" style="flex:1;">
-          <input type="text" class="form-input" value="${esc(job.collectedFrom||'')}" placeholder="Origin..."
+          <input type="text" class="form-input" value="${esc(job.collectedFrom||'')}" placeholder="Start typing address..."
             oninput="autocomplete(this, getAddressBook(), ${idx}, 'collectedFrom')"
-            onchange="updatePlanField(${idx}, 'collectedFrom', this.value)">
+            onchange="updatePlanField(${idx}, 'collectedFrom', this.value);updateMapsLink(${idx},'collectedFrom',this.value)">
           <div class="autocomplete-list" id="ac_collectedFrom_${idx}" style="display:none;"></div>
         </div>
         <button class="loc-btn" onclick="useLocation(${idx}, 'collectedFrom')" title="Use current location">📍</button>
+        <a id="mapsLink_collectedFrom_${idx}" href="#" target="_blank" class="loc-btn" style="display:${job.collectedFrom?'inline-flex':'none'};background:var(--green);text-decoration:none;" title="Open in Maps">🗺️</a>
       </div>
     </div>
 
@@ -1280,12 +1281,13 @@ function buildPlanJobCard(job, idx) {
       <label class="form-label">Delivered To</label>
       <div class="input-with-btn">
         <div class="autocomplete-wrapper" style="flex:1;">
-          <input type="text" class="form-input" value="${esc(job.deliveredTo||'')}" placeholder="Destination..."
+          <input type="text" class="form-input" value="${esc(job.deliveredTo||'')}" placeholder="Start typing address..."
             oninput="autocomplete(this, getAddressBook(), ${idx}, 'deliveredTo')"
-            onchange="updatePlanField(${idx}, 'deliveredTo', this.value)">
+            onchange="updatePlanField(${idx}, 'deliveredTo', this.value);updateMapsLink(${idx},'deliveredTo',this.value)">
           <div class="autocomplete-list" id="ac_deliveredTo_${idx}" style="display:none;"></div>
         </div>
         <button class="loc-btn" onclick="useLocation(${idx}, 'deliveredTo')" title="Use current location">📍</button>
+        <a id="mapsLink_deliveredTo_${idx}" href="#" target="_blank" class="loc-btn" style="display:${job.deliveredTo?'inline-flex':'none'};background:var(--green);text-decoration:none;" title="Open in Maps">🗺️</a>
       </div>
     </div>
 
@@ -1315,8 +1317,12 @@ function buildPlanJobCard(job, idx) {
     </div>
   `;
 
-  // Show price suggestion if customer and product exist
-  setTimeout(() => updatePriceSuggestion(idx), 100);
+  // Show price suggestion and init maps links for pre-filled addresses
+  setTimeout(() => {
+    updatePriceSuggestion(idx);
+    if (job.collectedFrom) updateMapsLink(idx, 'collectedFrom', job.collectedFrom);
+    if (job.deliveredTo) updateMapsLink(idx, 'deliveredTo', job.deliveredTo);
+  }, 100);
   return div;
 }
 
@@ -1498,29 +1504,87 @@ function saveAllJobs() {
 // ============================================================
 // AUTOCOMPLETE
 // ============================================================
+// Address search debounce timers
+const _acTimers = {};
+
 function autocomplete(input, list, jobIdx, field) {
-  const val = input.value.toLowerCase().trim();
+  const val = input.value.trim();
   const listId = `ac_${field}_${jobIdx}`;
   const dropdown = document.getElementById(listId);
   if (!dropdown) return;
+
+  // Update live maps link
+  updateMapsLink(jobIdx, field, val);
+
   if (!val || val.length < 2) { dropdown.style.display = 'none'; return; }
-  const matches = list.filter(item => item.toLowerCase().includes(val)).slice(0, 8);
-  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
-  dropdown.innerHTML = '';
-  matches.forEach(match => {
-    const div = document.createElement('div');
-    div.textContent = match;
-    div.onclick = () => {
-      input.value = match;
-      input.dispatchEvent(new Event('change'));
-      dropdown.style.display = 'none';
-    };
-    dropdown.appendChild(div);
-  });
-  dropdown.style.display = 'block';
+
+  // Show saved address book matches first
+  const saved = list.filter(item => item.toLowerCase().includes(val.toLowerCase())).slice(0, 4);
+
+  // Debounce Nominatim search
+  const timerKey = `${jobIdx}_${field}`;
+  clearTimeout(_acTimers[timerKey]);
+  _acTimers[timerKey] = setTimeout(() => {
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=6&countrycodes=gb`)
+      .then(r => r.json())
+      .then(results => {
+        dropdown.innerHTML = '';
+        const shown = new Set();
+        // Saved addresses first
+        saved.forEach(match => {
+          if (shown.has(match)) return;
+          shown.add(match);
+          const d = document.createElement('div');
+          d.style.cssText = 'display:flex;align-items:center;gap:8px;';
+          d.innerHTML = `<span style="color:var(--amber-dark);font-size:13px;">⭐</span><span>${esc(match)}</span>`;
+          d.onclick = () => { input.value = match; input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; updateMapsLink(jobIdx, field, match); };
+          dropdown.appendChild(d);
+        });
+        // Nominatim results
+        results.forEach(r => {
+          const addr = r.display_name;
+          const short = [r.address.road, r.address.village||r.address.town||r.address.city||r.address.suburb, r.address.postcode].filter(Boolean).join(', ');
+          const label = short || addr;
+          if (shown.has(label)) return;
+          shown.add(label);
+          const d = document.createElement('div');
+          d.style.cssText = 'display:flex;align-items:center;gap:8px;';
+          d.innerHTML = `<span style="font-size:13px;">📍</span><span style="font-size:14px;">${esc(label)}</span>`;
+          d.onclick = () => { input.value = label; input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; saveAddress(label); updateMapsLink(jobIdx, field, label); };
+          dropdown.appendChild(d);
+        });
+        if (dropdown.children.length === 0) { dropdown.style.display = 'none'; return; }
+        dropdown.style.display = 'block';
+      }).catch(() => {
+        // Fallback: just show saved
+        dropdown.innerHTML = '';
+        saved.forEach(match => {
+          const d = document.createElement('div');
+          d.textContent = match;
+          d.onclick = () => { input.value = match; input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; };
+          dropdown.appendChild(d);
+        });
+        dropdown.style.display = saved.length ? 'block' : 'none';
+      });
+  }, 350);
+
   document.addEventListener('click', (e) => {
     if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none';
   }, { once: true });
+}
+
+function updateMapsLink(jobIdx, field, val) {
+  const linkId = `mapsLink_${field}_${jobIdx}`;
+  const el = document.getElementById(linkId);
+  if (!el) return;
+  if (val && val.length > 4) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const url = isIOS ? `maps://maps.apple.com/?q=${encodeURIComponent(val)}` : `https://maps.google.com/?q=${encodeURIComponent(val)}`;
+    el.href = url;
+    el.style.display = 'inline-flex';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 function useLocation(idx, field) {
