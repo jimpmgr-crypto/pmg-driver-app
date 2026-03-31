@@ -487,6 +487,7 @@
     <div class="card">
       <div class="card-title">Who are you?</div>
       <div class="driver-grid" id="driverGrid"></div>
+      <button class="btn btn-outline btn-full" style="margin-top:12px;" onclick="addNewDriver()">➕ New Driver</button>
     </div>
   </div>
   <div id="driverJobs" style="display:none;">
@@ -649,6 +650,18 @@ function buildDriverGrid() {
     btn.onclick = () => selectDriver(name);
     grid.appendChild(btn);
   });
+}
+
+function addNewDriver() {
+  const name = prompt('Enter new driver name:');
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  const drivers = getDrivers();
+  if (drivers.includes(trimmed)) { alert(trimmed + ' is already in the list.'); return; }
+  drivers.push(trimmed);
+  setData('pmg_drivers', drivers);
+  buildDriverGrid();
+  buildRichardDriverTabs();
 }
 
 function selectDriver(name) {
