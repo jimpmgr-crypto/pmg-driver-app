@@ -572,9 +572,174 @@
 // ============================================================
 const DEFAULT_DRIVERS = ['John Bowman','Neil May','Ian Slater','Richard Whittaker'];
 const DEFAULT_VEHICLES = ['YJ13 GRF','PN25 FLF','PN25 AMU','EY15 BOV','DX12 RFN','YX02 DVT'];
-const PRODUCTS = ['Type 1 MOT','Type 3 MOT','Topsoil','Sharp Sand','Building Sand','Concrete Mix','Hardcore','Scalpings','Crusher Run','Grit Sand','6F2','6F5','Drainage Stone','Recycled Concrete','Clay','Spoil','Tarmac','Sand & Gravel Mix','Gabion Stone','Pea Gravel'];
-const CUSTOMERS_LIST = ['Rowland Homes','Barratt Homes','Taylor Wimpey','Persimmon Homes','Bellway Homes','Miller Homes','Jones Homes','Story Homes','Keepmoat','Gleeson Homes','Redrow','McCarthy Stone','Vistry Group','Countryside Partnerships','Network Rail','National Highways','Lancashire County Council','Preston City Council','Wyre Council','Fylde Council'];
-const DEFAULT_MATERIAL_PRICES = {'Type 1 MOT':28,'Type 3 MOT':26,'Topsoil':35,'Sharp Sand':32,'Building Sand':30,'Concrete Mix':120,'Hardcore':18,'Scalpings':20,'Crusher Run':22,'Grit Sand':30,'6F2':24,'6F5':22,'Drainage Stone':40,'Recycled Concrete':15,'Clay':12,'Spoil':10,'Tarmac':85,'Sand & Gravel Mix':28,'Gabion Stone':45,'Pea Gravel':50};
+const MATERIALS = [
+  { group: 'TIPPING', label: 'Mixed Spoil Tip', value: 'Mixed Spoil Tip' },
+  { group: 'TIPPING', label: 'Clay Tip', value: 'Clay Tip' },
+  { group: 'TIPPING', label: 'Topsoil Tip', value: 'Topsoil Tip' },
+  { group: 'TIPPING', label: 'Clean Concrete/Brick (Free)', value: 'Clean Concrete/Brick' },
+  { group: 'TIPPING', label: 'Tree Stump Disposal', value: 'Tree Stump Disposal' },
+  { group: 'RECYCLED AGGREGATES', label: '6F2 Crushed Concrete', value: '6F2 Crushed Concrete' },
+  { group: 'RECYCLED AGGREGATES', label: '40mm Recycled MOT', value: '40mm Recycled MOT' },
+  { group: 'RECYCLED AGGREGATES', label: 'Large Clean Crush', value: 'Large Clean Crush' },
+  { group: 'RECYCLED AGGREGATES', label: 'Road Plainings', value: 'Road Plainings' },
+  { group: 'WASHED RECYCLED', label: '20mm Clean Washed', value: '20mm Clean Washed' },
+  { group: 'WASHED RECYCLED', label: '10mm Clean Washed', value: '10mm Clean Washed' },
+  { group: 'QUARRIED AGGREGATES', label: '40mm Quarried MOT', value: '40mm Quarried MOT' },
+  { group: 'QUARRIED AGGREGATES', label: '20mm Quarried MOT', value: '20mm Quarried MOT' },
+  { group: 'QUARRIED AGGREGATES', label: '40mm Scalpings Blue', value: '40mm Scalpings Blue' },
+  { group: 'QUARRIED WASHED STONE', label: '20mm Clean Stone', value: '20mm Clean Stone' },
+  { group: 'QUARRIED WASHED STONE', label: '6mm Clean Stone', value: '6mm Clean Stone' },
+  { group: 'SOILS', label: 'Grade 1 Topsoil', value: 'Grade 1 Topsoil' },
+  { group: 'SOILS', label: 'Blended Topsoil/Compost', value: 'Blended Topsoil/Compost' },
+  { group: 'SOILS', label: 'Fill (soil & stone mix)', value: 'Fill' },
+  { group: 'SANDS', label: 'Recycled Grit Sand', value: 'Recycled Grit Sand' },
+  { group: 'SANDS', label: 'Quarried Grit Sand', value: 'Quarried Grit Sand' },
+  { group: 'SANDS', label: 'Building Sand loose', value: 'Building Sand loose' },
+  { group: 'SANDS', label: 'Building Sand tonne bag', value: 'Building Sand tonne bag' },
+  { group: 'SANDS', label: 'Ballast', value: 'Ballast' },
+  { group: 'SANDS', label: 'Fill Sand', value: 'Fill Sand' },
+  { group: 'SANDS', label: 'Grano Dust', value: 'Grano Dust' },
+  { group: 'DECORATIVE', label: 'Black Ice', value: 'Black Ice' },
+  { group: 'DECORATIVE', label: 'Purple Slate', value: 'Purple Slate' },
+  { group: 'DECORATIVE', label: '20mm Blue Slate', value: '20mm Blue Slate' },
+  { group: 'DECORATIVE', label: 'Golden Gravel', value: 'Golden Gravel' },
+  { group: 'DECORATIVE', label: '40mm Baja Slate', value: '40mm Baja Slate' },
+  { group: 'DECORATIVE', label: 'Cotswold Buff', value: 'Cotswold Buff' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Post Mix/Post Crete', value: 'Post Mix/Post Crete' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Plastic Cement Bags', value: 'Plastic Cement Bags' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Paper Cement Bags', value: 'Paper Cement Bags' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Cold Lay Tar Bags', value: 'Cold Lay Tar Bags' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Kiln Dried Sand', value: 'Kiln Dried Sand' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Tonne Bags (empty)', value: 'Tonne Bags (empty)' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Path Edges 150mm', value: 'Path Edges 150mm' },
+  { group: 'BAGS & SMALL ITEMS', label: 'Bullnose Kerb', value: 'Bullnose Kerb' },
+  { group: 'PLANT HIRE (per day)', label: 'Micro Digger', value: 'Micro Digger' },
+  { group: 'PLANT HIRE (per day)', label: '1.5t Digger', value: '1.5t Digger' },
+  { group: 'PLANT HIRE (per day)', label: '3t Digger', value: '3t Digger' },
+  { group: 'PLANT HIRE (per day)', label: '5t Digger', value: '5t Digger' },
+  { group: 'PLANT HIRE (per day)', label: 'Telehandler', value: 'Telehandler' },
+  { group: 'PLANT HIRE (per day)', label: '1t High Tip Dumper', value: '1t High Tip Dumper' },
+  { group: 'PLANT HIRE (per day)', label: '3t Dumper', value: '3t Dumper' },
+  { group: 'PLANT HIRE (per day)', label: '800 Roller', value: '800 Roller' },
+  { group: 'PLANT HIRE (per day)', label: '1200 Roller', value: '1200 Roller' },
+  { group: 'PLANT HIRE (per day)', label: 'Wacker (small)', value: 'Wacker (small)' },
+  { group: 'PLANT HIRE (per day)', label: 'Wacker (medium)', value: 'Wacker (medium)' },
+  { group: 'PLANT HIRE (per day)', label: 'Wacker (forward/reverse)', value: 'Wacker (forward/reverse)' },
+  { group: 'PLANT HIRE (per day)', label: 'Hilti Breaker', value: 'Hilti Breaker' },
+  { group: 'PLANT HIRE (per day)', label: 'Bosch Hand Breaker', value: 'Bosch Hand Breaker' },
+  { group: 'PLANT HIRE (per day)', label: 'Stihl Saw', value: 'Stihl Saw' },
+  { group: 'PLANT HIRE (per day)', label: 'Ifor Tipper', value: 'Ifor Tipper' },
+  { group: 'PLANT HIRE (per day)', label: 'Ifor Plant Trailer', value: 'Ifor Plant Trailer' },
+  { group: 'PLANT HIRE (per day)', label: 'Ifor Box', value: 'Ifor Box' },
+  { group: 'PLANT HIRE (per day)', label: 'Borer', value: 'Borer' },
+  { group: 'PLANT HIRE (per day)', label: 'Muck Barrow', value: 'Muck Barrow' },
+  { group: 'SUNDRY', label: '110V Transformer', value: '110V Transformer' },
+  { group: 'SUNDRY', label: 'Tip Skip (per week)', value: 'Tip Skip' },
+  { group: 'DRAINAGE', label: 'Drainage pipe 6m', value: 'Drainage pipe 6m' },
+  { group: 'DRAINAGE', label: 'Drainage collar', value: 'Drainage collar' },
+  { group: 'DRAINAGE', label: 'Drainage s/s 15', value: 'Drainage s/s 15' },
+  { group: 'DRAINAGE', label: 'Drainage s/s 30', value: 'Drainage s/s 30' },
+  { group: 'DRAINAGE', label: 'Drainage s/s 45', value: 'Drainage s/s 45' },
+  { group: 'DRAINAGE', label: 'Drainage d/s 15', value: 'Drainage d/s 15' },
+  { group: 'DRAINAGE', label: 'Drainage d/s 30', value: 'Drainage d/s 30' },
+  { group: 'DRAINAGE', label: 'Drainage d/s 45', value: 'Drainage d/s 45' },
+  { group: 'DRAINAGE', label: 'Drainage d/s short 90', value: 'Drainage d/s short 90' },
+  { group: 'DRAINAGE', label: 'Drainage s/s rest bend', value: 'Drainage s/s rest bend' },
+  { group: 'DRAINAGE', label: 'Drainage trap', value: 'Drainage trap' },
+  { group: 'DRAINAGE', label: 'Concrete square top gulley', value: 'Concrete square top gulley' },
+  { group: 'DRAINAGE', label: 'Bottle gulley', value: 'Bottle gulley' },
+  { group: 'DRAINAGE', label: 'Slip collar', value: 'Slip collar' },
+  { group: 'DRAINAGE', label: '300 manhole base 3 inlet', value: '300 manhole base 3 inlet' },
+  { group: 'DRAINAGE', label: '300 manhole base 5 inlet', value: '300 manhole base 5 inlet' },
+  { group: 'DRAINAGE', label: '300 riser', value: '300 riser' },
+  { group: 'DRAINAGE', label: '300 lid', value: '300 lid' },
+  { group: 'DRAINAGE', label: '450 manhole base', value: '450 manhole base' },
+  { group: 'DRAINAGE', label: '450 riser', value: '450 riser' },
+  { group: 'DRAINAGE', label: '450 seal', value: '450 seal' },
+  { group: 'DRAINAGE', label: '450 lid', value: '450 lid' },
+  { group: 'DRAINAGE', label: '80mm 100m roll', value: '80mm 100m roll' },
+  { group: 'DRAINAGE', label: '10mm 100m roll', value: '10mm 100m roll' },
+  { group: 'DRAINAGE', label: 'Yard gulley', value: 'Yard gulley' },
+  { group: 'DRAINAGE', label: 'Yard gulley grate B125', value: 'Yard gulley grate B125' },
+  { group: 'MEMBRANES', label: 'Geotextile black', value: 'Geotextile black' },
+  { group: 'MEMBRANES', label: 'Non woven white', value: 'Non woven white' },
+  { group: 'MEMBRANES', label: '1200 gauge visqueen', value: '1200 gauge visqueen' },
+  { group: 'MEMBRANES', label: '500 gauge visqueen', value: '500 gauge visqueen' },
+  { group: 'HARD LANDSCAPING', label: '8 edgings', value: '8 edgings' },
+  { group: 'HARD LANDSCAPING', label: '6 edgings', value: '6 edgings' },
+  { group: 'HARD LANDSCAPING', label: '6 inch bullnose kerb', value: '6 inch bullnose kerb' },
+  { group: 'HARD LANDSCAPING', label: 'ACO', value: 'ACO' },
+  { group: 'MISC', label: 'Duct tape', value: 'Duct tape' },
+  { group: 'MISC', label: 'Goggles per pair', value: 'Goggles per pair' },
+  { group: 'MISC', label: '225 ties', value: '225 ties' },
+  { group: 'MISC', label: 'Linemarker', value: 'Linemarker' },
+  { group: 'MISC', label: 'Warning tape', value: 'Warning tape' },
+  { group: 'WATER', label: '25mm pipe 100m', value: '25mm pipe 100m' },
+  { group: 'WATER', label: '25mm pipe 50m', value: '25mm pipe 50m' },
+  { group: 'WATER', label: '25mm straight connector', value: '25mm straight connector' },
+  { group: 'WATER', label: '25mm insert', value: '25mm insert' },
+  { group: 'WATER', label: '25mm end cap', value: '25mm end cap' },
+  { group: 'OTHER', label: 'Not on list / Other', value: '__other__' },
+];
+const PRODUCTS = MATERIALS.map(m => m.value); // legacy compat
+const CUSTOMERS_LIST = [
+  'Office','A & P Hodgkinson','A. Parkinson Groundworks (Titch)','A.C Cornthwaite','A.D Developments',
+  'A.G Precision Engineering','A.P Worledge','A1 (Cash/Unknown)','Adrian Lewis Builders','Affordable Windows',
+  'Alex Degnen','Ameon','Anderson & Sons Contracting','Andrei','Andrew Scott','Andrews Bowen','ANDREWS BOWENS',
+  'Archway','Armer Landscapes and Groundworks','ASHPHALT PAVING SERVICES LTD','AVPM Ltd (Ian Harrison)',
+  'B & J Parkinson','Bespoke Landscapes','Brands (Dave Brand)','BT Joinery','Burlington Aggregates',
+  'Cardwell Landscapes','Carr Royd Leisure (Sunset)','Charlie Butler','Chris Naylor CGF','Complete Concrete',
+  'Cowley Construction','DJC Groundworks','DN Isles Building Services','Drainage Experts','Driveways Northwest',
+  'E.S Williams','Enhance and Build (Richard Worledge)','Frank Barrow','Fylde Autostyle',
+  'Fylde Drives and Patios (Patrick)','G Wilkinson Buildings','G.M Groundworks','G.S.T Building',
+  'Garry Claxton','GL Huck and Son','Glasdon UK','Grange Farm Caravan Park (Stuart Danson)',
+  'Grant Parker Ltd','GT Fencing','Gunson Agriculture','Hambleton Lakeside Lodges (HLLF)',
+  'Hambleton Service Station (Justin)','Heathland Beach','Highfield Fisheries','Highgate Farm',
+  'Hoyles Contractors','Huck Construction','Hy Fly','Ian Carter','IPH Bulk Haulage (Hayley)',
+  'J F J C Hewitt','J Jones & Co','J. Adamson Outdoor Spaces','J.R Singleton (Andy Singleton)',
+  'James Wiseman (Wizzy)','Jamie Humphrey','Jeffries Contractors','John Fausset','Jos Jeffries Paving',
+  'KSG Groundworks (Kev Stockdale)','Lancashire Building and Brickwork','Lawson','LG Property Development',
+  'Luscombe Plant Hire','Lytham Edge Lodge Resorts','Mark Jackson Joinery','Mark Thomas','Mark Wrathall',
+  'Mason Groundworks','Meanley Estate (Nathan)','Mick Skelly','MJ Teale','MJS Groundworks (Mick Sutcliffe)',
+  'Moore Readymix','Mr A Makinson','MW Estates','Nick Fairhurst','NJ Powell Groundworks',
+  'P. Baker Groundworks','Park Farm','Pipescan','Plan It Developments','PM Groundworks',
+  'Pondpride Landscapes','Quayside Construction','R Cowell Construction','RAC Consultants',
+  'Raby Contract Services','Residential Parks','Resource Recycling Solutions','RHD Construction (Mark Rhode)',
+  'Ribble Technology','Rowland Homes','S and A Cookson','Saltcoat Motors','Schofield Steel (Simon)',
+  'Sean Lynden','SEM Joinery (Sean Moody)','Shard Developments','Shard Riverside Lodge Park',
+  'Shard Surfacing','Simon Ward Groundworks','SJH Plant (Stuart Heap)','SJM Builders (Shaun Murro)',
+  'SR Moore','Stone UK','Swarbrick Builders','Swift Surfacing','T and T Builders','Taymin Ltd',
+  'Tom France','Total Building NW','T.S Groundworks (Tom Steele)','Tudor Farm and Equine',
+  'Vehicle Inspection Pits UK','W. Robinson','White Feather Homes','WJ Davidson',
+  'Wyre Building Supplies','Wyre Drives','Wyre Landscapes'
+];
+const DEFAULT_MATERIAL_PRICES = {
+  'Mixed Spoil Tip':10,'Clay Tip':15,'Topsoil Tip':5,'Clean Concrete/Brick':0,'Tree Stump Disposal':40,
+  '6F2 Crushed Concrete':11,'40mm Recycled MOT':16,'Large Clean Crush':19.50,'Road Plainings':19.50,
+  '20mm Clean Washed':26.50,'10mm Clean Washed':28.50,'40mm Quarried MOT':29.50,'20mm Quarried MOT':31.50,
+  '40mm Scalpings Blue':25.50,'20mm Clean Stone':37.50,'6mm Clean Stone':37.50,'Grade 1 Topsoil':22,
+  'Blended Topsoil/Compost':32,'Fill':5,'Recycled Grit Sand':24,'Quarried Grit Sand':37.50,
+  'Building Sand loose':37,'Building Sand tonne bag':54,'Ballast':38,'Fill Sand':15,'Grano Dust':37.50,
+  'Black Ice':132,'Purple Slate':80,'20mm Blue Slate':71,'Golden Gravel':71,'40mm Baja Slate':77,
+  'Cotswold Buff':75,'Post Mix/Post Crete':5.75,'Plastic Cement Bags':7.50,'Paper Cement Bags':7.00,
+  'Cold Lay Tar Bags':9.75,'Kiln Dried Sand':3.75,'Tonne Bags (empty)':4.50,'Path Edges 150mm':4.50,
+  'Bullnose Kerb':8.05,'Micro Digger':50,'1.5t Digger':60,'3t Digger':65,'5t Digger':75,
+  'Telehandler':80,'1t High Tip Dumper':50,'3t Dumper':60,'800 Roller':50,'1200 Roller':60,
+  'Wacker (small)':30,'Wacker (medium)':35,'Wacker (forward/reverse)':45,'Hilti Breaker':25,
+  'Bosch Hand Breaker':40,'Stihl Saw':20,'Ifor Tipper':45,'Ifor Plant Trailer':45,'Ifor Box':50,
+  'Borer':45,'Muck Barrow':50,'110V Transformer':7,'Tip Skip':50,
+  'Drainage pipe 6m':30.16,'Drainage collar':3.03,'Drainage s/s 15':6.75,'Drainage s/s 30':6.75,
+  'Drainage s/s 45':6.58,'Drainage d/s 15':8.25,'Drainage d/s 30':8.25,'Drainage d/s 45':8.33,
+  'Drainage d/s short 90':8.30,'Drainage s/s rest bend':6.95,'Drainage trap':13.30,
+  'Concrete square top gulley':47.50,'Bottle gulley':27.50,'Slip collar':2.20,
+  '300 manhole base 3 inlet':10.80,'300 manhole base 5 inlet':38.53,'300 riser':15.50,'300 lid':17.52,
+  '450 manhole base':26.36,'450 riser':28.50,'450 seal':3.40,'450 lid':46.45,
+  '80mm 100m roll':104.82,'10mm 100m roll':157.43,'Yard gulley':34.75,'Yard gulley grate B125':51.65,
+  'Geotextile black':125,'Non woven white':195,'1200 gauge visqueen':32,'500 gauge visqueen':28,
+  '8 edgings':5.80,'6 edgings':4.50,'6 inch bullnose kerb':8.05,'ACO':7.75,
+  'Duct tape':5.20,'Goggles per pair':2.20,'225 ties':3.80,'Linemarker':3.80,'Warning tape':12.50,
+  '25mm pipe 100m':76.33,'25mm pipe 50m':38.20,'25mm straight connector':5.27,'25mm insert':0.48,'25mm end cap':6.75
+};
 const UNITS = ['Tonnes','Cubes','Units'];
 const PASSWORD = 'richard';
 
@@ -626,6 +791,23 @@ function suggestPrice(customer, product) {
   const hist = getPricingHistory();
   const match = hist.find(h => h.customer === customer && h.product === product);
   return match ? match.price : null;
+}
+function buildMaterialOptions(selectedValue) {
+  const groups = {};
+  const order = [];
+  for (const m of MATERIALS) {
+    if (!groups[m.group]) { groups[m.group] = []; order.push(m.group); }
+    groups[m.group].push(m);
+  }
+  let html = '<option value="">Select material…</option>';
+  for (const grp of order) {
+    html += `<optgroup label="${esc(grp)}">`;
+    for (const m of groups[grp]) {
+      html += `<option value="${esc(m.value)}"${m.value === selectedValue ? ' selected' : ''}>${esc(m.label)}</option>`;
+    }
+    html += '</optgroup>';
+  }
+  return html;
 }
 function getMaterialPrices() { return Object.assign({}, DEFAULT_MATERIAL_PRICES, getData('pmg_material_prices', {})); }
 function setMaterialPrice(product, price) {
@@ -808,8 +990,7 @@ function addMaterialRowData(jobIdx, matIdx, data) {
   row.id = `matRow_${jobIdx}_${matIdx}`;
   row.innerHTML = `
     <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'product', this.value)">
-      ${PRODUCTS.map(p => `<option ${data.product===p?'selected':''}>${esc(p)}</option>`).join('')}
-      <option ${!PRODUCTS.includes(data.product) && data.product?'selected':''} value="${esc(data.product||'')}">Other</option>
+      ${buildMaterialOptions(data.product)}
     </select>
     <input type="number" class="form-input" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
     <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
@@ -876,7 +1057,7 @@ function addDriverJob() {
   if (!jobs[state.currentDriver]) jobs[state.currentDriver] = [];
   jobs[state.currentDriver].push({
     customer: '', collectedFrom: '', deliveredTo: '',
-    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes' }],
+    materials: [{ product: MATERIALS[0].value, qty: '', unit: 'Tonnes' }],
     ticketNo: '', notes: '', status: 'pending', onTheFly: true, price: ''
   });
   setJobsForDate(state.currentDate, jobs);
@@ -1093,7 +1274,7 @@ function renderPlanMaterials(materials, jobIdx) {
     return `<div style="padding:10px 0;border-bottom:1px solid var(--grey-100);" id="planMat_${jobIdx}_${mi}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
         <select class="form-select" style="flex:1;" onchange="updatePlanMaterial(${jobIdx},${mi},'product',this.value);refreshMatPriceRow(${jobIdx},${mi})">
-          ${PRODUCTS.map(p => `<option value="${esc(p)}"${m.product===p?' selected':''}>${esc(p)}</option>`).join('')}
+          ${buildMaterialOptions(m.product)}
         </select>
         <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removePlanMaterial(${jobIdx},${mi})">&#128465;</button>
       </div>
@@ -1115,7 +1296,7 @@ function renderPlanMaterials(materials, jobIdx) {
 function addPlanMaterial(jobIdx) {
   const jobs = getPlanJobsForCurrentDriver();
   if (!jobs[jobIdx].materials) jobs[jobIdx].materials = [];
-  const product = PRODUCTS[0];
+  const product = MATERIALS[0].value;
   jobs[jobIdx].materials.push({ product, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(product) });
   document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
 }
@@ -1220,10 +1401,11 @@ function addPlanJob() {
   if (!state.planJobs[date]) state.planJobs[date] = getJobsForDate(date);
   if (!state.planJobs[date][state.selectedPlanDriver]) state.planJobs[date][state.selectedPlanDriver] = [];
   const jobNumber = generateJobNumber(date);
+  const defMat = MATERIALS[0].value;
   state.planJobs[date][state.selectedPlanDriver].push({
     jobNumber,
     customer: '', vehicle: '', collectedFrom: '', deliveredTo: '',
-    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(PRODUCTS[0]) }],
+    materials: [{ product: defMat, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(defMat) }],
     price: '', ticketNo: '', notes: '', status: 'pending', onTheFly: false
   });
   renderPlanJobs();
