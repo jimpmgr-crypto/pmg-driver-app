@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PMG Driver App</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2744;
+    --navy-light: #243156;
+    --amber: #f59e0b;
+    --amber-dark: #d97706;
+    --green: #10b981;
+    --red: #ef4444;
+    --orange: #f97316;
+    --white: #ffffff;
+    --grey-50: #f9fafb;
+    --grey-100: #f3f4f6;
+    --grey-200: #e5e7eb;
+    --grey-400: #9ca3af;
+    --grey-600: #4b5563;
+    --grey-800: #1f2937;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--grey-100); color: var(--grey-800); }
+  body { overflow-x: hidden; }
+
+  /* HEADER */
+  .app-header {
+    background: var(--navy);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .app-header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .app-header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 1px; }
+  .gear-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .gear-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* VIEWS */
+  .view { display: none; min-height: calc(100vh - 72px); padding: 20px; }
+  .view.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  /* DRIVER GRID */
+  .driver-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .driver-btn {
+    background: white;
+    border: 2px solid var(--grey-200);
+    border-radius: var(--radius);
+    padding: 20px 12px;
+    cursor: pointer;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    transition: all 0.2s;
+    min-height: 80px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .driver-btn:hover, .driver-btn:active { background: var(--navy); color: white; border-color: var(--navy); transform: scale(0.98); }
+
+  /* FORMS */
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--grey-600);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 6px;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--grey-200);
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    color: var(--grey-800);
+    background: white;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--amber);
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .input-with-btn { display: flex; gap: 8px; }
+  .input-with-btn .form-input { flex: 1; }
+  .loc-btn {
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 18px;
+    min-width: 48px;
+    min-height: 48px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrapper { position: relative; }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: white;
+    border: 2px solid var(--amber);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    z-index: 200;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  .autocomplete-list div {
+    padding: 12px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid var(--grey-100);
+  }
+  .autocomplete-list div:hover { background: var(--grey-50); }
+  .autocomplete-list div:last-child { border-bottom: none; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 13px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 48px;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--amber); color: var(--navy); }
+  .btn-primary:hover { background: var(--amber-dark); }
+  .btn-navy { background: var(--navy); color: white; }
+  .btn-navy:hover { background: var(--navy-light); }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: #0da271; }
+  .btn-red { background: var(--red); color: white; }
+  .btn-outline {
+    background: transparent;
+    color: var(--grey-600);
+    border: 2px solid var(--grey-200);
+  }
+  .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; min-height: 36px; }
+  .btn-full { width: 100%; }
+  .btn-danger { background: var(--red); color: white; }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-orange { background: #fff3e0; color: var(--orange); border: 1px solid #ffd9a0; }
+  .badge-red { background: #fee2e2; color: var(--red); border: 1px solid #fca5a5; }
+  .badge-amber { background: #fffbeb; color: var(--amber-dark); border: 1px solid #fde68a; }
+  .badge-green { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  .badge-grey { background: var(--grey-100); color: var(--grey-600); border: 1px solid var(--grey-200); }
+  .badge-navy { background: var(--navy); color: white; }
+
+  /* JOB CARD (driver view) */
+  .job-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .job-card-header {
+    background: var(--navy);
+    color: white;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .job-card-header .job-num { font-size: 13px; opacity: 0.7; }
+  .job-card-header .job-customer { font-size: 16px; font-weight: 700; }
+  .job-card-body { padding: 16px 18px; }
+  .job-field { margin-bottom: 12px; }
+  .job-field-label { font-size: 11px; font-weight: 600; color: var(--grey-400); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+  .job-field-value { font-size: 15px; color: var(--grey-800); }
+  .address-link {
+    color: var(--navy);
+    font-weight: 600;
+    text-decoration: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .address-link:hover { color: var(--amber-dark); }
+  .address-link::before { content: '📍'; font-size: 14px; }
+
+  /* MATERIALS TABLE */
+  .materials-list { margin-top: 8px; }
+  .material-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--grey-100);
+    font-size: 14px;
+  }
+  .material-row:last-child { border-bottom: none; }
+  .material-name { font-weight: 500; }
+  .material-qty { color: var(--grey-600); }
+
+  /* MATERIAL EDIT ROW */
+  .material-edit-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 36px;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--grey-100);
+  }
+  .material-edit-row:last-child { border-bottom: none; }
+
+  /* STATUS BUTTON */
+  .status-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+  .status-pending { background: var(--grey-100); color: var(--grey-600); }
+  .status-inprogress { background: #fffbeb; color: var(--amber-dark); border: 2px solid var(--amber); }
+  .status-completed { background: #d1fae5; color: #065f46; }
+
+  /* RICHARD VIEW */
+  .driver-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 20px;
+    scrollbar-width: none;
+  }
+  .driver-tabs::-webkit-scrollbar { display: none; }
+  .driver-tab {
+    background: white;
+    border: 2px solid var(--grey-200);
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--grey-600);
+    white-space: nowrap;
+    transition: all 0.2s;
+    min-height: 36px;
+  }
+  .driver-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+  .driver-tab:hover:not(.active) { border-color: var(--navy); color: var(--navy); }
+
+  /* PLAN JOB CARD */
+  .plan-job {
+    background: var(--grey-50);
+    border: 2px solid var(--grey-200);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .plan-job-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .plan-job-title { font-size: 14px; font-weight: 700; color: var(--navy); }
+  .remove-job-btn {
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* PRICE SUGGESTION */
+  .price-suggestion {
+    font-size: 12px;
+    color: var(--grey-400);
+    margin-top: 4px;
+    cursor: pointer;
+  }
+  .price-suggestion span { color: var(--amber-dark); font-weight: 600; text-decoration: underline; }
+
+  /* REVIEW VIEW */
+  .review-job {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .review-job-header {
+    padding: 12px 16px;
+    background: var(--grey-50);
+    border-bottom: 1px solid var(--grey-200);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .review-job-body { padding: 14px 16px; }
+  .diff-highlight { background: #fffbeb; padding: 2px 6px; border-radius: 4px; color: var(--amber-dark); font-weight: 600; }
+  .unpriced-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .unpriced-row .form-input { max-width: 120px; }
+
+  /* PASSWORD SCREEN */
+  .password-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+  }
+  .password-screen h2 { font-size: 22px; color: var(--navy); margin-bottom: 8px; }
+  .password-screen p { color: var(--grey-600); margin-bottom: 24px; }
+
+  /* EXPORT VIEW */
+  .export-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .export-table th { background: var(--navy); color: white; padding: 10px 12px; text-align: left; font-weight: 600; }
+  .export-table td { padding: 10px 12px; border-bottom: 1px solid var(--grey-200); }
+  .export-table tr:nth-child(even) td { background: var(--grey-50); }
+
+  /* SUBMIT CONFIRMATION */
+  .confirm-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh; text-align: center; padding: 40px 20px;
+  }
+  .confirm-icon { font-size: 64px; margin-bottom: 20px; }
+  .confirm-screen h2 { font-size: 24px; color: var(--navy); font-weight: 700; margin-bottom: 8px; }
+  .confirm-screen p { color: var(--grey-600); font-size: 16px; }
+
+  /* TABS (richard view) */
+  .view-tabs {
+    display: flex; gap: 0;
+    background: var(--grey-200);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    margin-bottom: 20px;
+  }
+  .view-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--grey-600);
+    transition: all 0.2s;
+  }
+  .view-tab.active { background: white; color: var(--navy); box-shadow: var(--shadow); }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--grey-200); margin: 16px 0; }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-header h2 { font-size: 18px; font-weight: 700; color: var(--navy); }
+
+  /* BACK BTN */
+  .back-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: none; border: none;
+    color: var(--grey-600); font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; padding: 0; margin-bottom: 20px;
+  }
+  .back-btn:hover { color: var(--navy); }
+
+  /* PRINT STYLES */
+  @media print {
+    .app-header, .back-btn, .btn, .no-print { display: none !important; }
+    .view { padding: 0; }
+    .card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+    body { background: white; }
+  }
+
+  @media (max-width: 400px) {
+    .driver-grid { grid-template-columns: 1fr; }
+    .material-edit-row { grid-template-columns: 1fr 70px 70px 36px; }
+  }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--navy); color: white;
+    padding: 12px 24px; border-radius: 24px;
+    font-size: 14px; font-weight: 600;
+    z-index: 9999; opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="app-header h1" style="font-size:18px;font-weight:700;">PMG Driver App</div>
+    <div class="subtitle" id="headerSubtitle">Select your name to start</div>
+  </div>
+  <button class="gear-btn" onclick="showGear()" title="Richard's View">⚙️</button>
+</div>
+
+<!-- DRIVER VIEW -->
+<div class="view active" id="viewDriver">
+  <div id="driverLanding">
+    <div class="card">
+      <div class="card-title">Who are you?</div>
+      <div class="driver-grid" id="driverGrid"></div>
+    </div>
+  </div>
+  <div id="driverJobs" style="display:none;">
+    <button class="back-btn" onclick="backToDriverLanding()">← Back</button>
+    <div class="section-header">
+      <h2 id="driverJobsTitle">Jobs</h2>
+      <div id="driverJobDate" style="font-size:13px;color:var(--grey-400);"></div>
+    </div>
+    <div id="jobsList"></div>
+    <div style="margin-top:8px;">
+      <button class="btn btn-outline btn-full" onclick="addDriverJob()">➕ Add On-the-fly Job</button>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-green btn-full" style="font-size:17px;padding:18px;" onclick="submitDaySheet()">✅ Submit Day Sheet</button>
+    </div>
+    <div style="height:40px;"></div>
+  </div>
+  <div id="driverConfirm" style="display:none;">
+    <div class="confirm-screen">
+      <div class="confirm-icon">✅</div>
+      <h2>Day Sheet Submitted!</h2>
+      <p style="margin-top:8px;" id="confirmMsg">Your jobs have been sent to Richard.</p>
+      <button class="btn btn-navy" style="margin-top:32px;" onclick="backToDriverLanding()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- RICHARD VIEW -->
+<div class="view" id="viewRichard">
+  <div id="richardAuth">
+    <div class="password-screen">
+      <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+      <h2>Richard's View</h2>
+      <p>Enter password to continue</p>
+      <div style="max-width:280px;width:100%;">
+        <input type="password" class="form-input" id="passwordInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
+        <button class="btn btn-navy btn-full" style="margin-top:12px;" onclick="checkPassword()">Continue</button>
+        <div id="passwordError" style="color:var(--red);font-size:13px;margin-top:8px;display:none;">Incorrect password</div>
+      </div>
+    </div>
+  </div>
+  <div id="richardMain" style="display:none;">
+    <div class="view-tabs">
+      <button class="view-tab active" id="tabPlan" onclick="switchRichardTab('plan')">📋 Plan Jobs</button>
+      <button class="view-tab" id="tabReview" onclick="switchRichardTab('review')">📊 End of Day</button>
+      <button class="view-tab" id="tabExport" onclick="switchRichardTab('export')">🖨️ Haultech Export</button>
+    </div>
+
+    <!-- PLAN TAB -->
+    <div id="richardPlan">
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="planDate" style="max-width:200px;">
+      </div>
+      <div class="driver-tabs" id="richardDriverTabs"></div>
+      <div id="richardJobsContainer"></div>
+      <button class="btn btn-outline btn-full" onclick="addPlanJob()" style="margin-bottom:16px;">➕ Add Job for this Driver</button>
+      <button class="btn btn-primary btn-full" style="font-size:16px;padding:16px;" onclick="saveAllJobs()">💾 Save All Jobs</button>
+    </div>
+
+    <!-- REVIEW TAB -->
+    <div id="richardReview" style="display:none;">
+      <div id="reviewContent"></div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div id="richardExport" style="display:none;">
+      <div class="section-header">
+        <h2>Haultech Export</h2>
+        <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+      </div>
+      <div id="exportContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA & STATE
+// ============================================================
+const DEFAULT_DRIVERS = ['John Bowman','Sam Bowman','Neil May','Ian Slater','Ben Newhouse','Richard Whittaker'];
+const DEFAULT_VEHICLES = ['YJ13 GRF','PN25 FLF','PN25 AMU','EY15 BOV','DX12 RFN','YX02 DVT'];
+const PRODUCTS = ['MOT Type 1','MOT Type 3','Grit Sand','Recycled Sand','Topsoil','Crushed Concrete 6F2','40mm Blue Slate','20mm Blue Slate','Grab Hire','Tipping'];
+const UNITS = ['Tonnes','Cubes','Units'];
+const PASSWORD = 'richard';
+
+let state = {
+  currentDriver: null,
+  currentDate: todayStr(),
+  richardTab: 'plan',
+  selectedPlanDriver: null,
+  planJobs: {}, // { date: { driverName: [ job, ... ] } }
+};
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function getData(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; } catch(e) { return def; }
+}
+function setData(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+function getDrivers() { return getData('pmg_drivers', DEFAULT_DRIVERS); }
+function getVehicles() { return getData('pmg_vehicles', DEFAULT_VEHICLES); }
+function getAddressBook() { return getData('pmg_address_book', []); }
+function getCustomers() { return getData('pmg_customers', []); }
+function getPricingHistory() { return getData('pmg_pricing_history', []); }
+function getJobsForDate(date) { return getData('pmg_jobs_' + date, {}); }
+function setJobsForDate(date, jobs) { setData('pmg_jobs_' + date, jobs); }
+
+function saveAddress(addr) {
+  if (!addr || addr.trim().length < 3) return;
+  const book = getAddressBook();
+  if (!book.includes(addr.trim())) { book.push(addr.trim()); setData('pmg_address_book', book); }
+}
+function saveCustomer(name) {
+  if (!name || name.trim().length < 2) return;
+  const list = getCustomers();
+  if (!list.includes(name.trim())) { list.push(name.trim()); setData('pmg_customers', list); }
+}
+function savePricing(customer, product, price) {
+  if (!customer || !product || !price) return;
+  const hist = getPricingHistory();
+  hist.unshift({ customer, product, price: parseFloat(price), date: todayStr() });
+  setData('pmg_pricing_history', hist.slice(0, 500));
+}
+function suggestPrice(customer, product) {
+  const hist = getPricingHistory();
+  const match = hist.find(h => h.customer === customer && h.product === product);
+  return match ? match.price : null;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  document.getElementById('planDate').value = todayStr();
+  buildDriverGrid();
+  buildRichardDriverTabs();
+  loadPlanJobsFromStorage();
+});
+
+// ============================================================
+// DRIVER VIEW
+// ============================================================
+function buildDriverGrid() {
+  const grid = document.getElementById('driverGrid');
+  grid.innerHTML = '';
+  getDrivers().forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'driver-btn';
+    btn.textContent = name;
+    btn.onclick = () => selectDriver(name);
+    grid.appendChild(btn);
+  });
+}
+
+function selectDriver(name) {
+  state.currentDriver = name;
+  state.currentDate = todayStr();
+  document.getElementById('driverLanding').style.display = 'none';
+  document.getElementById('driverJobs').style.display = 'block';
+  document.getElementById('driverConfirm').style.display = 'none';
+  document.getElementById('driverJobsTitle').textContent = name;
+  document.getElementById('driverJobDate').textContent = formatDate(state.currentDate);
+  document.getElementById('headerSubtitle').textContent = name;
+  renderDriverJobs();
+}
+
+function backToDriverLanding() {
+  state.currentDriver = null;
+  document.getElementById('driverLanding').style.display = 'block';
+  document.getElementById('driverJobs').style.display = 'none';
+  document.getElementById('driverConfirm').style.display = 'none';
+  document.getElementById('headerSubtitle').textContent = 'Select your name to start';
+}
+
+function renderDriverJobs() {
+  const container = document.getElementById('jobsList');
+  container.innerHTML = '';
+  const allJobs = getJobsForDate(state.currentDate);
+  const jobs = (allJobs[state.currentDriver] || []);
+  if (jobs.length === 0) {
+    container.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:40px;">No jobs planned yet.<br>Add one below or check back later.</div>';
+    return;
+  }
+  jobs.forEach((job, idx) => {
+    container.appendChild(buildDriverJobCard(job, idx));
+  });
+}
+
+function buildDriverJobCard(job, idx) {
+  const div = document.createElement('div');
+  div.className = 'job-card';
+  div.id = 'driverJob_' + idx;
+
+  const isOTF = job.onTheFly;
+  const status = job.status || 'pending';
+  const statusLabels = { pending: '⬜ Tap to Start', inprogress: '🟡 In Progress — Tap to Complete', completed: '✅ Completed' };
+  const statusClasses = { pending: 'status-pending', inprogress: 'status-inprogress', completed: 'status-completed' };
+
+  const fromMapUrl = makeMapUrl(job.collectedFrom || '');
+  const toMapUrl = makeMapUrl(job.deliveredTo || '');
+
+  div.innerHTML = `
+    <div class="job-card-header">
+      <div>
+        <div class="job-num">Job ${idx + 1} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''}</div>
+        <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
+      </div>
+      <div style="text-align:right;">
+        ${job.vehicle ? `<div style="font-size:12px;opacity:0.7;">${esc(job.vehicle)}</div>` : ''}
+        ${job.price ? `<div style="font-size:13px;font-weight:700;color:var(--amber);">£${job.price}</div>` : ''}
+      </div>
+    </div>
+    <div class="job-card-body">
+      ${job.collectedFrom ? `<div class="job-field"><div class="job-field-label">Collected From</div><a class="address-link" href="${fromMapUrl}" target="_blank">${esc(job.collectedFrom)}</a></div>` : ''}
+      ${job.deliveredTo ? `<div class="job-field"><div class="job-field-label">Delivered To</div><a class="address-link" href="${toMapUrl}" target="_blank">${esc(job.deliveredTo)}</a></div>` : ''}
+
+      <div class="job-field">
+        <div class="job-field-label">Materials</div>
+        <div class="materials-list" id="materialsList_${idx}">
+          ${renderMaterialsDisplay(job.materials || [], idx)}
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="toggleMaterialEdit(${idx})">✏️ Edit Materials</button>
+        <div id="materialEdit_${idx}" style="display:none;margin-top:12px;">
+          <div id="materialEditRows_${idx}"></div>
+          <button class="btn btn-outline btn-sm" onclick="addMaterialRow(${idx})">➕ Add Material</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Ticket Number</label>
+        <input type="text" class="form-input" value="${esc(job.ticketNo || '')}" placeholder="Enter ticket no." onchange="updateJobField(${idx}, 'ticketNo', this.value)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" placeholder="Any notes..." onchange="updateJobField(${idx}, 'notes', this.value)">${esc(job.notes || '')}</textarea>
+      </div>
+
+      <button class="status-btn ${statusClasses[status]}" onclick="cycleStatus(${idx})">${statusLabels[status]}</button>
+    </div>
+  `;
+  return div;
+}
+
+function renderMaterialsDisplay(materials, idx) {
+  if (!materials || materials.length === 0) return '<div style="color:var(--grey-400);font-size:14px;">No materials set</div>';
+  return materials.map(m => `
+    <div class="material-row">
+      <span class="material-name">${esc(m.product || '')}</span>
+      <span class="material-qty">${m.qty || ''} ${m.unit || ''}</span>
+    </div>
+  `).join('');
+}
+
+function toggleMaterialEdit(idx) {
+  const editDiv = document.getElementById('materialEdit_' + idx);
+  const rowsDiv = document.getElementById('materialEditRows_' + idx);
+  const isHidden = editDiv.style.display === 'none';
+  editDiv.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    const jobs = getJobsForDate(state.currentDate);
+    const job = (jobs[state.currentDriver] || [])[idx];
+    rowsDiv.innerHTML = '';
+    const materials = job.materials && job.materials.length ? job.materials : [{ product: '', qty: '', unit: 'Tonnes' }];
+    materials.forEach((m, mi) => addMaterialRowData(idx, mi, m));
+  }
+}
+
+function addMaterialRowData(jobIdx, matIdx, data) {
+  const container = document.getElementById('materialEditRows_' + jobIdx);
+  const row = document.createElement('div');
+  row.className = 'material-edit-row';
+  row.id = `matRow_${jobIdx}_${matIdx}`;
+  row.innerHTML = `
+    <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'product', this.value)">
+      ${PRODUCTS.map(p => `<option ${data.product===p?'selected':''}>${esc(p)}</option>`).join('')}
+      <option ${!PRODUCTS.includes(data.product) && data.product?'selected':''} value="${esc(data.product||'')}">Other</option>
+    </select>
+    <input type="number" class="form-input" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
+    <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
+      ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
+    </select>
+    <button class="btn btn-danger btn-sm" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">🗑</button>
+  `;
+  container.appendChild(row);
+}
+
+function addMaterialRow(jobIdx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  if (!job.materials) job.materials = [];
+  const newIdx = job.materials.length;
+  job.materials.push({ product: PRODUCTS[0], qty: '', unit: 'Tonnes' });
+  setJobsForDate(state.currentDate, jobs);
+  addMaterialRowData(jobIdx, newIdx, job.materials[newIdx]);
+  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+}
+
+function removeMaterialRow(jobIdx, matIdx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  if (job.materials) { job.materials.splice(matIdx, 1); setJobsForDate(state.currentDate, jobs); }
+  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials || [], jobIdx);
+  document.getElementById('materialEditRows_' + jobIdx).innerHTML = '';
+  (job.materials || []).forEach((m, mi) => addMaterialRowData(jobIdx, mi, m));
+}
+
+function saveMaterialField(jobIdx, matIdx, field, value) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  if (job.materials && job.materials[matIdx]) {
+    job.materials[matIdx][field] = value;
+    setJobsForDate(state.currentDate, jobs);
+    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+  }
+}
+
+function updateJobField(idx, field, value) {
+  const jobs = getJobsForDate(state.currentDate);
+  if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
+    jobs[state.currentDriver][idx][field] = value;
+    setJobsForDate(state.currentDate, jobs);
+  }
+}
+
+function cycleStatus(idx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[state.currentDriver] || [])[idx];
+  const cycle = { pending: 'inprogress', inprogress: 'completed', completed: 'pending' };
+  job.status = cycle[job.status || 'pending'];
+  setJobsForDate(state.currentDate, jobs);
+  const statusLabels = { pending: '⬜ Tap to Start', inprogress: '🟡 In Progress — Tap to Complete', completed: '✅ Completed' };
+  const statusClasses = { pending: 'status-pending', inprogress: 'status-inprogress', completed: 'status-completed' };
+  const btn = document.querySelector(`#driverJob_${idx} .status-btn`);
+  btn.className = 'status-btn ' + statusClasses[job.status];
+  btn.textContent = statusLabels[job.status];
+}
+
+function addDriverJob() {
+  const jobs = getJobsForDate(state.currentDate);
+  if (!jobs[state.currentDriver]) jobs[state.currentDriver] = [];
+  jobs[state.currentDriver].push({
+    customer: '', collectedFrom: '', deliveredTo: '',
+    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes' }],
+    ticketNo: '', notes: '', status: 'pending', onTheFly: true, price: ''
+  });
+  setJobsForDate(state.currentDate, jobs);
+  renderDriverJobs();
+  showToast('New job added');
+}
+
+function submitDaySheet() {
+  const jobs = getJobsForDate(state.currentDate);
+  const myJobs = jobs[state.currentDriver] || [];
+  if (myJobs.length === 0) { showToast('No jobs to submit'); return; }
+
+  // Mark as submitted
+  myJobs.forEach(j => { j.submitted = true; j.submittedAt = new Date().toISOString(); });
+  jobs[state.currentDriver] = myJobs;
+  setJobsForDate(state.currentDate, jobs);
+
+  // Save addresses and customers
+  myJobs.forEach(j => {
+    saveAddress(j.collectedFrom);
+    saveAddress(j.deliveredTo);
+    saveCustomer(j.customer);
+  });
+
+  document.getElementById('driverJobs').style.display = 'none';
+  document.getElementById('driverConfirm').style.display = 'block';
+  document.getElementById('confirmMsg').textContent = `${myJobs.length} job${myJobs.length!==1?'s':''} submitted for ${state.currentDriver} on ${formatDate(state.currentDate)}.`;
+}
+
+function makeMapUrl(address) {
+  if (!address) return '#';
+  const encoded = encodeURIComponent(address);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return isIOS ? `maps://maps.apple.com/?q=${encoded}` : `https://maps.google.com/?q=${encoded}`;
+}
+
+// ============================================================
+// RICHARD VIEW
+// ============================================================
+function showGear() {
+  document.getElementById('viewDriver').classList.remove('active');
+  document.getElementById('viewRichard').classList.add('active');
+  document.getElementById('headerSubtitle').textContent = "Richard's View";
+}
+
+function checkPassword() {
+  const val = document.getElementById('passwordInput').value;
+  if (val === PASSWORD) {
+    document.getElementById('richardAuth').style.display = 'none';
+    document.getElementById('richardMain').style.display = 'block';
+    buildRichardDriverTabs();
+    loadPlanJobsFromStorage();
+  } else {
+    document.getElementById('passwordError').style.display = 'block';
+    document.getElementById('passwordInput').value = '';
+  }
+}
+
+function switchRichardTab(tab) {
+  state.richardTab = tab;
+  ['plan','review','export'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById('richard' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'review') renderReview();
+  if (tab === 'export') renderExport();
+}
+
+function buildRichardDriverTabs() {
+  const container = document.getElementById('richardDriverTabs');
+  if (!container) return;
+  container.innerHTML = '';
+  const drivers = getDrivers();
+  drivers.forEach((name, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'driver-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = name;
+    btn.onclick = () => selectPlanDriver(name);
+    container.appendChild(btn);
+  });
+  if (drivers.length > 0 && !state.selectedPlanDriver) state.selectedPlanDriver = drivers[0];
+  renderPlanJobs();
+}
+
+function selectPlanDriver(name) {
+  state.selectedPlanDriver = name;
+  document.querySelectorAll('.driver-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === name);
+  });
+  renderPlanJobs();
+}
+
+function loadPlanJobsFromStorage() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  state.planJobs[date] = getJobsForDate(date);
+}
+
+function getPlanJobsForCurrentDriver() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  if (!state.planJobs[date]) state.planJobs[date] = getJobsForDate(date);
+  if (!state.planJobs[date][state.selectedPlanDriver]) state.planJobs[date][state.selectedPlanDriver] = [];
+  return state.planJobs[date][state.selectedPlanDriver];
+}
+
+function renderPlanJobs() {
+  const container = document.getElementById('richardJobsContainer');
+  if (!container || !state.selectedPlanDriver) return;
+  container.innerHTML = '';
+  const jobs = getPlanJobsForCurrentDriver();
+  if (jobs.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--grey-400);padding:20px 0;">No jobs planned for this driver yet.</div>';
+    return;
+  }
+  jobs.forEach((job, idx) => container.appendChild(buildPlanJobCard(job, idx)));
+}
+
+function buildPlanJobCard(job, idx) {
+  const div = document.createElement('div');
+  div.className = 'plan-job';
+  div.id = 'planJob_' + idx;
+
+  const vehicles = getVehicles();
+  const customers = getCustomers();
+
+  div.innerHTML = `
+    <div class="plan-job-header">
+      <div class="plan-job-title">Job ${idx + 1}</div>
+      <button class="remove-job-btn" onclick="removePlanJob(${idx})">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Driver Vehicle</label>
+      <select class="form-select" onchange="updatePlanField(${idx}, 'vehicle', this.value)">
+        <option value="">Select vehicle...</option>
+        ${vehicles.map(v => `<option ${job.vehicle===v?'selected':''}>${esc(v)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Customer</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" class="form-input" value="${esc(job.customer||'')}" placeholder="Customer name..."
+          oninput="autocomplete(this, getCustomers(), ${idx}, 'customer')"
+          onchange="updatePlanField(${idx}, 'customer', this.value); updatePriceSuggestion(${idx})">
+        <div class="autocomplete-list" id="ac_customer_${idx}" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Collected From</label>
+      <div class="input-with-btn">
+        <div class="autocomplete-wrapper" style="flex:1;">
+          <input type="text" class="form-input" value="${esc(job.collectedFrom||'')}" placeholder="Origin..."
+            oninput="autocomplete(this, getAddressBook(), ${idx}, 'collectedFrom')"
+            onchange="updatePlanField(${idx}, 'collectedFrom', this.value)">
+          <div class="autocomplete-list" id="ac_collectedFrom_${idx}" style="display:none;"></div>
+        </div>
+        <button class="loc-btn" onclick="useLocation(${idx}, 'collectedFrom')" title="Use current location">📍</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Delivered To</label>
+      <div class="input-with-btn">
+        <div class="autocomplete-wrapper" style="flex:1;">
+          <input type="text" class="form-input" value="${esc(job.deliveredTo||'')}" placeholder="Destination..."
+            oninput="autocomplete(this, getAddressBook(), ${idx}, 'deliveredTo')"
+            onchange="updatePlanField(${idx}, 'deliveredTo', this.value)">
+          <div class="autocomplete-list" id="ac_deliveredTo_${idx}" style="display:none;"></div>
+        </div>
+        <button class="loc-btn" onclick="useLocation(${idx}, 'deliveredTo')" title="Use current location">📍</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Materials</label>
+      <div id="planMaterials_${idx}">
+        ${renderPlanMaterials(job.materials || [], idx)}
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPlanMaterial(${idx})">➕ Add Material</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Price (£)</label>
+      <input type="number" class="form-input" value="${esc(job.price||'')}" placeholder="0.00" min="0" step="0.01"
+        onchange="updatePlanField(${idx}, 'price', this.value); savePricingIfPossible(${idx})">
+      <div class="price-suggestion" id="priceSug_${idx}" style="display:none;"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ticket Number</label>
+      <input type="text" class="form-input" value="${esc(job.ticketNo||'')}" placeholder="Ticket / job ref..." onchange="updatePlanField(${idx}, 'ticketNo', this.value)">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" placeholder="Any notes for the driver..." onchange="updatePlanField(${idx}, 'notes', this.value)">${esc(job.notes||'')}</textarea>
+    </div>
+  `;
+
+  // Show price suggestion if customer and product exist
+  setTimeout(() => updatePriceSuggestion(idx), 100);
+  return div;
+}
+
+function renderPlanMaterials(materials, jobIdx) {
+  if (!materials || materials.length === 0) return '';
+  return materials.map((m, mi) => `
+    <div class="material-edit-row" id="planMat_${jobIdx}_${mi}">
+      <select class="form-select" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'product', this.value)">
+        ${PRODUCTS.map(p => `<option ${m.product===p?'selected':''}>${esc(p)}</option>`).join('')}
+      </select>
+      <input type="number" class="form-input" value="${esc(m.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'qty', this.value)">
+      <select class="form-select" onchange="updatePlanMaterial(${jobIdx}, ${mi}, 'unit', this.value)">
+        ${UNITS.map(u => `<option ${m.unit===u?'selected':''}>${u}</option>`).join('')}
+      </select>
+      <button class="btn btn-danger btn-sm" onclick="removePlanMaterial(${jobIdx}, ${mi})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function addPlanMaterial(jobIdx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  if (!jobs[jobIdx].materials) jobs[jobIdx].materials = [];
+  jobs[jobIdx].materials.push({ product: PRODUCTS[0], qty: '', unit: 'Tonnes' });
+  document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
+}
+
+function removePlanMaterial(jobIdx, matIdx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  jobs[jobIdx].materials.splice(matIdx, 1);
+  document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
+}
+
+function updatePlanMaterial(jobIdx, matIdx, field, value) {
+  const jobs = getPlanJobsForCurrentDriver();
+  if (jobs[jobIdx].materials && jobs[jobIdx].materials[matIdx]) {
+    jobs[jobIdx].materials[matIdx][field] = value;
+  }
+  updatePriceSuggestion(jobIdx);
+}
+
+function updatePlanField(idx, field, value) {
+  const jobs = getPlanJobsForCurrentDriver();
+  if (jobs[idx]) jobs[idx][field] = value;
+}
+
+function updatePriceSuggestion(idx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  const job = jobs[idx];
+  if (!job) return;
+  const sugDiv = document.getElementById('priceSug_' + idx);
+  if (!sugDiv) return;
+  const firstProduct = job.materials && job.materials[0] ? job.materials[0].product : null;
+  const sug = job.customer && firstProduct ? suggestPrice(job.customer, firstProduct) : null;
+  if (sug && !job.price) {
+    sugDiv.style.display = 'block';
+    sugDiv.innerHTML = `Suggested: <span onclick="applyPriceSuggestion(${idx}, ${sug})">£${sug}</span> — tap to use`;
+  } else {
+    sugDiv.style.display = 'none';
+  }
+}
+
+function applyPriceSuggestion(idx, price) {
+  const jobs = getPlanJobsForCurrentDriver();
+  jobs[idx].price = price;
+  const input = document.querySelector(`#planJob_${idx} input[type="number"]`);
+  if (input) input.value = price;
+  document.getElementById('priceSug_' + idx).style.display = 'none';
+}
+
+function savePricingIfPossible(idx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  const job = jobs[idx];
+  if (job && job.customer && job.materials && job.materials[0] && job.price) {
+    savePricing(job.customer, job.materials[0].product, job.price);
+  }
+}
+
+function addPlanJob() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  if (!state.planJobs[date]) state.planJobs[date] = getJobsForDate(date);
+  if (!state.planJobs[date][state.selectedPlanDriver]) state.planJobs[date][state.selectedPlanDriver] = [];
+  state.planJobs[date][state.selectedPlanDriver].push({
+    customer: '', vehicle: '', collectedFrom: '', deliveredTo: '',
+    materials: [{ product: PRODUCTS[0], qty: '', unit: 'Tonnes' }],
+    price: '', ticketNo: '', notes: '', status: 'pending', onTheFly: false
+  });
+  renderPlanJobs();
+}
+
+function removePlanJob(idx) {
+  const jobs = getPlanJobsForCurrentDriver();
+  jobs.splice(idx, 1);
+  renderPlanJobs();
+  showToast('Job removed');
+}
+
+function saveAllJobs() {
+  const date = document.getElementById('planDate')?.value || todayStr();
+  if (!state.planJobs[date]) return;
+  setJobsForDate(date, state.planJobs[date]);
+
+  // Save all addresses and customers
+  Object.values(state.planJobs[date]).forEach(jobs => {
+    jobs.forEach(j => {
+      saveAddress(j.collectedFrom);
+      saveAddress(j.deliveredTo);
+      saveCustomer(j.customer);
+      if (j.price && j.customer && j.materials && j.materials[0]) {
+        savePricing(j.customer, j.materials[0].product, j.price);
+      }
+    });
+  });
+
+  showToast('✅ All jobs saved!');
+}
+
+// ============================================================
+// AUTOCOMPLETE
+// ============================================================
+function autocomplete(input, list, jobIdx, field) {
+  const val = input.value.toLowerCase().trim();
+  const listId = `ac_${field}_${jobIdx}`;
+  const dropdown = document.getElementById(listId);
+  if (!dropdown) return;
+  if (!val || val.length < 2) { dropdown.style.display = 'none'; return; }
+  const matches = list.filter(item => item.toLowerCase().includes(val)).slice(0, 8);
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = '';
+  matches.forEach(match => {
+    const div = document.createElement('div');
+    div.textContent = match;
+    div.onclick = () => {
+      input.value = match;
+      input.dispatchEvent(new Event('change'));
+      dropdown.style.display = 'none';
+    };
+    dropdown.appendChild(div);
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none';
+  }, { once: true });
+}
+
+function useLocation(idx, field) {
+  if (!navigator.geolocation) { showToast('Location not available'); return; }
+  showToast('Getting location...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+      .then(r => r.json())
+      .then(data => {
+        const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const short = data.address ? [data.address.road, data.address.town || data.address.city || data.address.village, data.address.postcode].filter(Boolean).join(', ') : addr;
+        updatePlanField(idx, field, short);
+        const input = document.querySelector(`#planJob_${idx} input[placeholder="${field === 'collectedFrom' ? 'Origin...' : 'Destination...'}"]`);
+        if (input) input.value = short;
+        saveAddress(short);
+        showToast('📍 Location captured');
+      }).catch(() => {
+        const coords = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        updatePlanField(idx, field, coords);
+        showToast('📍 Coordinates captured');
+      });
+  }, () => showToast('Location access denied'));
+}
+
+// ============================================================
+// REVIEW
+// ============================================================
+function renderReview() {
+  const container = document.getElementById('reviewContent');
+  container.innerHTML = '';
+  const date = document.getElementById('planDate')?.value || todayStr();
+  const allJobs = getJobsForDate(date);
+  const drivers = getDrivers();
+  let hasAny = false;
+
+  drivers.forEach(driver => {
+    const jobs = allJobs[driver];
+    if (!jobs || jobs.length === 0) return;
+    hasAny = true;
+
+    const section = document.createElement('div');
+    section.innerHTML = `<div style="font-size:16px;font-weight:700;color:var(--navy);margin:20px 0 12px;">${esc(driver)}</div>`;
+
+    jobs.forEach((job, idx) => {
+      const isOTF = job.onTheFly;
+      const unpriced = !job.price;
+      const submitted = job.submitted;
+
+      const card = document.createElement('div');
+      card.className = 'review-job';
+      card.innerHTML = `
+        <div class="review-job-header">
+          <div>
+            <strong>Job ${idx+1} — ${esc(job.customer||'Unknown')}</strong>
+            ${isOTF ? '<span class="badge badge-orange" style="margin-left:8px;">ON THE FLY</span>' : ''}
+            ${submitted ? '<span class="badge badge-green" style="margin-left:8px;">SUBMITTED</span>' : '<span class="badge badge-grey" style="margin-left:8px;">NOT YET SUBMITTED</span>'}
+          </div>
+          <div style="font-size:13px;color:var(--grey-400);">${job.status || 'pending'}</div>
+        </div>
+        <div class="review-job-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div><div class="job-field-label">From</div><div style="font-size:14px;">${esc(job.collectedFrom||'—')}</div></div>
+            <div><div class="job-field-label">To</div><div style="font-size:14px;">${esc(job.deliveredTo||'—')}</div></div>
+            <div><div class="job-field-label">Ticket</div><div style="font-size:14px;">${esc(job.ticketNo||'—')}</div></div>
+            <div><div class="job-field-label">Vehicle</div><div style="font-size:14px;">${esc(job.vehicle||'—')}</div></div>
+          </div>
+          ${(job.materials||[]).map(m => `<div class="material-row"><span>${esc(m.product||'')}</span><span>${esc(m.qty||'')} ${esc(m.unit||'')}</span></div>`).join('')}
+          ${unpriced ? `
+            <div class="unpriced-row" style="margin-top:12px;padding:10px;background:#fee2e2;border-radius:8px;">
+              <span class="badge badge-red">NEEDS PRICING</span>
+              <input type="number" class="form-input" style="max-width:120px;" placeholder="£0.00" onchange="setPriceInReview('${date}','${driver}',${idx},this.value)">
+            </div>
+          ` : `<div style="margin-top:8px;font-weight:700;color:var(--green);">£${job.price}</div>`}
+          ${job.notes ? `<div style="margin-top:8px;font-size:13px;color:var(--grey-600);font-style:italic;">📝 ${esc(job.notes)}</div>` : ''}
+        </div>
+      `;
+      section.appendChild(card);
+    });
+
+    container.appendChild(section);
+  });
+
+  if (!hasAny) {
+    container.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:40px;">No jobs found for this date.<br>Plan jobs first using the Plan tab.</div>';
+  }
+}
+
+function setPriceInReview(date, driver, idx, price) {
+  const jobs = getJobsForDate(date);
+  if (jobs[driver] && jobs[driver][idx]) {
+    jobs[driver][idx].price = parseFloat(price);
+    setJobsForDate(date, jobs);
+    showToast('Price saved');
+  }
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function renderExport() {
+  const container = document.getElementById('exportContent');
+  container.innerHTML = '';
+  const date = document.getElementById('planDate')?.value || todayStr();
+  const allJobs = getJobsForDate(date);
+  const drivers = getDrivers();
+
+  let rows = [];
+  drivers.forEach(driver => {
+    const jobs = allJobs[driver] || [];
+    jobs.forEach((job, idx) => {
+      (job.materials || [{ product: '', qty: '', unit: '' }]).forEach(m => {
+        rows.push({ driver, job: idx+1, customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
+      });
+    });
+  });
+
+  if (rows.length === 0) {
+    container.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:40px;">No data to export for this date.</div>';
+    return;
+  }
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.overflowX = 'auto';
+  card.innerHTML = `
+    <div style="margin-bottom:12px;font-weight:700;color:var(--navy);">Date: ${formatDate(date)}</div>
+    <table class="export-table">
+      <thead>
+        <tr>
+          <th>Driver</th><th>Job</th><th>Customer</th><th>From</th><th>To</th>
+          <th>Product</th><th>Qty</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${esc(r.driver)}</td>
+            <td>${r.job}${r.otf ? ' <span class="badge badge-orange">OTF</span>' : ''}</td>
+            <td>${esc(r.customer||'')}</td>
+            <td>${esc(r.from||'')}</td>
+            <td>${esc(r.to||'')}</td>
+            <td>${esc(r.product||'')}</td>
+            <td>${esc(r.qty||'')}</td>
+            <td>${esc(r.unit||'')}</td>
+            <td>${esc(r.ticket||'')}</td>
+            <td>${r.price ? '£'+r.price : '<span style="color:var(--red);">UNPRICE</span>'}</td>
+            <td>${esc(r.notes||'')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  container.appendChild(card);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Date change handler
+document.addEventListener('DOMContentLoaded', () => {
+  const planDate = document.getElementById('planDate');
+  if (planDate) {
+    planDate.addEventListener('change', () => {
+      loadPlanJobsFromStorage();
+      renderPlanJobs();
+    });
+  }
+});
+</script>
+</body>
+</html>
