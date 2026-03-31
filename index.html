@@ -819,7 +819,8 @@ function getMaterialPrice(product) { return getMaterialPrices()[product] || 0; }
 function calcMaterialsTotal(materials) {
   const prices = getMaterialPrices();
   return (materials || []).reduce((sum, m) => {
-    const qty = parseFloat(m.qty) || 0;
+    const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
+    const qty = parseFloat(hasActual ? m.actualWeight : m.qty) || 0;
     const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
     return sum + qty * up;
   }, 0);
@@ -961,12 +962,30 @@ function buildDriverJobCard(job, idx) {
 
 function renderMaterialsDisplay(materials, idx) {
   if (!materials || materials.length === 0) return '<div style="color:var(--grey-400);font-size:14px;">No materials set</div>';
-  return materials.map(m => `
-    <div class="material-row">
-      <span class="material-name">${esc(m.product || '')}</span>
-      <span class="material-qty">${m.qty || ''} ${m.unit || ''}</span>
-    </div>
-  `).join('');
+  const prices = getMaterialPrices();
+  let html = materials.map(m => {
+    const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
+    const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
+    const displayQty = hasActual ? m.actualWeight : (m.qty || '');
+    const lt = (parseFloat(displayQty) || 0) * up;
+    return `<div class="material-row" style="align-items:flex-start;">
+      <div>
+        <div class="material-name">${esc(m.product || '')}</div>
+        <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">
+          ${hasActual
+            ? `Planned: ${esc(m.qty||'\u2014')} ${esc(m.unit||'')} &nbsp;\u2022&nbsp; <span style="color:var(--amber-dark);font-weight:600;">Actual: ${esc(m.actualWeight)} ${esc(m.unit||'')}</span>`
+            : `${esc(m.qty||'')} ${esc(m.unit||'')}`
+          }
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        ${lt > 0 ? `<div style="font-size:13px;color:var(--green);font-weight:600;">\u00a3${lt.toFixed(2)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  const total = calcMaterialsTotal(materials);
+  if (total > 0) html += `<div style="display:flex;justify-content:space-between;border-top:1px solid var(--grey-200);padding-top:8px;margin-top:4px;font-weight:700;color:var(--navy);font-size:14px;"><span>Materials Total</span><span>\u00a3${total.toFixed(2)}</span></div>`;
+  return html;
 }
 
 function toggleMaterialEdit(idx) {
@@ -988,15 +1007,29 @@ function addMaterialRowData(jobIdx, matIdx, data) {
   const row = document.createElement('div');
   row.className = 'material-edit-row';
   row.id = `matRow_${jobIdx}_${matIdx}`;
+  row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--grey-100);';
   row.innerHTML = `
-    <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'product', this.value)">
-      ${buildMaterialOptions(data.product)}
-    </select>
-    <input type="number" class="form-input" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
-    <select class="form-select" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
-      ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
-    </select>
-    <button class="btn btn-danger btn-sm" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">🗑</button>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <select class="form-select" style="flex:1;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'product', this.value)">
+        ${buildMaterialOptions(data.product)}
+      </select>
+      <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">&#128465;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:8px;align-items:end;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--grey-400);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Planned Qty</div>
+        <div style="display:flex;gap:6px;">
+          <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
+          <select class="form-select" style="width:90px;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
+            ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Actual Weight ⚖️</div>
+        <input type="number" class="form-input" style="border-color:var(--amber);" value="${esc(data.actualWeight||'')}" placeholder="e.g. 18.4" min="0" step="0.01" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'actualWeight', this.value)">
+      </div>
+    </div>
   `;
   container.appendChild(row);
 }
@@ -1531,7 +1564,10 @@ function renderReview() {
             <div><div class="job-field-label">Ticket</div><div style="font-size:14px;">${esc(job.ticketNo||'—')}</div></div>
             <div><div class="job-field-label">Vehicle</div><div style="font-size:14px;">${esc(job.vehicle||'—')}</div></div>
           </div>
-          ${(job.materials||[]).map(m => `<div class="material-row"><span>${esc(m.product||'')}</span><span>${esc(m.qty||'')} ${esc(m.unit||'')}</span></div>`).join('')}
+          ${(job.materials||[]).map(m => {
+            const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
+            return `<div class="material-row"><span>${esc(m.product||'')}</span><span style="text-align:right;">${hasActual ? `<span style="color:var(--amber-dark);font-weight:600;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span><br><span style="font-size:11px;color:var(--grey-400);">planned: ${esc(m.qty||'')}</span>` : `${esc(m.qty||'')} ${esc(m.unit||'')}`}</span></div>`;
+          }).join('')}
           ${unpriced ? `
             <div class="unpriced-row" style="margin-top:12px;padding:10px;background:#fee2e2;border-radius:8px;">
               <span class="badge badge-red">NEEDS PRICING</span>
@@ -1576,7 +1612,7 @@ function renderExport() {
     const jobs = allJobs[driver] || [];
     jobs.forEach((job, idx) => {
       (job.materials || [{ product: '', qty: '', unit: '' }]).forEach(m => {
-        rows.push({ driver, job: idx+1, jobNum: job.jobNumber || '', customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
+        rows.push({ driver, job: idx+1, jobNum: job.jobNumber || '', customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, actualWeight: m.actualWeight, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
       });
     });
   });
@@ -1595,7 +1631,7 @@ function renderExport() {
       <thead>
         <tr>
           <th>Job No.</th><th>Driver</th><th>Customer</th><th>From</th><th>To</th>
-          <th>Product</th><th>Qty</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
+          <th>Product</th><th>Planned Qty</th><th>Actual Wt</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -1608,6 +1644,7 @@ function renderExport() {
             <td>${esc(r.to||'')}</td>
             <td>${esc(r.product||'')}</td>
             <td>${esc(r.qty||'')}</td>
+            <td>${r.actualWeight ? `<strong style="color:#d97706;">${esc(r.actualWeight)}</strong>` : '<span style="color:#9ca3af;">—</span>'}</td>
             <td>${esc(r.unit||'')}</td>
             <td>${esc(r.ticket||'')}</td>
             <td>${r.price ? '£'+r.price : '<span style="color:var(--red);">UNPRICE</span>'}</td>
