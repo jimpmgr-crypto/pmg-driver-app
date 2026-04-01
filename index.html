@@ -481,7 +481,10 @@
     </div>
     <span id="syncIndicator" style="font-size:14px;opacity:0.8;" title="Sync status"></span>
   </div>
-  <button class="gear-btn" onclick="showGear()" title="Richard's View">⚙️</button>
+  <div style="display:flex;gap:8px;">
+    <button class="gear-btn" onclick="showJim()" title="Jim's HQ">👤</button>
+    <button class="gear-btn" onclick="showGear()" title="Richard's View">⚙️</button>
+  </div>
 </div>
 
 <!-- DRIVER VIEW -->
@@ -581,6 +584,70 @@
 <div id="photoOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
   <img id="photoOverlayImg" style="max-width:100%;max-height:85vh;border-radius:8px;">
   <button onclick="document.getElementById('photoOverlay').style.display='none'" style="margin-top:16px;background:white;border:none;border-radius:8px;padding:12px 28px;font-size:16px;font-weight:700;cursor:pointer;">✕ Close</button>
+</div>
+
+<!-- JIM'S VIEW -->
+<div class="view" id="viewJim">
+  <!-- LANDING -->
+  <div id="jimLanding">
+    <div class="section-header" style="margin-bottom:20px;">
+      <h2>Jim's HQ</h2>
+      <button class="back-btn" style="margin:0;" onclick="backFromJim()">← Exit</button>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Yard Tickets</div>
+      <button class="btn btn-full" style="background:var(--orange);color:white;margin-bottom:10px;justify-content:space-between;" onclick="jimShowPendingTickets()">
+        <span>⏳ Pending Tickets</span>
+        <span id="jimPendingBadge" class="badge badge-navy" style="display:none;"></span>
+      </button>
+      <button class="btn btn-outline btn-full" onclick="jimShowAllTickets()">📋 All Tickets</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Haulage Day Sheets</div>
+      <button class="btn btn-navy btn-full" onclick="jimOpenHaulage()">🚛 View Day Sheet Jobs</button>
+    </div>
+  </div>
+
+  <!-- ALL TICKETS -->
+  <div id="jimAllTickets" style="display:none;">
+    <button class="back-btn" onclick="jimShowScreen('jimLanding')">← Back</button>
+    <div class="section-header"><h2>All Tickets</h2></div>
+    <div id="jimAllList"></div>
+  </div>
+
+  <!-- PENDING TICKETS -->
+  <div id="jimPendingTickets" style="display:none;">
+    <button class="back-btn" onclick="jimShowScreen('jimLanding')">← Back</button>
+    <div class="section-header">
+      <h2>Pending Tickets</h2>
+      <span style="font-size:12px;color:var(--grey-400);">Tap to edit</span>
+    </div>
+    <div id="jimPendingList"></div>
+  </div>
+
+  <!-- EDIT TICKET -->
+  <div id="jimEditTicket" style="display:none;">
+    <button class="back-btn" onclick="jimCancelEditTicket()">← Back</button>
+    <div id="jimEditTicketForm"></div>
+  </div>
+
+  <!-- HAULAGE DAY SHEETS -->
+  <div id="jimHaulage" style="display:none;">
+    <button class="back-btn" onclick="jimShowScreen('jimLanding')">← Back</button>
+    <div class="section-header"><h2>Day Sheet Jobs</h2></div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="jimHaulageDatePicker" style="max-width:200px;"
+        onchange="_jimHaulageDate=this.value;jimLoadHaulage();">
+    </div>
+    <div id="jimHaulageList"></div>
+  </div>
+
+  <!-- EDIT HAULAGE JOB -->
+  <div id="jimEditJob" style="display:none;">
+    <button class="back-btn" onclick="jimOpenHaulage()">← Back</button>
+    <div id="jimEditJobForm"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2394,6 +2461,331 @@ async function downloadCSV() {
     showToast('📤 CSV downloaded');
   } catch(e) {
     showToast('⚠️ Could not fetch export — save jobs first');
+  }
+}
+
+// ============================================================
+// JIM'S VIEW — Ticket + Haulage Management
+// ============================================================
+const JIM_API = 'https://pmg-ticket-receiver.jimpmgr.workers.dev';
+const JIM_TOKEN = 'pmg-collect-2026';
+let _jimTickets = [];
+let _jimEditingTicket = null;
+let _jimEditSource = 'pending';
+let _jimHaulageDate = '';
+let _jimHaulageData = {};
+let _jimEditingJob = null;
+
+function showJim() {
+  ['viewDriver','viewRichard'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('viewJim').classList.add('active');
+  document.getElementById('headerSubtitle').textContent = "Jim's HQ";
+  _jimHaulageDate = todayStr();
+  jimShowScreen('jimLanding');
+  jimRefreshTickets();
+}
+
+function backFromJim() {
+  document.getElementById('viewJim').classList.remove('active');
+  document.getElementById('viewDriver').classList.add('active');
+  document.getElementById('headerSubtitle').textContent = 'Select your name to start';
+}
+
+function jimShowScreen(screenId) {
+  ['jimLanding','jimAllTickets','jimPendingTickets','jimEditTicket','jimHaulage','jimEditJob'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === screenId ? 'block' : 'none';
+  });
+}
+
+async function jimRefreshTickets() {
+  try {
+    const r = await fetch(`${JIM_API}/tickets`, { headers: { 'Authorization': `Bearer ${JIM_TOKEN}` } });
+    if (r.ok) { const d = await r.json(); _jimTickets = d.tickets || []; }
+  } catch(e) { _jimTickets = []; }
+  const pending = _jimTickets.filter(t => t._status === 'pending').length;
+  const badge = document.getElementById('jimPendingBadge');
+  if (badge) {
+    badge.textContent = String(pending);
+    badge.style.display = pending > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function jimShowAllTickets() {
+  _jimEditSource = 'all';
+  jimShowScreen('jimAllTickets');
+  jimRenderTicketList('jimAllList', _jimTickets);
+}
+
+function jimShowPendingTickets() {
+  _jimEditSource = 'pending';
+  jimShowScreen('jimPendingTickets');
+  jimRenderTicketList('jimPendingList', _jimTickets.filter(t => t._status === 'pending'));
+}
+
+function jimRenderTicketList(containerId, tickets) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  if (!tickets.length) {
+    c.innerHTML = '<div style="text-align:center;color:var(--grey-400);padding:32px 16px;">No tickets found</div>';
+    return;
+  }
+  tickets.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.cssText = 'cursor:pointer;margin-bottom:12px;border-left:4px solid ' + (t._status==='pending' ? 'var(--orange)' : 'var(--green)');
+    div.dataset.tid = t._id;
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:15px;color:var(--navy);">${esc(t.customer||'Unknown')}</div>
+          <div style="font-size:13px;color:var(--grey-600);margin-top:4px;">${esc(t.material||'—')} — ${esc(String(t.quantity||''))} ${esc(t.unit||'')}</div>
+          <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${esc(t.date||'—')}${t.customerRef ? ' · <strong>' + esc(t.customerRef) + '</strong>' : ''}</div>
+          ${t.notes ? `<div style="font-size:12px;color:var(--grey-600);margin-top:2px;">📝 ${esc(t.notes)}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;padding-left:8px;">
+          <div style="font-size:16px;font-weight:700;color:var(--green);">£${Number(t.price||0).toFixed(2)}</div>
+          <div style="font-size:11px;font-weight:700;margin-top:4px;color:${t._status==='pending' ? 'var(--orange)' : 'var(--green)'};">${t._status==='pending' ? '⏳ PENDING' : '✅ DONE'}</div>
+        </div>
+      </div>
+    `;
+    div.addEventListener('click', () => jimOpenEditTicket(t._id));
+    c.appendChild(div);
+  });
+}
+
+function jimOpenEditTicket(tid) {
+  const t = _jimTickets.find(x => x._id === tid);
+  if (!t) return;
+  _jimEditingTicket = t;
+  const form = document.getElementById('jimEditTicketForm');
+  form.innerHTML = `
+    <div class="card">
+      <div class="card-title">Edit Ticket</div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="jte-date" value="${esc(t.date||'')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <div class="autocomplete-wrapper">
+          <input type="text" class="form-input" id="jte-customer" value="${esc(t.customer||'')}"
+            placeholder="Customer name…" autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="jimCustomerAC(this,'jte-customer-ac')">
+          <div class="autocomplete-list" id="jte-customer-ac" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Material</label>
+        <input type="text" class="form-input" id="jte-material" value="${esc(t.material||'')}" placeholder="Material…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quantity / Tonnage</label>
+        <input type="number" class="form-input" id="jte-qty" value="${esc(String(t.quantity||''))}" placeholder="0" min="0" step="0.5" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Price (£)</label>
+        <input type="number" class="form-input" id="jte-price" value="${esc(String(t.price||''))}" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="jte-notes" placeholder="Any notes…">${esc(t.notes||'')}</textarea>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="jimSaveTicket()">💾 Save</button>
+        <button class="btn btn-outline" style="flex:1;" onclick="jimCancelEditTicket()">Cancel</button>
+      </div>
+      <div id="jte-status" style="margin-top:10px;text-align:center;font-size:13px;"></div>
+    </div>
+  `;
+  jimShowScreen('jimEditTicket');
+}
+
+function jimCustomerAC(input, dropdownId) {
+  const val = input.value.trim().toLowerCase();
+  const dd = document.getElementById(dropdownId);
+  if (!dd) return;
+  if (val.length < 2) { dd.style.display = 'none'; return; }
+  const matches = CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val)).slice(0, 8);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = '';
+  matches.forEach(c => {
+    const d = document.createElement('div');
+    d.textContent = c;
+    d.onclick = () => { input.value = c; dd.style.display = 'none'; };
+    dd.appendChild(d);
+  });
+  dd.style.display = 'block';
+  document.addEventListener('click', e => { if (!dd.contains(e.target) && e.target !== input) dd.style.display = 'none'; }, { once: true });
+}
+
+function jimCancelEditTicket() {
+  if (_jimEditSource === 'all') jimShowAllTickets();
+  else jimShowPendingTickets();
+}
+
+async function jimSaveTicket() {
+  if (!_jimEditingTicket) return;
+  const statusEl = document.getElementById('jte-status');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--grey-400);">Saving…</span>';
+  const updates = {
+    date: document.getElementById('jte-date').value,
+    customer: document.getElementById('jte-customer').value.trim(),
+    material: document.getElementById('jte-material').value.trim(),
+    quantity: parseFloat(document.getElementById('jte-qty').value) || 0,
+    price: parseFloat(document.getElementById('jte-price').value) || 0,
+    notes: document.getElementById('jte-notes').value.trim(),
+  };
+  try {
+    const r = await fetch(`${JIM_API}/ticket/${_jimEditingTicket._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${JIM_TOKEN}` },
+      body: JSON.stringify(updates)
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const idx = _jimTickets.findIndex(t => t._id === _jimEditingTicket._id);
+    if (idx !== -1) Object.assign(_jimTickets[idx], updates);
+    showToast('✅ Ticket updated');
+    setTimeout(() => jimCancelEditTicket(), 400);
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">Save failed: ${esc(e.message)}</span>`;
+  }
+}
+
+// -- HAULAGE DAY SHEETS --
+async function jimOpenHaulage() {
+  jimShowScreen('jimHaulage');
+  const di = document.getElementById('jimHaulageDatePicker');
+  if (di) di.value = _jimHaulageDate;
+  await jimLoadHaulage();
+}
+
+async function jimLoadHaulage() {
+  const c = document.getElementById('jimHaulageList');
+  if (!c) return;
+  c.innerHTML = '<div style="text-align:center;color:var(--grey-400);padding:20px;">Loading…</div>';
+  try {
+    const r = await fetch(`${API_URL}/jobs/${_jimHaulageDate}`, { headers: API_HDRS });
+    if (!r.ok) throw new Error();
+    const allJobs = await r.json();
+    _jimHaulageData = allJobs;
+    jimRenderHaulageJobs(allJobs);
+  } catch(e) {
+    c.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:32px;">Could not load jobs</div>';
+  }
+}
+
+function jimRenderHaulageJobs(allJobs) {
+  const c = document.getElementById('jimHaulageList');
+  if (!c) return;
+  const drivers = Object.keys(allJobs).filter(d => (allJobs[d]||[]).length > 0);
+  if (!drivers.length) {
+    c.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:32px;">No jobs for ' + esc(_jimHaulageDate) + '</div>';
+    return;
+  }
+  c.innerHTML = '';
+  drivers.forEach(driver => {
+    const jobs = allJobs[driver] || [];
+    const driverHeader = document.createElement('div');
+    driverHeader.style.cssText = 'font-size:13px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;';
+    driverHeader.textContent = driver;
+    c.appendChild(driverHeader);
+    jobs.forEach((job, idx) => {
+      const mats = (job.materials||[]).map(m => [m.qty,m.unit,m.product].filter(Boolean).join(' ')).join(', ');
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.style.cssText = 'cursor:pointer;margin-bottom:12px;border-left:4px solid var(--amber);';
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:15px;color:var(--navy);">${esc(job.customer||'Unknown')}</div>
+            <div style="font-size:13px;color:var(--grey-600);margin-top:4px;">${esc(mats||'No materials')}</div>
+            <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${job.jobNumber ? esc(job.jobNumber)+' · ' : ''}${esc(job.vehicle||'')}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;padding-left:8px;">
+            ${job.price ? `<div style="font-size:16px;font-weight:700;color:var(--green);">£${Number(job.price).toFixed(2)}</div>` : '<div style="font-size:12px;font-weight:700;color:var(--orange);">UNPRICED</div>'}
+            <div style="font-size:11px;color:var(--grey-400);margin-top:4px;">${esc(job.status||'pending')}</div>
+          </div>
+        </div>
+      `;
+      div.addEventListener('click', () => jimOpenEditJob(driver, idx));
+      c.appendChild(div);
+    });
+  });
+}
+
+function jimOpenEditJob(driver, idx) {
+  const job = (_jimHaulageData[driver] || [])[idx];
+  if (!job) return;
+  _jimEditingJob = { driver, idx };
+  const form = document.getElementById('jimEditJobForm');
+  const mats = job.materials || [];
+  form.innerHTML = `
+    <div class="card">
+      <div class="card-title">Edit Job${job.jobNumber ? ' — ' + esc(job.jobNumber) : ''}</div>
+      <div style="font-size:13px;color:var(--grey-600);margin-bottom:16px;">${esc(driver)} · ${esc(_jimHaulageDate)}</div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="jje-date" value="${esc(_jimHaulageDate)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <div class="autocomplete-wrapper">
+          <input type="text" class="form-input" id="jje-customer" value="${esc(job.customer||'')}"
+            placeholder="Customer name…" autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="jimCustomerAC(this,'jje-customer-ac')">
+          <div class="autocomplete-list" id="jje-customer-ac" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Material</label>
+        <input type="text" class="form-input" id="jje-material" value="${esc(mats[0] ? mats[0].product||'' : '')}" placeholder="Material…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quantity / Tonnage</label>
+        <input type="number" class="form-input" id="jje-qty" value="${esc(String(mats[0] ? mats[0].qty||'' : ''))}" placeholder="0" min="0" step="0.5" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Price (£)</label>
+        <input type="number" class="form-input" id="jje-price" value="${esc(String(job.price||''))}" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="jje-notes" placeholder="Any notes…">${esc(job.notes||'')}</textarea>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="jimSaveJob()">💾 Save</button>
+        <button class="btn btn-outline" style="flex:1;" onclick="jimOpenHaulage()">Cancel</button>
+      </div>
+      <div id="jje-status" style="margin-top:10px;text-align:center;font-size:13px;"></div>
+    </div>
+  `;
+  jimShowScreen('jimEditJob');
+}
+
+async function jimSaveJob() {
+  if (!_jimEditingJob) return;
+  const { driver, idx } = _jimEditingJob;
+  const statusEl = document.getElementById('jje-status');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--grey-400);">Saving…</span>';
+  const job = (_jimHaulageData[driver] || [])[idx];
+  if (!job) return;
+  job.customer = document.getElementById('jje-customer').value.trim();
+  job.price = parseFloat(document.getElementById('jje-price').value) || 0;
+  job.notes = document.getElementById('jje-notes').value.trim();
+  const mat = document.getElementById('jje-material').value.trim();
+  const qty = document.getElementById('jje-qty').value.trim();
+  if (!job.materials) job.materials = [];
+  if (job.materials.length === 0) job.materials.push({ product: '', qty: '', unit: 'Tonnes' });
+  if (mat) job.materials[0].product = mat;
+  if (qty) job.materials[0].qty = qty;
+  try {
+    await cloudPutJobs(_jimHaulageDate, _jimHaulageData);
+    showToast('✅ Job updated');
+    setTimeout(() => jimOpenHaulage(), 400);
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Save failed</span>';
   }
 }
 </script>
