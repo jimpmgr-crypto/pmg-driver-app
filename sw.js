@@ -2,7 +2,7 @@
 // Network-first for HTML — always gets latest updates immediately
 // Cache-first for static assets (fonts etc)
 
-const CACHE_NAME = 'pmg-driver-v2';
+const CACHE_NAME = 'pmg-driver-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
