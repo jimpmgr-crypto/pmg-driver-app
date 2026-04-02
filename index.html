@@ -765,6 +765,7 @@ const MATERIALS = [
   { group: 'WATER', label: '25mm straight connector', value: '25mm straight connector' },
   { group: 'WATER', label: '25mm insert', value: '25mm insert' },
   { group: 'WATER', label: '25mm end cap', value: '25mm end cap' },
+  { group: 'CONCRETE', label: 'Concrete', value: 'Concrete' },
   { group: 'OTHER', label: 'Not on list / Other', value: '__other__' },
 ];
 const PRODUCTS = MATERIALS.map(m => m.value); // legacy compat
@@ -826,7 +827,7 @@ const DEFAULT_MATERIAL_PRICES = {
   'Duct tape':5.20,'Goggles per pair':2.20,'225 ties':3.80,'Linemarker':3.80,'Warning tape':12.50,
   '25mm pipe 100m':76.33,'25mm pipe 50m':38.20,'25mm straight connector':5.27,'25mm insert':0.48,'25mm end cap':6.75
 };
-const UNITS = ['Tonnes','Cubes','Units'];
+const UNITS = ['Tonnes','m³','Cubes','Units'];
 const PASSWORD = 'richard';
 
 let state = {
@@ -1015,7 +1016,7 @@ function buildDriverJobCard(job, idx) {
   div.innerHTML = `
     <div class="job-card-header">
       <div>
-        <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''} ${job.signature ? '<span class="badge badge-green" style="margin-left:6px;">✅ Signed</span>' : ''}</div>
+        <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''} ${isOTF && job.ticketNo ? `<span class="badge badge-navy" style="margin-left:6px;">${esc(job.ticketNo)}</span>` : ''} ${job.signature ? '<span class="badge badge-green" style="margin-left:6px;">✅ Signed</span>' : ''}</div>
         <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
       </div>
       <div style="text-align:right;">
@@ -1092,20 +1093,27 @@ function renderMaterialsDisplay(materials, jobIdx) {
     const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
     const displayQty = hasActual ? m.actualWeight : (m.qty || '');
     const lt = (parseFloat(displayQty) || 0) * up;
+    const isConcrete = m.product === 'Concrete';
     return `<div class="material-row" style="align-items:flex-start;padding:10px 0;">
       <div style="flex:1;">
         <div class="material-name">${esc(m.product || '')}</div>
+        ${isConcrete ? `<div style="margin-top:6px;">
+          <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px;">Concrete Type${!m.concreteType?' — required to complete':''}</div>
+          <input type="text" class="form-input" style="font-size:14px;${!m.concreteType?'border-color:var(--amber);':''}"
+            value="${esc(m.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20..."
+            onchange="saveMaterialField(${jobIdx},${mi},'concreteType',this.value)">
+        </div>` : ''}
         <div style="font-size:13px;margin-top:4px;">
           ${hasActual
             ? `<span style="color:var(--amber-dark);font-weight:700;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span>
                <span style="color:var(--grey-400);font-size:11px;margin-left:6px;">(planned: ${esc(m.qty||'—')})</span>
                <button onclick="clearActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--grey-400);font-size:11px;cursor:pointer;margin-left:4px;text-decoration:underline;">Change</button>`
             : `<span style="color:var(--grey-600);">${esc(m.qty||'—')} ${esc(m.unit||'')}</span>
-               <button onclick="enterActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--amber-dark);font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;text-decoration:underline;">⚖️ Change</button>`
+               <button onclick="enterActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--amber-dark);font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;text-decoration:underline;">${isConcrete?'📐 Enter m³':'⚖️ Change'}</button>`
           }
         </div>
         <div id="actualWeightInput_${jobIdx}_${mi}" style="display:none;margin-top:8px;">
-          <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Actual Weight</div>
+          <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">${isConcrete?'Volume (m³)':'Actual Weight'}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="number" class="form-input" style="max-width:120px;border-color:var(--amber);" placeholder="${esc(m.qty||'0')}" min="0" step="0.01" id="actualWeightVal_${jobIdx}_${mi}">
             <span style="color:var(--grey-600);font-size:13px;">${esc(m.unit||'')}</span>
@@ -1183,6 +1191,11 @@ function addMaterialRowData(jobIdx, matIdx, data) {
         ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
       </select>
     </div>
+    ${data.product === 'Concrete' ? `<div style="margin-top:8px;">
+      <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type (optional)</div>
+      <input type="text" class="form-input" value="${esc(data.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20..."
+        onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'concreteType', this.value)">
+    </div>` : ''}
   `;
   container.appendChild(row);
 }
@@ -1212,8 +1225,18 @@ function saveMaterialField(jobIdx, matIdx, field, value) {
   const job = (jobs[state.currentDriver] || [])[jobIdx];
   if (job.materials && job.materials[matIdx]) {
     job.materials[matIdx][field] = value;
+    if (field === 'product' && value === 'Concrete') {
+      job.materials[matIdx].unit = 'm³';
+    }
     setJobsForDate(state.currentDate, jobs);
     document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+    if (field === 'product') {
+      const editRows = document.getElementById('materialEditRows_' + jobIdx);
+      if (editRows && editRows.children.length > 0) {
+        editRows.innerHTML = '';
+        job.materials.forEach((m, mi) => addMaterialRowData(jobIdx, mi, m));
+      }
+    }
   }
 }
 
@@ -1229,7 +1252,20 @@ function cycleStatus(idx) {
   const jobs = getJobsForDate(state.currentDate);
   const job = (jobs[state.currentDriver] || [])[idx];
   const cycle = { pending: 'inprogress', inprogress: 'completed', completed: 'pending' };
-  job.status = cycle[job.status || 'pending'];
+  const nextStatus = cycle[job.status || 'pending'];
+  if (nextStatus === 'completed') {
+    const concreteItems = (job.materials || []).filter(m => m.product === 'Concrete');
+    for (const m of concreteItems) {
+      if (!m.concreteType || !String(m.concreteType).trim()) {
+        showToast('Enter Concrete Type before completing'); return;
+      }
+      const qty = m.actualWeight || m.qty;
+      if (!qty || !String(qty).trim()) {
+        showToast('Enter concrete volume (m³) before completing'); return;
+      }
+    }
+  }
+  job.status = nextStatus;
   setJobsForDate(state.currentDate, jobs);
   const statusLabels = { pending: '⬜ Tap to Start', inprogress: '🟡 In Progress — Tap to Complete', completed: '✅ Completed' };
   const statusClasses = { pending: 'status-pending', inprogress: 'status-inprogress', completed: 'status-completed' };
@@ -1238,17 +1274,51 @@ function cycleStatus(idx) {
   btn.textContent = statusLabels[job.status];
 }
 
-function addDriverJob() {
+function generateLocalTicketRef(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(2);
+  const counterKey = 'pmg_otf_counter_' + dateStr;
+  const counter = (getData(counterKey, 0) || 0) + 1;
+  setData(counterKey, counter);
+  return dd + mm + yy + '-' + String(counter).padStart(3, '0');
+}
+
+async function addDriverJob() {
   const jobs = getJobsForDate(state.currentDate);
   if (!jobs[state.currentDriver]) jobs[state.currentDriver] = [];
+  const localTicket = generateLocalTicketRef(state.currentDate);
   jobs[state.currentDriver].push({
     customer: '', collectedFrom: '', deliveredTo: '',
     materials: [{ product: MATERIALS[0].value, qty: '', unit: 'Tonnes' }],
-    ticketNo: '', notes: '', status: 'pending', onTheFly: true, price: ''
+    ticketNo: localTicket, notes: '', status: 'pending', onTheFly: true, price: ''
   });
   setJobsForDate(state.currentDate, jobs);
   renderDriverJobs();
-  showToast('New job added');
+  showToast('New job added — ticket: ' + localTicket);
+  const jobIdx = getJobsForDate(state.currentDate)[state.currentDriver].length - 1;
+  try {
+    const res = await fetch('https://pmg-ticket-receiver.jimpmgr.workers.dev/api/reserve-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer pmg-collect-2026' },
+      body: JSON.stringify({ date: state.currentDate })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ticketRef) {
+        const freshJobs = getJobsForDate(state.currentDate);
+        if (freshJobs[state.currentDriver] && freshJobs[state.currentDriver][jobIdx]) {
+          freshJobs[state.currentDriver][jobIdx].ticketNo = data.ticketRef;
+          setJobsForDate(state.currentDate, freshJobs);
+          renderDriverJobs();
+          showToast('Ticket: ' + data.ticketRef);
+        }
+      }
+    }
+  } catch(e) {
+    // Keep local fallback — already set
+  }
 }
 
 function submitDaySheet() {
@@ -1471,6 +1541,7 @@ function renderPlanMaterials(materials, jobIdx) {
   const rows = materials.map((m, mi) => {
     const up = m.unitPrice !== undefined ? m.unitPrice : (prices[m.product] || 0);
     const lt = (parseFloat(m.qty) || 0) * (parseFloat(up) || 0);
+    const isConcrete = m.product === 'Concrete';
     return `<div style="padding:10px 0;border-bottom:1px solid var(--grey-100);" id="planMat_${jobIdx}_${mi}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
         <div class="autocomplete-wrapper" style="flex:1;">
@@ -1483,11 +1554,17 @@ function renderPlanMaterials(materials, jobIdx) {
         </div>
         <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removePlanMaterial(${jobIdx},${mi})">&#128465;</button>
       </div>
+      ${isConcrete ? `<div style="margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type (optional — driver can fill in)</div>
+        <input type="text" class="form-input" value="${esc(m.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20..."
+          onchange="updatePlanMaterial(${jobIdx},${mi},'concreteType',this.value)">
+      </div>` : ''}
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;">
-        <input type="number" class="form-input" style="width:70px;padding:10px;" value="${esc(String(m.qty||''))}" placeholder="Qty" min="0" step="0.1" onchange="updatePlanMaterial(${jobIdx},${mi},'qty',this.value)">
+        <input type="number" class="form-input" style="width:70px;padding:10px;" value="${esc(String(m.qty||''))}" placeholder="${isConcrete?'m³':'Qty'}" min="0" step="0.1" onchange="updatePlanMaterial(${jobIdx},${mi},'qty',this.value)">
+        ${isConcrete ? `<span style="color:var(--grey-600);font-weight:600;">m³</span>` : ''}
         <span style="color:var(--grey-400);">&#215;</span>
         <span style="color:var(--grey-600);">&pound;</span>
-        <input type="number" class="form-input" style="width:75px;padding:10px;" value="${esc(String(up||''))}" placeholder="£/t" min="0" step="0.01" title="Unit price — edits save for next time" onchange="updatePlanMaterial(${jobIdx},${mi},'unitPrice',this.value);setMaterialPrice('${esc(m.product)}',this.value)">
+        <input type="number" class="form-input" style="width:75px;padding:10px;" value="${esc(String(up||''))}" placeholder="${isConcrete?'£/m³':'£/t'}" min="0" step="0.01" title="Unit price — edits save for next time" onchange="updatePlanMaterial(${jobIdx},${mi},'unitPrice',this.value);setMaterialPrice('${esc(m.product)}',this.value)">
         <span style="color:var(--grey-400);">=</span>
         <span style="font-weight:700;color:var(--green);min-width:60px;text-align:right;font-size:14px;" id="lineTotal_${jobIdx}_${mi}">${lt>0?'\u00a3'+lt.toFixed(2):'&mdash;'}</span>
       </div>
@@ -1516,6 +1593,10 @@ function updatePlanMaterial(jobIdx, matIdx, field, value) {
   const jobs = getPlanJobsForCurrentDriver();
   if (jobs[jobIdx].materials && jobs[jobIdx].materials[matIdx]) {
     jobs[jobIdx].materials[matIdx][field] = value;
+    if (field === 'product' && value === 'Concrete') {
+      jobs[jobIdx].materials[matIdx].unit = 'm³';
+      document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
+    }
   }
   updatePriceSuggestion(jobIdx);
   if (field === 'qty' || field === 'unitPrice') refreshMatTotal(jobIdx);
@@ -1870,7 +1951,8 @@ function renderReview() {
           </div>
           ${(job.materials||[]).map(m => {
             const hasActual = m.actualWeight !== undefined && m.actualWeight !== '';
-            return `<div class="material-row"><span>${esc(m.product||'')}</span><span style="text-align:right;">${hasActual ? `<span style="color:var(--amber-dark);font-weight:600;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span><br><span style="font-size:11px;color:var(--grey-400);">planned: ${esc(m.qty||'')}</span>` : `${esc(m.qty||'')} ${esc(m.unit||'')}`}</span></div>`;
+            const concreteTypeLine = m.product === 'Concrete' && m.concreteType ? `<div style="font-size:11px;color:var(--grey-600);">Type: ${esc(m.concreteType)}</div>` : '';
+            return `<div class="material-row"><span>${esc(m.product||'')}${concreteTypeLine}</span><span style="text-align:right;">${hasActual ? `<span style="color:var(--amber-dark);font-weight:600;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span><br><span style="font-size:11px;color:var(--grey-400);">planned: ${esc(m.qty||'')}</span>` : `${esc(m.qty||'')} ${esc(m.unit||'')}`}</span></div>`;
           }).join('')}
           ${unpriced ? `
             <div class="unpriced-row" style="margin-top:12px;padding:10px;background:#fee2e2;border-radius:8px;">
@@ -1916,7 +1998,7 @@ function renderExport() {
     const jobs = allJobs[driver] || [];
     jobs.forEach((job, idx) => {
       (job.materials || [{ product: '', qty: '', unit: '' }]).forEach(m => {
-        rows.push({ driver, job: idx+1, jobNum: job.jobNumber || '', customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, qty: m.qty, actualWeight: m.actualWeight, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
+        rows.push({ driver, job: idx+1, jobNum: job.jobNumber || '', customer: job.customer, from: job.collectedFrom, to: job.deliveredTo, product: m.product, concreteType: m.concreteType||'', qty: m.qty, actualWeight: m.actualWeight, unit: m.unit, ticket: job.ticketNo, price: job.price, notes: job.notes, otf: job.onTheFly, vehicle: job.vehicle });
       });
     });
   });
@@ -1935,7 +2017,7 @@ function renderExport() {
       <thead>
         <tr>
           <th>Job No.</th><th>Driver</th><th>Customer</th><th>From</th><th>To</th>
-          <th>Product</th><th>Planned Qty</th><th>Actual Wt</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
+          <th>Product</th><th>Concrete Type</th><th>Planned Qty</th><th>Actual Wt</th><th>Unit</th><th>Ticket</th><th>£ Price</th><th>Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -1947,6 +2029,7 @@ function renderExport() {
             <td>${esc(r.from||'')}</td>
             <td>${esc(r.to||'')}</td>
             <td>${esc(r.product||'')}</td>
+            <td>${esc(r.concreteType||'')}</td>
             <td>${esc(r.qty||'')}</td>
             <td>${r.actualWeight ? `<strong style="color:#d97706;">${esc(r.actualWeight)}</strong>` : '<span style="color:#9ca3af;">—</span>'}</td>
             <td>${esc(r.unit||'')}</td>
