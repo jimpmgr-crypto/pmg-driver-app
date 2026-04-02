@@ -469,6 +469,31 @@
     white-space: nowrap;
   }
   .toast.show { opacity: 1; }
+
+  /* JOB EDIT MODAL */
+  .job-edit-modal {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.6);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: none;
+  }
+  .job-edit-modal.open { display: block; }
+  .job-edit-inner {
+    background: white; margin: 16px;
+    border-radius: var(--radius); padding: 20px;
+  }
+  .job-edit-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; padding-bottom: 14px;
+    border-bottom: 2px solid var(--grey-200);
+  }
+  .job-edit-modal-header h3 { font-size: 17px; font-weight: 700; color: var(--navy); }
+  .edit-close-btn {
+    background: var(--grey-100); border: none; border-radius: 50%;
+    width: 36px; height: 36px; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; color: var(--grey-600);
+  }
+  .price-field-amber { border-color: var(--amber) !important; background: #fffbeb !important; }
 </style>
 </head>
 <body>
@@ -647,6 +672,21 @@
   <div id="jimEditJob" style="display:none;">
     <button class="back-btn" onclick="jimOpenHaulage()">← Back</button>
     <div id="jimEditJobForm"></div>
+  </div>
+</div>
+
+<!-- JOB EDIT MODAL -->
+<div class="job-edit-modal" id="jobEditModal" onclick="jobEditModalBackdropClick(event)">
+  <div class="job-edit-inner" id="jobEditInner">
+    <div class="job-edit-modal-header">
+      <h3 id="jobEditTitle">Edit Job</h3>
+      <button class="edit-close-btn" onclick="closeJobEditModal()">✕</button>
+    </div>
+    <div id="jobEditBody"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:2px solid var(--grey-200);">
+      <button class="btn btn-primary" style="flex:1;font-size:16px;" onclick="saveJobEdit()">💾 Save</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="closeJobEditModal()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -837,6 +877,10 @@ let state = {
   richardTab: 'plan',
   selectedPlanDriver: null,
   planJobs: {}, // { date: { driverName: [ job, ... ] } }
+  editJob: null,       // deep clone of job being edited
+  editJobDriver: null,
+  editJobIdx: null,
+  editJobDate: null,
 };
 
 function todayStr() {
@@ -1090,23 +1134,13 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
         <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
         ${showDriverName ? `<div style="font-size:11px;color:var(--grey-400);margin-top:2px;">${esc(driver)}</div>` : ''}
       </div>
-      <div style="text-align:right;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+        <button onclick="openJobEditModal('${dq}',${idx})" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.2px;white-space:nowrap;">✏️ Edit</button>
         ${job.vehicle ? `<div style="font-size:12px;opacity:0.7;">${esc(job.vehicle)}</div>` : ''}
-        ${job.price ? `<div style="font-size:13px;font-weight:700;color:var(--amber);">£${job.price}</div>` : ''}
+        ${job.price ? `<div style="font-size:13px;font-weight:700;color:var(--amber);">£${job.price}</div>` : '<div style="font-size:11px;color:rgba(255,200,50,0.8);">no price</div>'}
       </div>
     </div>
     <div class="job-card-body">
-      <div class="form-group">
-        <label class="form-label">Customer</label>
-        <div class="autocomplete-wrapper">
-          <input type="text" class="form-input" value="${esc(job.customer||'')}" placeholder="Type customer name..."
-            autocomplete="off" autocorrect="off" spellcheck="false"
-            oninput="driverCustomerAC(this,${idx})"
-            onfocus="driverCustomerAC(this,${idx})"
-            onchange="updateJobField('${dq}',${idx},'customer',this.value)">
-          <div class="autocomplete-list" id="ac_drvcustomer_${idx}" style="display:none;"></div>
-        </div>
-      </div>
       ${job.collectedFrom ? `<div class="job-field"><div class="job-field-label">Collected From</div><a class="address-link" href="${fromMapUrl}" target="_blank">${esc(job.collectedFrom)}</a></div>` : ''}
       ${job.deliveredTo ? `<div class="job-field"><div class="job-field-label">Delivered To</div><a class="address-link" href="${toMapUrl}" target="_blank">${esc(job.deliveredTo)}</a></div>` : ''}
 
@@ -1357,6 +1391,312 @@ function cycleStatus(driver, idx) {
   setJobsForDate(state.currentDate, jobs);
   cloudPutJobs(state.currentDate, jobs); // sync to cloud on every status change
   renderDriverJobs();
+}
+
+// ============================================================
+// JOB EDIT MODAL
+// ============================================================
+function openJobEditModal(driver, idx, date) {
+  const d = date || state.currentDate;
+  const jobs = getJobsForDate(d);
+  const job = (jobs[driver] || [])[idx];
+  if (!job) return;
+  state.editJobDriver = driver;
+  state.editJobIdx = idx;
+  state.editJobDate = d;
+  state.editJob = JSON.parse(JSON.stringify(job));
+
+  const vehicles = getVehicles();
+  document.getElementById('jobEditTitle').textContent =
+    'Edit ' + (job.jobNumber || 'Job ' + (idx + 1)) + (driver ? ' — ' + driver : '');
+
+  const hasPrice = job.price && String(job.price).trim() !== '' && parseFloat(job.price) > 0;
+  const priceClass = hasPrice ? '' : ' price-field-amber';
+
+  const body = document.getElementById('jobEditBody');
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Customer</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" class="form-input" id="editCustomer" value="${esc(job.customer||'')}"
+          placeholder="Type to search or enter name…"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="editCustomerAC(this)" onfocus="editCustomerAC(this)"
+          onchange="state.editJob.customer=this.value">
+        <div class="autocomplete-list" id="ac_editCustomer" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Vehicle</label>
+      <select class="form-select" onchange="state.editJob.vehicle=this.value">
+        <option value="">Select vehicle…</option>
+        ${vehicles.map(v => `<option${job.vehicle===v?' selected':''}>${esc(v)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Collected From</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" class="form-input" id="editFrom" value="${esc(job.collectedFrom||'')}"
+          placeholder="Start typing address…"
+          oninput="editAddressAC(this,'collectedFrom')"
+          onchange="state.editJob.collectedFrom=this.value">
+        <div class="autocomplete-list" id="ac_editFrom" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Delivered To</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" class="form-input" id="editTo" value="${esc(job.deliveredTo||'')}"
+          placeholder="Start typing address…"
+          oninput="editAddressAC(this,'deliveredTo')"
+          onchange="state.editJob.deliveredTo=this.value">
+        <div class="autocomplete-list" id="ac_editTo" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Materials</label>
+      <div id="editModalMaterials"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addEditMaterial()">➕ Add Material</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" style="color:var(--amber-dark);font-size:13px;letter-spacing:0.5px;">💰 PRICE (£) — Total Job Price</label>
+      <input type="number" class="form-input${priceClass}" id="editPrice"
+        value="${esc(String(job.price||''))}" placeholder="Enter price…" min="0" step="0.01"
+        onchange="state.editJob.price=this.value">
+      ${!hasPrice ? '<div style="font-size:12px;color:var(--amber-dark);margin-top:5px;font-weight:600;">⚠️ No price set — please fill in before 7pm</div>' : ''}
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ticket Number</label>
+      <input type="text" class="form-input" value="${esc(job.ticketNo||'')}" placeholder="Ticket / job ref…"
+        onchange="state.editJob.ticketNo=this.value">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" placeholder="Any notes…"
+        onchange="state.editJob.notes=this.value">${esc(job.notes||'')}</textarea>
+    </div>
+  `;
+
+  renderEditModalMaterials();
+  document.getElementById('jobEditModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeJobEditModal() {
+  document.getElementById('jobEditModal').classList.remove('open');
+  document.body.style.overflow = '';
+  state.editJob = null; state.editJobDriver = null; state.editJobIdx = null; state.editJobDate = null;
+}
+
+function jobEditModalBackdropClick(e) {
+  if (e.target === document.getElementById('jobEditModal')) closeJobEditModal();
+}
+
+function renderEditModalMaterials() {
+  const container = document.getElementById('editModalMaterials');
+  if (!container) return;
+  const materials = state.editJob.materials || [];
+  if (materials.length === 0) {
+    container.innerHTML = '<div style="color:var(--grey-400);font-size:13px;padding:8px 0;">No materials. Add one below.</div>';
+    return;
+  }
+  const prices = getMaterialPrices();
+  container.innerHTML = '';
+  materials.forEach((m, mi) => {
+    const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
+    const lt = (parseFloat(m.qty) || 0) * up;
+    const isConcrete = m.product === 'Concrete';
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--grey-100);';
+    row.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <div class="autocomplete-wrapper" style="flex:1;">
+          <input type="text" class="form-input" value="${esc(m.product||'')}" placeholder="Type or search material…"
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="editMatAC(this,${mi})" onfocus="editMatAC(this,${mi})"
+            onchange="updateEditMaterial(${mi},'product',this.value)">
+          <div class="autocomplete-list" id="ac_editmat_${mi}" style="display:none;"></div>
+        </div>
+        <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeEditMaterial(${mi})">&#128465;</button>
+      </div>
+      ${isConcrete ? `<div style="margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type</div>
+        <input type="text" class="form-input" value="${esc(m.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20…"
+          onchange="updateEditMaterial(${mi},'concreteType',this.value)">
+      </div>` : ''}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;">
+        <input type="number" class="form-input" style="width:70px;padding:10px;" value="${esc(String(m.qty||''))}" placeholder="Qty" min="0" step="0.1"
+          onchange="updateEditMaterial(${mi},'qty',this.value)">
+        <span style="color:var(--grey-400);">&times;</span>
+        <span style="color:var(--grey-600);">£</span>
+        <input type="number" class="form-input" style="width:75px;padding:10px;" value="${esc(String(up||''))}" placeholder="£/t" min="0" step="0.01" title="Unit price"
+          onchange="updateEditMaterial(${mi},'unitPrice',this.value)">
+        <span style="color:var(--grey-400);">=</span>
+        <span style="font-weight:700;color:var(--green);min-width:60px;font-size:14px;">${lt > 0 ? '£' + lt.toFixed(2) : '—'}</span>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updateEditMaterial(mi, field, value) {
+  if (!state.editJob || !state.editJob.materials || !state.editJob.materials[mi]) return;
+  state.editJob.materials[mi][field] = value;
+  if (field === 'product' && value === 'Concrete') state.editJob.materials[mi].unit = 'm³';
+  if (field === 'product' || field === 'qty' || field === 'unitPrice') renderEditModalMaterials();
+}
+
+function removeEditMaterial(mi) {
+  if (!state.editJob || !state.editJob.materials) return;
+  state.editJob.materials.splice(mi, 1);
+  renderEditModalMaterials();
+}
+
+function addEditMaterial() {
+  if (!state.editJob) return;
+  if (!state.editJob.materials) state.editJob.materials = [];
+  const product = MATERIALS[0].value;
+  state.editJob.materials.push({ product, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(product) });
+  renderEditModalMaterials();
+}
+
+function editMatAC(input, mi) {
+  const val = input.value.trim();
+  const dropdown = document.getElementById('ac_editmat_' + mi);
+  if (!dropdown) return;
+  const items = val.length === 0
+    ? MATERIALS.filter(m => m.value !== '__other__')
+    : MATERIALS.filter(m => m.value !== '__other__' && (m.label.toLowerCase().includes(val.toLowerCase()) || m.group.toLowerCase().includes(val.toLowerCase())));
+  dropdown.innerHTML = '';
+  if (items.length === 0) {
+    const d = document.createElement('div');
+    d.innerHTML = `<span style="color:var(--grey-400);font-style:italic;">Use "${esc(val)}" as custom material</span>`;
+    d.onclick = () => { input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; };
+    dropdown.appendChild(d); dropdown.style.display = 'block'; return;
+  }
+  const groups = {}; const order = [];
+  items.forEach(m => { if (!groups[m.group]) { groups[m.group] = []; order.push(m.group); } groups[m.group].push(m); });
+  order.forEach(grp => {
+    if (val.length === 0) {
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:10px;font-weight:700;color:var(--grey-400);text-transform:uppercase;letter-spacing:0.5px;padding:6px 14px 2px;background:var(--grey-50);pointer-events:none;';
+      hdr.textContent = grp; dropdown.appendChild(hdr);
+    }
+    groups[grp].forEach(m => {
+      const d = document.createElement('div');
+      if (val.length > 0) {
+        const i = m.label.toLowerCase().indexOf(val.toLowerCase());
+        d.innerHTML = i >= 0 ? esc(m.label.slice(0,i)) + `<strong>${esc(m.label.slice(i,i+val.length))}</strong>` + esc(m.label.slice(i+val.length)) : esc(m.label);
+      } else { d.textContent = m.label; }
+      d.onclick = () => { input.value = m.value; input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; };
+      dropdown.appendChild(d);
+    });
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', e => { if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none'; }, { once: true });
+}
+
+function editCustomerAC(input) {
+  const val = input.value.trim();
+  const dropdown = document.getElementById('ac_editCustomer');
+  if (!dropdown) return;
+  const matches = val.length === 0 ? CUSTOMERS_LIST.slice(0, 50) : CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 20);
+  dropdown.innerHTML = '';
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+  matches.forEach(name => {
+    const d = document.createElement('div');
+    if (val.length > 0) {
+      const i = name.toLowerCase().indexOf(val.toLowerCase());
+      d.innerHTML = esc(name.slice(0,i)) + `<strong>${esc(name.slice(i,i+val.length))}</strong>` + esc(name.slice(i+val.length));
+    } else { d.textContent = name; }
+    d.onclick = () => { input.value = name; state.editJob.customer = name; dropdown.style.display = 'none'; };
+    dropdown.appendChild(d);
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', e => { if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none'; }, { once: true });
+}
+
+function editAddressAC(input, field) {
+  const val = input.value.trim();
+  const dropId = field === 'collectedFrom' ? 'ac_editFrom' : 'ac_editTo';
+  const dropdown = document.getElementById(dropId);
+  if (!dropdown || !val || val.length < 2) { if (dropdown) dropdown.style.display = 'none'; return; }
+  const book = getAddressBook();
+  const matches = book.filter(a => a.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+  dropdown.innerHTML = '';
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+  matches.forEach(addr => {
+    const d = document.createElement('div');
+    d.textContent = addr;
+    d.onclick = () => { input.value = addr; state.editJob[field] = addr; dropdown.style.display = 'none'; };
+    dropdown.appendChild(d);
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', e => { if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none'; }, { once: true });
+}
+
+async function saveJobEdit() {
+  const driver = state.editJobDriver;
+  const idx = state.editJobIdx;
+  const date = state.editJobDate;
+  if (!driver || idx === undefined || !state.editJob || !date) return;
+
+  // Flush any unfired onchange values from form fields
+  const customerEl = document.getElementById('editCustomer');
+  if (customerEl) state.editJob.customer = customerEl.value;
+  const fromEl = document.getElementById('editFrom');
+  if (fromEl) state.editJob.collectedFrom = fromEl.value;
+  const toEl = document.getElementById('editTo');
+  if (toEl) state.editJob.deliveredTo = toEl.value;
+  const vehicleEl = document.querySelector('#jobEditBody select');
+  if (vehicleEl) state.editJob.vehicle = vehicleEl.value;
+  const priceEl = document.getElementById('editPrice');
+  if (priceEl) state.editJob.price = priceEl.value;
+  const ticketEl = document.querySelector('#jobEditBody input[onchange*="ticketNo"]');
+  if (ticketEl) state.editJob.ticketNo = ticketEl.value;
+  const notesEl = document.querySelector('#jobEditBody textarea');
+  if (notesEl) state.editJob.notes = notesEl.value;
+
+  const jobs = getJobsForDate(date);
+  if (!jobs[driver] || !jobs[driver][idx]) { closeJobEditModal(); return; }
+
+  const existing = jobs[driver][idx];
+  Object.assign(existing, {
+    customer:      state.editJob.customer,
+    vehicle:       state.editJob.vehicle,
+    collectedFrom: state.editJob.collectedFrom,
+    deliveredTo:   state.editJob.deliveredTo,
+    materials:     state.editJob.materials,
+    price:         state.editJob.price,
+    ticketNo:      state.editJob.ticketNo,
+    notes:         state.editJob.notes,
+  });
+
+  setJobsForDate(date, jobs);
+  saveCustomer(existing.customer);
+  saveAddress(existing.collectedFrom);
+  saveAddress(existing.deliveredTo);
+  cloudPutJobs(date, jobs);
+
+  closeJobEditModal();
+
+  // Re-render the appropriate view
+  if (date === state.currentDate && document.getElementById('driverJobs') && document.getElementById('driverJobs').style.display !== 'none') {
+    renderDriverJobs();
+  }
+  if (typeof _jimHaulageData !== 'undefined' && _jimHaulageData && document.getElementById('jimHaulage') && document.getElementById('jimHaulage').style.display !== 'none') {
+    _jimHaulageData[driver] = jobs[driver];
+    jimRenderHaulageJobs(_jimHaulageData);
+  }
+
+  showToast('Job updated ✓');
 }
 
 function generateLocalTicketRef(dateStr) {
@@ -2917,6 +3257,7 @@ function jimRenderHaulageJobs(allJobs) {
         const div = document.createElement('div');
         div.className = 'card';
         div.style.cssText = `cursor:pointer;margin-bottom:10px;border-left:4px solid ${borderColor};`;
+        const dq2 = driver.replace(/'/g, "\\'");
         div.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div style="flex:1;">
@@ -2924,12 +3265,13 @@ function jimRenderHaulageJobs(allJobs) {
               <div style="font-size:13px;color:var(--grey-600);margin-top:2px;">${esc(mats||'No materials')}</div>
               <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${job.jobNumber ? esc(job.jobNumber)+' · ' : ''}${esc(job.vehicle||'')}${showDriverBadge ? ' <span class="badge badge-grey" style="margin-left:4px;">' + esc(driver) + '</span>' : ''}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0;padding-left:8px;">
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;padding-left:8px;">
+              <button onclick="event.stopPropagation();openJobEditModal('${dq2}',${idx},_jimHaulageDate)" style="background:var(--navy);color:white;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️ Edit</button>
               ${job.price ? `<div style="font-size:15px;font-weight:700;color:var(--green);">£${Number(job.price).toFixed(2)}</div>` : '<div style="font-size:11px;font-weight:700;color:var(--orange);">UNPRICED</div>'}
             </div>
           </div>
         `;
-        div.addEventListener('click', () => jimOpenEditJob(driver, idx));
+        div.addEventListener('click', () => openJobEditModal(driver, idx, _jimHaulageDate));
         section.appendChild(div);
       });
     }
