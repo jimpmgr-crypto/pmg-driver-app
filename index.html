@@ -982,6 +982,7 @@ function selectDriver(name) {
 
 function backToDriverLanding() {
   state.currentDriver = null;
+  state.viewDriver = null;
   document.getElementById('driverLanding').style.display = 'block';
   document.getElementById('driverJobs').style.display = 'none';
   document.getElementById('driverConfirm').style.display = 'none';
@@ -2848,40 +2849,96 @@ async function jimLoadHaulage() {
 function jimRenderHaulageJobs(allJobs) {
   const c = document.getElementById('jimHaulageList');
   if (!c) return;
-  const drivers = Object.keys(allJobs).filter(d => (allJobs[d]||[]).length > 0);
-  if (!drivers.length) {
-    c.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:32px;">No jobs for ' + esc(_jimHaulageDate) + '</div>';
+  c.innerHTML = '';
+
+  // Use known driver order, include any unknown keys present in data
+  const knownDrivers = getDrivers();
+  const allDriversWithJobs = knownDrivers.filter(d => (allJobs[d]||[]).length > 0);
+  Object.keys(allJobs).forEach(d => {
+    if ((allJobs[d]||[]).length > 0 && !allDriversWithJobs.includes(d)) allDriversWithJobs.push(d);
+  });
+
+  // Driver filter tabs
+  const filterDiv = document.createElement('div');
+  filterDiv.className = 'driver-tabs';
+  filterDiv.style.marginBottom = '12px';
+  function addJimTab(label, val) {
+    const btn = document.createElement('button');
+    btn.className = 'driver-tab' + (_jimViewDriver === val ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => { _jimViewDriver = val; jimRenderHaulageJobs(allJobs); };
+    filterDiv.appendChild(btn);
+  }
+  addJimTab('All Drivers', '__all__');
+  allDriversWithJobs.forEach(d => addJimTab(d, d));
+  c.appendChild(filterDiv);
+
+  // Gather jobs for selected driver(s)
+  let pairs = [];
+  if (_jimViewDriver === '__all__') {
+    allDriversWithJobs.forEach(d => {
+      (allJobs[d] || []).forEach((job, idx) => pairs.push({ job, idx, driver: d }));
+    });
+  } else {
+    (allJobs[_jimViewDriver] || []).forEach((job, idx) => pairs.push({ job, idx, driver: _jimViewDriver }));
+  }
+
+  if (pairs.length === 0) {
+    const msg = document.createElement('div');
+    msg.className = 'card';
+    msg.style.cssText = 'text-align:center;color:var(--grey-400);padding:32px;';
+    msg.textContent = 'No jobs for ' + esc(_jimHaulageDate);
+    c.appendChild(msg);
     return;
   }
-  c.innerHTML = '';
-  drivers.forEach(driver => {
-    const jobs = allJobs[driver] || [];
-    const driverHeader = document.createElement('div');
-    driverHeader.style.cssText = 'font-size:13px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;';
-    driverHeader.textContent = driver;
-    c.appendChild(driverHeader);
-    jobs.forEach((job, idx) => {
-      const mats = (job.materials||[]).map(m => [m.qty,m.unit,m.product].filter(Boolean).join(' ')).join(', ');
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.style.cssText = 'cursor:pointer;margin-bottom:12px;border-left:4px solid var(--amber);';
-      div.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="flex:1;">
-            <div style="font-weight:700;font-size:15px;color:var(--navy);">${esc(job.customer||'Unknown')}</div>
-            <div style="font-size:13px;color:var(--grey-600);margin-top:4px;">${esc(mats||'No materials')}</div>
-            <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${job.jobNumber ? esc(job.jobNumber)+' · ' : ''}${esc(job.vehicle||'')}</div>
+
+  const showDriverBadge = _jimViewDriver === '__all__';
+  const todo   = pairs.filter(p => (p.job.status || 'pending') === 'pending');
+  const inprog = pairs.filter(p => p.job.status === 'inprogress');
+  const done   = pairs.filter(p => p.job.status === 'completed');
+
+  function renderJimSection(title, list) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:20px;';
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+    hdr.innerHTML = `<span style="font-size:15px;font-weight:700;color:var(--navy);">${title}</span>`
+      + `<span class="badge badge-navy" style="font-size:11px;">${list.length}</span>`;
+    section.appendChild(hdr);
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:13px;color:var(--grey-400);padding:6px 4px 14px;';
+      empty.textContent = 'None';
+      section.appendChild(empty);
+    } else {
+      list.forEach(({ job, idx, driver }) => {
+        const mats = (job.materials||[]).map(m => [m.qty,m.unit,m.product].filter(Boolean).join(' ')).join(', ');
+        const borderColor = job.status === 'completed' ? 'var(--green)' : job.status === 'inprogress' ? 'var(--amber)' : 'var(--grey-300)';
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.cssText = `cursor:pointer;margin-bottom:10px;border-left:4px solid ${borderColor};`;
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:15px;color:var(--navy);">${esc(job.customer||'Unknown')}</div>
+              <div style="font-size:13px;color:var(--grey-600);margin-top:2px;">${esc(mats||'No materials')}</div>
+              <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${job.jobNumber ? esc(job.jobNumber)+' · ' : ''}${esc(job.vehicle||'')}${showDriverBadge ? ' <span class="badge badge-grey" style="margin-left:4px;">' + esc(driver) + '</span>' : ''}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;padding-left:8px;">
+              ${job.price ? `<div style="font-size:15px;font-weight:700;color:var(--green);">£${Number(job.price).toFixed(2)}</div>` : '<div style="font-size:11px;font-weight:700;color:var(--orange);">UNPRICED</div>'}
+            </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;padding-left:8px;">
-            ${job.price ? `<div style="font-size:16px;font-weight:700;color:var(--green);">£${Number(job.price).toFixed(2)}</div>` : '<div style="font-size:12px;font-weight:700;color:var(--orange);">UNPRICED</div>'}
-            <div style="font-size:11px;color:var(--grey-400);margin-top:4px;">${esc(job.status||'pending')}</div>
-          </div>
-        </div>
-      `;
-      div.addEventListener('click', () => jimOpenEditJob(driver, idx));
-      c.appendChild(div);
-    });
-  });
+        `;
+        div.addEventListener('click', () => jimOpenEditJob(driver, idx));
+        section.appendChild(div);
+      });
+    }
+    c.appendChild(section);
+  }
+
+  renderJimSection('⬜ To Do', todo);
+  renderJimSection('🟡 In Progress', inprog);
+  renderJimSection('✅ Done Today', done);
 }
 
 function jimOpenEditJob(driver, idx) {
