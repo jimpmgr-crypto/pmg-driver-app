@@ -1179,13 +1179,13 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
                <div class="job-customer" style="flex:1;min-width:0;">${esc(job.customer)}</div>
                <button onclick="clearJobCustomer('${dq}',${idx})" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Change customer">✏️</button>
              </div>`
-          : `<div style="margin-top:4px;">
+          : `<div style="margin-top:4px;position:relative;">
                <input type="text" class="form-input" style="font-size:15px;font-weight:700;background:rgba(255,255,255,0.15);border-color:rgba(255,200,50,0.7);color:white;" placeholder="⚠️ Tap or type customer name..." autocomplete="off" autocorrect="off"
                  oninput="customerAutocompleteInline(this,'${dq}',${idx})"
                  onfocus="customerAutocompleteInline(this,'${dq}',${idx},true)"
                  onchange="updateJobFieldInline('${dq}',${idx},'customer',this.value)"
                  value="">
-               <div class="autocomplete-list" id="ac_inline_customer_${idx}" style="display:none;background:white;color:var(--navy);z-index:100;border-radius:var(--radius-sm);margin-top:2px;"></div>
+               <div class="autocomplete-list" id="ac_inline_customer_${idx}" style="display:none;background:white;color:var(--navy);z-index:9999;border-radius:var(--radius-sm);margin-top:2px;position:absolute;left:0;right:0;box-shadow:0 4px 16px rgba(0,0,0,0.18);"></div>
              </div>`
         }
         ${showDriverName ? `<div style="font-size:11px;color:var(--grey-400);margin-top:2px;">${esc(driver)}</div>` : ''}
