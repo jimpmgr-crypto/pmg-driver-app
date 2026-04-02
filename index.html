@@ -494,6 +494,14 @@
     display: flex; align-items: center; justify-content: center; color: var(--grey-600);
   }
   .price-field-amber { border-color: var(--amber) !important; background: #fffbeb !important; }
+  /* TRAFFIC LIGHT */
+  .tl-summary { display:flex;gap:10px;background:var(--navy);border-radius:var(--radius-sm);padding:14px 16px;color:white;flex-wrap:wrap;margin-bottom:16px; }
+  .tl-summary-cell { flex:1;text-align:center;min-width:70px; }
+  .tl-summary-cell .tl-count { font-size:22px;font-weight:700; }
+  .tl-summary-cell .tl-label { font-size:11px;opacity:0.8;margin-top:2px; }
+  .jim-haul-tabs { display:flex;gap:0;background:var(--grey-200);border-radius:var(--radius-sm);padding:3px;margin-bottom:16px; }
+  .jim-haul-tab { flex:1;padding:10px;border:none;background:transparent;border-radius:6px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;color:var(--grey-600);transition:all 0.2s; }
+  .jim-haul-tab.active { background:white;color:var(--navy);box-shadow:var(--shadow); }
 </style>
 </head>
 <body>
@@ -629,7 +637,8 @@
     </div>
     <div class="card">
       <div class="card-title">Haulage Day Sheets</div>
-      <button class="btn btn-navy btn-full" onclick="jimOpenHaulage()">🚛 View Day Sheet Jobs</button>
+      <button class="btn btn-navy btn-full" style="margin-bottom:10px;" onclick="jimOpenHaulage()">🚛 View Day Sheet Jobs</button>
+      <button class="btn btn-full" style="background:var(--red);color:white;" onclick="jimShowPreHaultech()">📋 Pre-Haultech Review (Tonight)</button>
     </div>
   </div>
 
@@ -660,12 +669,30 @@
   <div id="jimHaulage" style="display:none;">
     <button class="back-btn" onclick="jimShowScreen('jimLanding')">← Back</button>
     <div class="section-header"><h2>Day Sheet Jobs</h2></div>
-    <div class="form-group" style="margin-bottom:16px;">
-      <label class="form-label">Date</label>
-      <input type="date" class="form-input" id="jimHaulageDatePicker" style="max-width:200px;"
-        onchange="_jimHaulageDate=this.value;jimLoadHaulage();">
+    <div class="jim-haul-tabs">
+      <button class="jim-haul-tab active" id="jimHaulTab1" onclick="jimSwitchHaulageTab('jobs')">🚛 All Jobs</button>
+      <button class="jim-haul-tab" id="jimHaulTab2" onclick="jimSwitchHaulageTab('review')">📋 Our Jobs / Review</button>
     </div>
-    <div id="jimHaulageList"></div>
+    <div id="jimHaulJobsView">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="jimHaulageDatePicker" style="max-width:200px;"
+          onchange="_jimHaulageDate=this.value;jimLoadHaulage();">
+      </div>
+      <div id="jimHaulageList"></div>
+    </div>
+    <div id="jimHaulReviewView" style="display:none;">
+      <div id="jimHaulReviewSummary"></div>
+      <div id="jimHaulReviewContent"></div>
+    </div>
+  </div>
+
+  <!-- PRE-HAULTECH REVIEW -->
+  <div id="jimPreHaultech" style="display:none;">
+    <button class="back-btn" onclick="jimShowScreen('jimLanding')">← Back</button>
+    <div class="section-header"><h2>📋 Pre-Haultech Review</h2></div>
+    <div id="jimPreHaultechSummary"></div>
+    <div id="jimPreHaultechContent"></div>
   </div>
 
   <!-- EDIT HAULAGE JOB -->
@@ -1057,6 +1084,22 @@ function renderDriverJobs() {
 
   // Gather jobs for selected driver(s)
   const allJobs = getJobsForDate(state.currentDate);
+
+  // Auto-correct: jobs with a signature should always be status=completed
+  let _sigFixNeeded = false;
+  Object.keys(allJobs).forEach(d => {
+    (allJobs[d] || []).forEach(job => {
+      if (job.signature && job.status !== 'completed') {
+        job.status = 'completed';
+        _sigFixNeeded = true;
+      }
+    });
+  });
+  if (_sigFixNeeded) {
+    setJobsForDate(state.currentDate, allJobs);
+    cloudPutJobs(state.currentDate, allJobs);
+  }
+
   let pairs = []; // { job, idx, driver }
   if (vd === '__all__') {
     drivers.forEach(d => {
@@ -1132,7 +1175,10 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
       <div>
         <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''} ${isOTF && job.ticketNo ? `<span class="badge badge-navy" style="margin-left:6px;">${esc(job.ticketNo)}</span>` : ''} ${job.signature ? '<span class="badge badge-green" style="margin-left:6px;">✅ Signed</span>' : ''}</div>
         ${job.customer
-          ? `<div class="job-customer">${esc(job.customer)}</div>`
+          ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+               <div class="job-customer" style="flex:1;min-width:0;">${esc(job.customer)}</div>
+               <button onclick="clearJobCustomer('${dq}',${idx})" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Change customer">✏️</button>
+             </div>`
           : `<div style="margin-top:4px;">
                <input type="text" class="form-input" style="font-size:15px;font-weight:700;background:rgba(255,255,255,0.15);border-color:rgba(255,200,50,0.7);color:white;" placeholder="⚠️ Enter customer name..." autocomplete="off" autocorrect="off"
                  oninput="customerAutocompleteInline(this,'${dq}',${idx})"
@@ -1299,7 +1345,7 @@ function addMaterialRowData(driver, jobIdx, matIdx, data) {
   const row = document.createElement('div');
   row.className = 'material-edit-row';
   row.id = `matRow_${jobIdx}_${matIdx}`;
-  row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--grey-100);';
+  row.style.cssText = 'display:block;padding:12px 0;border-bottom:1px solid var(--grey-100);';
   row.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
       <div class="autocomplete-wrapper" style="flex:1;">
@@ -1314,7 +1360,7 @@ function addMaterialRowData(driver, jobIdx, matIdx, data) {
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'qty', this.value)">
-      <select class="form-select" style="width:100px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">
+      <select class="form-select" style="flex:1;min-width:80px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">
         ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
       </select>
     </div>
@@ -1385,14 +1431,25 @@ function updateJobFieldInline(driver, idx, field, value) {
   }
 }
 
+function clearJobCustomer(driver, idx) {
+  const jobs = getJobsForDate(state.currentDate);
+  if (jobs[driver] && jobs[driver][idx]) {
+    jobs[driver][idx].customer = '';
+    setJobsForDate(state.currentDate, jobs);
+    cloudPutJobs(state.currentDate, jobs);
+    renderDriverJobs();
+  }
+}
+
 function customerAutocompleteInline(input, driver, idx) {
   const val = input.value.trim();
   const listId = `ac_inline_customer_${idx}`;
   const dropdown = document.getElementById(listId);
   if (!dropdown) return;
-  if (!val || val.length < 2) { dropdown.style.display = 'none'; return; }
-  const customers = getCustomers();
-  const matches = customers.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
+  if (!val || val.length < 1) { dropdown.style.display = 'none'; return; }
+  const local = getCustomers();
+  const combined = [...new Set([...CUSTOMERS_LIST, ...local])];
+  const matches = combined.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
   if (matches.length === 0) { dropdown.style.display = 'none'; return; }
   dropdown.innerHTML = matches.map(c => `<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;font-size:14px;" onclick="updateJobFieldInline('${driver.replace(/'/g,"\\'")}',${idx},'customer','${c.replace(/'/g,"\\'")}');document.getElementById('${listId}').style.display='none';">${esc(c)}</div>`).join('');
   dropdown.style.display = 'block';
@@ -2922,7 +2979,7 @@ function clearSig(idx) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function saveSig(driver, idx) {
+async function saveSig(driver, idx) {
   const canvas = document.getElementById('sigCanvas_' + idx);
   if (!canvas) return;
   const sig = canvas.toDataURL('image/png');
@@ -2932,11 +2989,11 @@ function saveSig(driver, idx) {
     jobs[driver][idx].status = 'completed'; // auto-complete on signature
     jobs[driver][idx].completedAt = new Date().toISOString();
     setJobsForDate(state.currentDate, jobs);
-    cloudPutJobs(state.currentDate, jobs);
+    await cloudPutJobs(state.currentDate, jobs); // wait for cloud sync before re-render
   }
   document.getElementById('sigPad_' + idx).style.display = 'none';
   showToast('✅ Signed — job marked complete');
-  renderDriverJobs(); // re-render so job moves to Done Today section
+  renderDriverJobs(); // re-render AFTER cloud sync so job moves to Done Today section
 }
 
 // ============================================================
@@ -3028,7 +3085,7 @@ function backFromJim() {
 }
 
 function jimShowScreen(screenId) {
-  ['jimLanding','jimAllTickets','jimPendingTickets','jimEditTicket','jimHaulage','jimEditJob'].forEach(id => {
+  ['jimLanding','jimAllTickets','jimPendingTickets','jimEditTicket','jimHaulage','jimEditJob','jimPreHaultech'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === screenId ? 'block' : 'none';
   });
@@ -3193,6 +3250,7 @@ async function jimSaveTicket() {
 async function jimOpenHaulage() {
   _jimViewDriver = '__all__';
   jimShowScreen('jimHaulage');
+  jimSwitchHaulageTab('jobs');
   const di = document.getElementById('jimHaulageDatePicker');
   if (di) di.value = _jimHaulageDate;
   await jimLoadHaulage();
@@ -3357,6 +3415,154 @@ function jimOpenEditJob(driver, idx) {
     </div>
   `;
   jimShowScreen('jimEditJob');
+}
+
+// ============================================================
+// JIM — HAUL TAB SWITCHER
+// ============================================================
+function jimSwitchHaulageTab(tab) {
+  const jobsView = document.getElementById('jimHaulJobsView');
+  const reviewView = document.getElementById('jimHaulReviewView');
+  const tab1 = document.getElementById('jimHaulTab1');
+  const tab2 = document.getElementById('jimHaulTab2');
+  if (tab === 'jobs') {
+    if (jobsView) jobsView.style.display = 'block';
+    if (reviewView) reviewView.style.display = 'none';
+    if (tab1) { tab1.classList.add('active'); }
+    if (tab2) { tab2.classList.remove('active'); }
+  } else {
+    if (jobsView) jobsView.style.display = 'none';
+    if (reviewView) reviewView.style.display = 'block';
+    if (tab1) { tab1.classList.remove('active'); }
+    if (tab2) { tab2.classList.add('active'); }
+    const summaryEl = document.getElementById('jimHaulReviewSummary');
+    const contentEl = document.getElementById('jimHaulReviewContent');
+    if (summaryEl && contentEl) {
+      jimRenderPreHaultech(_jimHaulageData, _jimHaulageDate, summaryEl, contentEl);
+    }
+  }
+}
+
+// ============================================================
+// JIM — PRE-HAULTECH REVIEW
+// ============================================================
+async function jimShowPreHaultech() {
+  jimShowScreen('jimPreHaultech');
+  const summaryEl = document.getElementById('jimPreHaultechSummary');
+  const contentEl = document.getElementById('jimPreHaultechContent');
+  if (!summaryEl || !contentEl) return;
+  summaryEl.innerHTML = '<div style="color:var(--grey-400);font-size:13px;text-align:center;padding:12px;">Loading…</div>';
+  contentEl.innerHTML = '';
+  const date = todayStr();
+  try {
+    const r = await fetch(`${API_URL}/jobs/${date}`, { headers: API_HDRS });
+    if (r.ok) {
+      const allJobs = await r.json();
+      jimRenderPreHaultech(allJobs, date, summaryEl, contentEl);
+    } else throw new Error();
+  } catch(e) {
+    jimRenderPreHaultech(getJobsForDate(date), date, summaryEl, contentEl);
+  }
+}
+
+function getJobTrafficLight(job) {
+  const status = job.status || 'pending';
+  const isComplete = status === 'completed' || !!job.signature;
+  const hasCustomer = !!(job.customer && job.customer.trim());
+  const hasPrice = !!(job.price && parseFloat(job.price) > 0);
+  const hasMaterial = (job.materials || []).some(m => m.product && m.product.trim());
+  if (!isComplete) return { icon: '🔴', label: 'Not completed', color: 'var(--red)' };
+  if (!hasMaterial) return { icon: '⚫', label: 'No details', color: 'var(--grey-600)' };
+  if (!hasCustomer) return { icon: '🟠', label: 'Needs customer', color: 'var(--orange)' };
+  if (!hasPrice) return { icon: '🟡', label: 'Needs price', color: 'var(--amber-dark)' };
+  return { icon: '🟢', label: 'Ready', color: 'var(--green)' };
+}
+
+function jimRenderPreHaultech(allJobs, date, summaryEl, contentEl) {
+  if (!summaryEl || !contentEl) return;
+  const drivers = getDrivers();
+  const allDriversWithJobs = drivers.filter(d => (allJobs[d] || []).length > 0);
+  Object.keys(allJobs).forEach(d => {
+    if ((allJobs[d] || []).length > 0 && !allDriversWithJobs.includes(d)) allDriversWithJobs.push(d);
+  });
+
+  let ready = 0, needsAttn = 0, notDone = 0;
+  allDriversWithJobs.forEach(driver => {
+    (allJobs[driver] || []).forEach(job => {
+      const tl = getJobTrafficLight(job);
+      if (tl.icon === '🟢') ready++;
+      else if (tl.icon === '🔴') notDone++;
+      else needsAttn++;
+    });
+  });
+
+  summaryEl.innerHTML = `
+    <div class="tl-summary">
+      <div class="tl-summary-cell">
+        <div class="tl-count" style="color:var(--green);">${ready}</div>
+        <div class="tl-label">🟢 Ready</div>
+      </div>
+      <div class="tl-summary-cell">
+        <div class="tl-count" style="color:var(--amber);">${needsAttn}</div>
+        <div class="tl-label">⚠️ Need Attention</div>
+      </div>
+      <div class="tl-summary-cell">
+        <div class="tl-count" style="color:var(--red);">${notDone}</div>
+        <div class="tl-label">🔴 Not Done</div>
+      </div>
+    </div>
+  `;
+
+  contentEl.innerHTML = '';
+  if (allDriversWithJobs.length === 0) {
+    contentEl.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:32px;">No jobs for today</div>';
+    return;
+  }
+
+  allDriversWithJobs.forEach(driver => {
+    const driverJobs = (allJobs[driver] || []);
+    if (driverJobs.length === 0) return;
+
+    const section = document.createElement('div');
+    section.style.marginBottom = '20px';
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:15px;font-weight:700;color:var(--navy);margin-bottom:8px;padding:8px 0;border-bottom:2px solid var(--grey-200);';
+    hdr.textContent = driver;
+    section.appendChild(hdr);
+
+    const table = document.createElement('div');
+    table.style.cssText = 'background:white;border-radius:var(--radius-sm);overflow:hidden;box-shadow:var(--shadow);';
+
+    driverJobs.forEach((job, idx) => {
+      const tl = getJobTrafficLight(job);
+      const mats = (job.materials || []).filter(m => m.product).map(m => m.product).join(', ');
+      const weight = (job.materials || []).map(m => m.actualWeight || m.qty).filter(Boolean).join(', ');
+      const dq = driver.replace(/'/g, "\\'");
+      const needsPrice = !job.price || parseFloat(job.price) <= 0;
+      const isComplete = job.status === 'completed' || !!job.signature;
+
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--grey-100);cursor:pointer;${needsPrice && isComplete ? 'background:#fffbeb;' : ''}`;
+      row.innerHTML = `
+        <div style="font-size:20px;flex-shrink:0;" title="${esc(tl.label)}">${tl.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(job.customer || '⚠️ No customer')}</div>
+          <div style="font-size:12px;color:var(--grey-600);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(mats || '—')}${weight ? ' · ' + esc(weight) : ''}</div>
+          <div style="font-size:11px;color:var(--grey-400);margin-top:1px;">${esc(job.status || 'pending')}${job.signature ? ' · ✅ Signed' : ''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;padding:0 4px;">
+          <div style="font-size:13px;font-weight:700;${needsPrice ? 'color:var(--orange);' : 'color:var(--green);'}">${needsPrice ? 'UNPRICED' : '£' + Number(job.price).toFixed(2)}</div>
+        </div>
+        <button onclick="event.stopPropagation();openJobEditModal('${dq}',${idx},'${date}')" style="background:var(--navy);color:white;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">✏️</button>
+      `;
+      row.addEventListener('click', () => openJobEditModal(driver, idx, date));
+      table.appendChild(row);
+    });
+
+    section.appendChild(table);
+    contentEl.appendChild(section);
+  });
 }
 
 async function jimSaveJob() {
