@@ -1180,8 +1180,9 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
                <button onclick="clearJobCustomer('${dq}',${idx})" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Change customer">✏️</button>
              </div>`
           : `<div style="margin-top:4px;">
-               <input type="text" class="form-input" style="font-size:15px;font-weight:700;background:rgba(255,255,255,0.15);border-color:rgba(255,200,50,0.7);color:white;" placeholder="⚠️ Enter customer name..." autocomplete="off" autocorrect="off"
+               <input type="text" class="form-input" style="font-size:15px;font-weight:700;background:rgba(255,255,255,0.15);border-color:rgba(255,200,50,0.7);color:white;" placeholder="⚠️ Tap or type customer name..." autocomplete="off" autocorrect="off"
                  oninput="customerAutocompleteInline(this,'${dq}',${idx})"
+                 onfocus="customerAutocompleteInline(this,'${dq}',${idx},true)"
                  onchange="updateJobFieldInline('${dq}',${idx},'customer',this.value)"
                  value="">
                <div class="autocomplete-list" id="ac_inline_customer_${idx}" style="display:none;background:white;color:var(--navy);z-index:100;border-radius:var(--radius-sm);margin-top:2px;"></div>
@@ -1190,7 +1191,10 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
         ${showDriverName ? `<div style="font-size:11px;color:var(--grey-400);margin-top:2px;">${esc(driver)}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
-        <button onclick="openJobEditModal('${dq}',${idx})" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.2px;white-space:nowrap;">✏️ Edit</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="openJobEditModal('${dq}',${idx})" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.2px;white-space:nowrap;">✏️ Edit</button>
+          ${(driver === state.currentDriver && status !== 'completed' && !job.signature) ? `<button onclick="driverDeleteJob('${dq}',${idx})" style="background:rgba(192,57,43,0.75);border:1px solid rgba(255,100,100,0.4);color:white;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️</button>` : ''}
+        </div>
         ${job.vehicle ? `<div style="font-size:12px;opacity:0.7;">${esc(job.vehicle)}</div>` : ''}
         ${job.price ? `<div style="font-size:13px;font-weight:700;color:var(--amber);">£${job.price}</div>` : '<div style="font-size:11px;color:rgba(255,200,50,0.8);">no price</div>'}
       </div>
@@ -1360,9 +1364,10 @@ function addMaterialRowData(driver, jobIdx, matIdx, data) {
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'qty', this.value)">
-      <select class="form-select" style="flex:1;min-width:80px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">
-        ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
-      </select>
+      ${data.product === 'Concrete'
+        ? `<select class="form-select" style="flex:1;min-width:80px;background:var(--amber-50,#fffbeb);font-weight:700;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)"><option selected>m³</option></select>`
+        : `<select class="form-select" style="flex:1;min-width:80px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}</select>`
+      }
     </div>
     ${data.product === 'Concrete' ? `<div style="margin-top:8px;">
       <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type (optional)</div>
@@ -1398,7 +1403,11 @@ function saveMaterialField(driver, jobIdx, matIdx, field, value) {
   const job = (jobs[driver] || [])[jobIdx];
   if (job.materials && job.materials[matIdx]) {
     job.materials[matIdx][field] = value;
-    if (field === 'product' && value === 'Concrete') {
+    if (field === 'product' && value.toLowerCase().includes('concrete')) {
+      job.materials[matIdx].unit = 'm³';
+    }
+    // Always enforce m³ for concrete regardless of how unit was set
+    if ((job.materials[matIdx].product || '').toLowerCase().includes('concrete')) {
       job.materials[matIdx].unit = 'm³';
     }
     setJobsForDate(state.currentDate, jobs);
@@ -1441,15 +1450,27 @@ function clearJobCustomer(driver, idx) {
   }
 }
 
-function customerAutocompleteInline(input, driver, idx) {
+function driverDeleteJob(driver, idx) {
+  if (driver !== state.currentDriver) return;
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[driver] || [])[idx];
+  if (!job || job.status === 'completed' || job.signature) return;
+  if (!confirm('Remove this job? Only do this if it was added by mistake.')) return;
+  jobs[driver].splice(idx, 1);
+  setJobsForDate(state.currentDate, jobs);
+  cloudPutJobs(state.currentDate, jobs);
+  renderDriverJobs();
+  showToast('Job removed');
+}
+
+function customerAutocompleteInline(input, driver, idx, showAll) {
   const val = input.value.trim();
   const listId = `ac_inline_customer_${idx}`;
   const dropdown = document.getElementById(listId);
   if (!dropdown) return;
-  if (!val || val.length < 1) { dropdown.style.display = 'none'; return; }
   const local = getCustomers();
   const combined = [...new Set([...CUSTOMERS_LIST, ...local])];
-  const matches = combined.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+  const matches = (showAll && !val) ? combined.slice(0, 20) : (!val ? [] : combined.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 12));
   if (matches.length === 0) { dropdown.style.display = 'none'; return; }
   dropdown.innerHTML = matches.map(c => `<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;font-size:14px;" onclick="updateJobFieldInline('${driver.replace(/'/g,"\\'")}',${idx},'customer','${c.replace(/'/g,"\\'")}');document.getElementById('${listId}').style.display='none';">${esc(c)}</div>`).join('');
   dropdown.style.display = 'block';
@@ -3351,7 +3372,10 @@ function jimRenderHaulageJobs(allJobs) {
               <div style="font-size:12px;color:var(--grey-400);margin-top:2px;">${job.jobNumber ? esc(job.jobNumber)+' · ' : ''}${esc(job.vehicle||'')}${showDriverBadge ? ' <span class="badge badge-grey" style="margin-left:4px;">' + esc(driver) + '</span>' : ''}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;padding-left:8px;">
-              <button onclick="event.stopPropagation();openJobEditModal('${dq2}',${idx},_jimHaulageDate)" style="background:var(--navy);color:white;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️ Edit</button>
+              <div style="display:flex;gap:6px;">
+                <button onclick="event.stopPropagation();openJobEditModal('${dq2}',${idx},_jimHaulageDate)" style="background:var(--navy);color:white;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️ Edit</button>
+                <button onclick="event.stopPropagation();jimDeleteJob('${dq2}',${idx})" style="background:#c0392b;color:white;border:none;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️</button>
+              </div>
               ${job.price ? `<div style="font-size:15px;font-weight:700;color:var(--green);">£${Number(job.price).toFixed(2)}</div>` : '<div style="font-size:11px;font-weight:700;color:var(--orange);">UNPRICED</div>'}
             </div>
           </div>
@@ -3366,6 +3390,17 @@ function jimRenderHaulageJobs(allJobs) {
   renderJimSection('⬜ To Do', todo);
   renderJimSection('🟡 In Progress', inprog);
   renderJimSection('✅ Done Today', done);
+}
+
+function jimDeleteJob(driver, idx) {
+  if (!confirm('Delete this job? This cannot be undone.')) return;
+  const jobs = getJobsForDate(_jimHaulageDate);
+  if (!jobs[driver]) return;
+  jobs[driver].splice(idx, 1);
+  setJobsForDate(_jimHaulageDate, jobs);
+  cloudPutJobs(_jimHaulageDate, jobs);
+  if (_jimHaulageData) { _jimHaulageData[driver] = jobs[driver]; jimRenderHaulageJobs(_jimHaulageData); }
+  showToast('Job deleted');
 }
 
 function jimOpenEditJob(driver, idx) {
