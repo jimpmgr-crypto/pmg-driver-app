@@ -832,6 +832,7 @@ const PASSWORD = 'richard';
 
 let state = {
   currentDriver: null,
+  viewDriver: null,
   currentDate: todayStr(),
   richardTab: 'plan',
   selectedPlanDriver: null,
@@ -968,6 +969,7 @@ function addNewDriver() {
 
 function selectDriver(name) {
   state.currentDriver = name;
+  state.viewDriver = name;
   state.currentDate = todayStr();
   document.getElementById('driverLanding').style.display = 'none';
   document.getElementById('driverJobs').style.display = 'block';
@@ -989,15 +991,81 @@ function backToDriverLanding() {
 function renderDriverJobs() {
   const container = document.getElementById('jobsList');
   container.innerHTML = '';
-  const allJobs = getJobsForDate(state.currentDate);
-  const jobs = (allJobs[state.currentDriver] || []);
-  if (jobs.length === 0) {
-    container.innerHTML = '<div class="card" style="text-align:center;color:var(--grey-400);padding:40px;">No jobs planned yet.<br>Add one below or check back later.</div>';
-    return;
+
+  // Driver filter tabs
+  const drivers = getDrivers();
+  const vd = state.viewDriver || state.currentDriver;
+  const filterDiv = document.createElement('div');
+  filterDiv.className = 'driver-tabs';
+  filterDiv.style.marginBottom = '8px';
+
+  function addDriverTab(label, val) {
+    const btn = document.createElement('button');
+    btn.className = 'driver-tab' + (vd === val ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => { state.viewDriver = val; renderDriverJobs(); };
+    filterDiv.appendChild(btn);
   }
-  jobs.forEach((job, idx) => {
-    container.appendChild(buildDriverJobCard(job, idx));
-  });
+  addDriverTab('All Drivers', '__all__');
+  drivers.forEach(d => addDriverTab(d, d));
+  container.appendChild(filterDiv);
+
+  // Gather jobs for selected driver(s)
+  const allJobs = getJobsForDate(state.currentDate);
+  let pairs = []; // { job, idx, driver }
+  if (vd === '__all__') {
+    drivers.forEach(d => {
+      (allJobs[d] || []).forEach((job, idx) => pairs.push({ job, idx, driver: d }));
+    });
+  } else {
+    (allJobs[vd] || []).forEach((job, idx) => pairs.push({ job, idx, driver: vd }));
+  }
+
+  const showDriverName = vd === '__all__';
+  const todo    = pairs.filter(p => (p.job.status || 'pending') === 'pending');
+  const inprog  = pairs.filter(p => p.job.status === 'inprogress');
+  const done    = pairs.filter(p => p.job.status === 'completed');
+
+  function renderSection(title, list, collapsible) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:20px;';
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 2px;';
+    hdr.innerHTML = `<span style="font-size:15px;font-weight:700;color:var(--navy);">${title}</span>`
+      + `<span class="badge badge-navy" style="font-size:11px;">${list.length}</span>`;
+    section.appendChild(hdr);
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:13px;color:var(--grey-400);padding:6px 4px 14px;';
+      empty.textContent = 'None';
+      section.appendChild(empty);
+    } else {
+      const cardsDiv = document.createElement('div');
+      const toShow = (collapsible && list.length > 3) ? list.slice(0, 3) : list;
+      toShow.forEach(p => cardsDiv.appendChild(buildDriverJobCard(p.job, p.idx, p.driver, showDriverName)));
+      section.appendChild(cardsDiv);
+
+      if (collapsible && list.length > 3) {
+        const rest = list.slice(3);
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'btn btn-outline btn-sm btn-full';
+        moreBtn.style.marginTop = '8px';
+        moreBtn.textContent = `Show ${rest.length} more`;
+        moreBtn.onclick = () => {
+          rest.forEach(p => cardsDiv.appendChild(buildDriverJobCard(p.job, p.idx, p.driver, showDriverName)));
+          moreBtn.remove();
+        };
+        section.appendChild(moreBtn);
+      }
+    }
+    container.appendChild(section);
+  }
+
+  renderSection('⬜ To Do', todo, false);
+  renderSection('🟡 In Progress', inprog, false);
+  renderSection('✅ Done Today', done, true);
 }
 
 function buildDriverJobCard(job, idx) {
@@ -1085,8 +1153,9 @@ function buildDriverJobCard(job, idx) {
   return div;
 }
 
-function renderMaterialsDisplay(materials, jobIdx) {
+function renderMaterialsDisplay(materials, jobIdx, driver) {
   if (!materials || materials.length === 0) return '<div style="color:var(--grey-400);font-size:14px;">No materials set</div>';
+  const dq = (driver || '').replace(/'/g, "\\'");
   const prices = getMaterialPrices();
   let html = materials.map((m, mi) => {
     const up = m.unitPrice !== undefined ? parseFloat(m.unitPrice) : (prices[m.product] || 0);
@@ -1101,15 +1170,15 @@ function renderMaterialsDisplay(materials, jobIdx) {
           <div style="font-size:11px;font-weight:600;color:var(--amber-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px;">Concrete Type${!m.concreteType?' — required to complete':''}</div>
           <input type="text" class="form-input" style="font-size:14px;${!m.concreteType?'border-color:var(--amber);':''}"
             value="${esc(m.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20..."
-            onchange="saveMaterialField(${jobIdx},${mi},'concreteType',this.value)">
+            onchange="saveMaterialField('${dq}',${jobIdx},${mi},'concreteType',this.value)">
         </div>` : ''}
         <div style="font-size:13px;margin-top:4px;">
           ${hasActual
             ? `<span style="color:var(--amber-dark);font-weight:700;">${esc(m.actualWeight)} ${esc(m.unit||'')}</span>
                <span style="color:var(--grey-400);font-size:11px;margin-left:6px;">(planned: ${esc(m.qty||'—')})</span>
-               <button onclick="clearActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--grey-400);font-size:11px;cursor:pointer;margin-left:4px;text-decoration:underline;">Change</button>`
+               <button onclick="clearActualWeight('${dq}',${jobIdx},${mi})" style="background:none;border:none;color:var(--grey-400);font-size:11px;cursor:pointer;margin-left:4px;text-decoration:underline;">Change</button>`
             : `<span style="color:var(--grey-600);">${esc(m.qty||'—')} ${esc(m.unit||'')}</span>
-               <button onclick="enterActualWeight(${jobIdx},${mi})" style="background:none;border:none;color:var(--amber-dark);font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;text-decoration:underline;">${isConcrete?'📐 Enter m³':'⚖️ Change'}</button>`
+               <button onclick="enterActualWeight('${dq}',${jobIdx},${mi})" style="background:none;border:none;color:var(--amber-dark);font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;text-decoration:underline;">${isConcrete?'📐 Enter m³':'⚖️ Change'}</button>`
           }
         </div>
         <div id="actualWeightInput_${jobIdx}_${mi}" style="display:none;margin-top:8px;">
@@ -1117,7 +1186,7 @@ function renderMaterialsDisplay(materials, jobIdx) {
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="number" class="form-input" style="max-width:120px;border-color:var(--amber);" placeholder="${esc(m.qty||'0')}" min="0" step="0.01" id="actualWeightVal_${jobIdx}_${mi}">
             <span style="color:var(--grey-600);font-size:13px;">${esc(m.unit||'')}</span>
-            <button class="btn btn-primary btn-sm" onclick="confirmActualWeight(${jobIdx},${mi})">✓ Confirm</button>
+            <button class="btn btn-primary btn-sm" onclick="confirmActualWeight('${dq}',${jobIdx},${mi})">✓ Confirm</button>
           </div>
         </div>
       </div>
@@ -1131,43 +1200,44 @@ function renderMaterialsDisplay(materials, jobIdx) {
   return html;
 }
 
-function enterActualWeight(jobIdx, matIdx) {
+function enterActualWeight(driver, jobIdx, matIdx) {
   document.getElementById('actualWeightInput_' + jobIdx + '_' + matIdx).style.display = 'block';
   document.getElementById('actualWeightVal_' + jobIdx + '_' + matIdx).focus();
 }
 
-function clearActualWeight(jobIdx, matIdx) {
+function clearActualWeight(driver, jobIdx, matIdx) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  const job = (jobs[driver] || [])[jobIdx];
   if (job && job.materials && job.materials[matIdx]) {
     delete job.materials[matIdx].actualWeight;
     setJobsForDate(state.currentDate, jobs);
-    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx, driver);
   }
 }
 
-function confirmActualWeight(jobIdx, matIdx) {
+function confirmActualWeight(driver, jobIdx, matIdx) {
   const input = document.getElementById('actualWeightVal_' + jobIdx + '_' + matIdx);
   const val = input ? input.value.trim() : '';
   if (!val) { showToast('Enter a weight first'); return; }
-  saveMaterialField(jobIdx, matIdx, 'actualWeight', val);
+  saveMaterialField(driver, jobIdx, matIdx, 'actualWeight', val);
 }
 
-function toggleMaterialEdit(idx) {
+function toggleMaterialEdit(driver, idx) {
   const editDiv = document.getElementById('materialEdit_' + idx);
   const rowsDiv = document.getElementById('materialEditRows_' + idx);
   const isHidden = editDiv.style.display === 'none';
   editDiv.style.display = isHidden ? 'block' : 'none';
   if (isHidden) {
     const jobs = getJobsForDate(state.currentDate);
-    const job = (jobs[state.currentDriver] || [])[idx];
+    const job = (jobs[driver] || [])[idx];
     rowsDiv.innerHTML = '';
     const materials = job.materials && job.materials.length ? job.materials : [{ product: '', qty: '', unit: 'Tonnes' }];
-    materials.forEach((m, mi) => addMaterialRowData(idx, mi, m));
+    materials.forEach((m, mi) => addMaterialRowData(driver, idx, mi, m));
   }
 }
 
-function addMaterialRowData(jobIdx, matIdx, data) {
+function addMaterialRowData(driver, jobIdx, matIdx, data) {
+  const dq = driver.replace(/'/g, "\\'");
   const container = document.getElementById('materialEditRows_' + jobIdx);
   const row = document.createElement('div');
   row.className = 'material-edit-row';
@@ -1180,77 +1250,78 @@ function addMaterialRowData(jobIdx, matIdx, data) {
           autocomplete="off" autocorrect="off" spellcheck="false"
           oninput="materialAutocomplete(this,${jobIdx},${matIdx},'driver')"
           onfocus="materialAutocomplete(this,${jobIdx},${matIdx},'driver')"
-          onchange="saveMaterialField(${jobIdx},${matIdx},'product',this.value)">
+          onchange="saveMaterialField('${dq}',${jobIdx},${matIdx},'product',this.value)">
         <div class="autocomplete-list" id="ac_drvmat_${jobIdx}_${matIdx}" style="display:none;"></div>
       </div>
-      <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow(${jobIdx}, ${matIdx})">&#128465;</button>
+      <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow('${dq}', ${jobIdx}, ${matIdx})">&#128465;</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'qty', this.value)">
-      <select class="form-select" style="width:100px;" onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'unit', this.value)">
+      <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'qty', this.value)">
+      <select class="form-select" style="width:100px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">
         ${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}
       </select>
     </div>
     ${data.product === 'Concrete' ? `<div style="margin-top:8px;">
       <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type (optional)</div>
       <input type="text" class="form-input" value="${esc(data.concreteType||'')}" placeholder="e.g. ST1, RC40, C25, C20..."
-        onchange="saveMaterialField(${jobIdx}, ${matIdx}, 'concreteType', this.value)">
+        onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'concreteType', this.value)">
     </div>` : ''}
   `;
   container.appendChild(row);
 }
 
-function addMaterialRow(jobIdx) {
+function addMaterialRow(driver, jobIdx) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  const job = (jobs[driver] || [])[jobIdx];
   if (!job.materials) job.materials = [];
   const newIdx = job.materials.length;
   job.materials.push({ product: PRODUCTS[0], qty: '', unit: 'Tonnes' });
   setJobsForDate(state.currentDate, jobs);
-  addMaterialRowData(jobIdx, newIdx, job.materials[newIdx]);
-  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+  addMaterialRowData(driver, jobIdx, newIdx, job.materials[newIdx]);
+  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx, driver);
 }
 
-function removeMaterialRow(jobIdx, matIdx) {
+function removeMaterialRow(driver, jobIdx, matIdx) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  const job = (jobs[driver] || [])[jobIdx];
   if (job.materials) { job.materials.splice(matIdx, 1); setJobsForDate(state.currentDate, jobs); }
-  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials || [], jobIdx);
+  document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials || [], jobIdx, driver);
   document.getElementById('materialEditRows_' + jobIdx).innerHTML = '';
-  (job.materials || []).forEach((m, mi) => addMaterialRowData(jobIdx, mi, m));
+  (job.materials || []).forEach((m, mi) => addMaterialRowData(driver, jobIdx, mi, m));
 }
 
-function saveMaterialField(jobIdx, matIdx, field, value) {
+function saveMaterialField(driver, jobIdx, matIdx, field, value) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[jobIdx];
+  const job = (jobs[driver] || [])[jobIdx];
   if (job.materials && job.materials[matIdx]) {
     job.materials[matIdx][field] = value;
     if (field === 'product' && value === 'Concrete') {
       job.materials[matIdx].unit = 'm³';
     }
     setJobsForDate(state.currentDate, jobs);
-    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx);
+    document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx, driver);
     if (field === 'product') {
       const editRows = document.getElementById('materialEditRows_' + jobIdx);
       if (editRows && editRows.children.length > 0) {
         editRows.innerHTML = '';
-        job.materials.forEach((m, mi) => addMaterialRowData(jobIdx, mi, m));
+        job.materials.forEach((m, mi) => addMaterialRowData(driver, jobIdx, mi, m));
       }
     }
   }
 }
 
-function updateJobField(idx, field, value) {
+function updateJobField(driver, idx, field, value) {
   const jobs = getJobsForDate(state.currentDate);
-  if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
-    jobs[state.currentDriver][idx][field] = value;
+  if (jobs[driver] && jobs[driver][idx]) {
+    jobs[driver][idx][field] = value;
     setJobsForDate(state.currentDate, jobs);
   }
 }
 
-function cycleStatus(idx) {
+function cycleStatus(driver, idx) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[idx];
+  const job = (jobs[driver] || [])[idx];
+  if (!job) return;
   const cycle = { pending: 'inprogress', inprogress: 'completed', completed: 'pending' };
   const nextStatus = cycle[job.status || 'pending'];
   if (nextStatus === 'completed') {
@@ -1266,12 +1337,12 @@ function cycleStatus(idx) {
     }
   }
   job.status = nextStatus;
+  if (nextStatus === 'inprogress' && !job.startedAt) {
+    job.startedAt = new Date().toISOString();
+  }
   setJobsForDate(state.currentDate, jobs);
-  const statusLabels = { pending: '⬜ Tap to Start', inprogress: '🟡 In Progress — Tap to Complete', completed: '✅ Completed' };
-  const statusClasses = { pending: 'status-pending', inprogress: 'status-inprogress', completed: 'status-completed' };
-  const btn = document.querySelector(`#driverJob_${idx} .status-btn`);
-  btn.className = 'status-btn ' + statusClasses[job.status];
-  btn.textContent = statusLabels[job.status];
+  cloudPutJobs(state.currentDate, jobs); // sync to cloud on every status change
+  renderDriverJobs();
 }
 
 function generateLocalTicketRef(dateStr) {
@@ -2369,9 +2440,9 @@ function triggerPhotoInput(idx) {
   document.getElementById('photoInput_' + idx)?.click();
 }
 
-function showPhotoOverlay(_, idx) {
+function showPhotoOverlay(driver, idx) {
   const jobs = getJobsForDate(state.currentDate);
-  const job = (jobs[state.currentDriver] || [])[idx];
+  const job = (jobs[driver] || [])[idx];
   if (!job || !job.photo) return;
   const overlay = document.getElementById('photoOverlay');
   const img = document.getElementById('photoOverlayImg');
@@ -2379,7 +2450,7 @@ function showPhotoOverlay(_, idx) {
   overlay.style.display = 'flex';
 }
 
-function handlePhotoCapture(idx, input) {
+function handlePhotoCapture(driver, idx, input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -2393,21 +2464,19 @@ function handlePhotoCapture(idx, input) {
       canvas.height = Math.round(img.height * ratio);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
-      // Save to job
       const jobs = getJobsForDate(state.currentDate);
-      if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
-        jobs[state.currentDriver][idx].photo = base64;
+      if (jobs[driver] && jobs[driver][idx]) {
+        jobs[driver][idx].photo = base64;
         setJobsForDate(state.currentDate, jobs);
-        // Upload to cloud
-        const photoId = `${state.currentDate.replace(/-/g,'')}_${state.currentDriver.replace(/\s/g,'')}_${idx}`;
+        const photoId = `${state.currentDate.replace(/-/g,'')}_${driver.replace(/\s/g,'')}_${idx}`;
         fetch(`${API_URL}/photos/${photoId}`, {
           method: 'PUT', headers: API_HDRS_JSON, body: JSON.stringify({ data: base64 })
         }).catch(() => {});
       }
-      // Re-render photo area
       const area = document.getElementById('photoArea_' + idx);
       if (area) {
-        area.innerHTML = `<img src="${base64}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('',${idx})">
+        const dq = driver.replace(/'/g, "\\'");
+        area.innerHTML = `<img src="${base64}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('${dq}',${idx})">
         <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="triggerPhotoInput(${idx})">📷 Replace</button>`;
       }
       showToast('📷 Photo saved');
@@ -2462,24 +2531,21 @@ function clearSig(idx) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function saveSig(idx) {
+function saveSig(driver, idx) {
   const canvas = document.getElementById('sigCanvas_' + idx);
   if (!canvas) return;
   const sig = canvas.toDataURL('image/png');
   const jobs = getJobsForDate(state.currentDate);
-  if (jobs[state.currentDriver] && jobs[state.currentDriver][idx]) {
-    jobs[state.currentDriver][idx].signature = sig;
+  if (jobs[driver] && jobs[driver][idx]) {
+    jobs[driver][idx].signature = sig;
     setJobsForDate(state.currentDate, jobs);
-    // Push to cloud
     cloudPutJobs(state.currentDate, jobs);
   }
-  // Update sig area display
   const area = document.getElementById('sigArea_' + idx);
   if (area) {
     area.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span class="badge badge-green">✅ Signed</span><img src="${sig}" style="height:40px;border:1px solid var(--grey-200);border-radius:4px;background:white;"><button class="btn btn-outline btn-sm" onclick="showSigPad(${idx})">Re-sign</button></div>`;
   }
   document.getElementById('sigPad_' + idx).style.display = 'none';
-  // Update header badge
   const header = document.querySelector(`#driverJob_${idx} .job-num`);
   if (header && !header.innerHTML.includes('Signed')) {
     header.innerHTML += ' <span class="badge badge-green">✅ Signed</span>';
