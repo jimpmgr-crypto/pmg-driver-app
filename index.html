@@ -2929,19 +2929,14 @@ function saveSig(driver, idx) {
   const jobs = getJobsForDate(state.currentDate);
   if (jobs[driver] && jobs[driver][idx]) {
     jobs[driver][idx].signature = sig;
+    jobs[driver][idx].status = 'completed'; // auto-complete on signature
+    jobs[driver][idx].completedAt = new Date().toISOString();
     setJobsForDate(state.currentDate, jobs);
     cloudPutJobs(state.currentDate, jobs);
   }
-  const area = document.getElementById('sigArea_' + idx);
-  if (area) {
-    area.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span class="badge badge-green">✅ Signed</span><img src="${sig}" style="height:40px;border:1px solid var(--grey-200);border-radius:4px;background:white;"><button class="btn btn-outline btn-sm" onclick="showSigPad(${idx})">Re-sign</button></div>`;
-  }
   document.getElementById('sigPad_' + idx).style.display = 'none';
-  const header = document.querySelector(`#driverJob_${idx} .job-num`);
-  if (header && !header.innerHTML.includes('Signed')) {
-    header.innerHTML += ' <span class="badge badge-green">✅ Signed</span>';
-  }
-  showToast('✅ Signature saved');
+  showToast('✅ Signed — job marked complete');
+  renderDriverJobs(); // re-render so job moves to Done Today section
 }
 
 // ============================================================
