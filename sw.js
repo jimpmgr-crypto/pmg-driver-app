@@ -1,52 +1,37 @@
-const CACHE_NAME = 'pmg-driver-v6';
-const APP_URL = '/pmg-driver-app/index.html';
+const CACHE_NAME = 'pmg-driver-v7';
 
-// Pre-cache the app on install so it always works from home screen
+// Install — skip waiting immediately so new SW activates right away
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(c => c.add(APP_URL)).catch(() => {})
-  );
   self.skipWaiting();
 });
 
-// Clean up old caches
+// Activate — claim all clients immediately, then tell them to reload
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => {
+        // Tell all open tabs to reload so they get the new version instantly
+        return self.clients.matchAll({ type: 'window' }).then(clients => {
+          clients.forEach(client => client.navigate(client.url));
+        });
+      })
   );
 });
 
-// Network-first for HTML, cache-first for everything else
+// Network-first for everything — always try to get latest from server
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-
-  // For the main app HTML — try network first, fall back to cache
-  if (url.pathname.includes('pmg-driver-app') && (url.pathname.endsWith('/') || url.pathname.endsWith('index.html') || url.pathname.endsWith('pmg-driver-app'))) {
-    e.respondWith(
-      fetch(e.request)
-        .then(resp => {
-          if (resp && resp.status === 200) {
-            caches.open(CACHE_NAME).then(c => c.put(e.request, resp.clone()));
-          }
-          return resp;
-        })
-        .catch(() => caches.match(APP_URL).then(cached => cached || caches.match(e.request)))
-    );
-    return;
-  }
-
-  // Cache-first for fonts/assets
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        if (resp && resp.status === 200 && e.request.method === 'GET') {
-          caches.open(CACHE_NAME).then(c => c.put(e.request, resp.clone()));
+    fetch(e.request)
+      .then(resp => {
+        if (resp && resp.status === 200) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
         return resp;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(e.request))
   );
 });
