@@ -1068,11 +1068,12 @@ function renderDriverJobs() {
   renderSection('✅ Done Today', done, true);
 }
 
-function buildDriverJobCard(job, idx) {
+function buildDriverJobCard(job, idx, driver, showDriverName) {
   const div = document.createElement('div');
   div.className = 'job-card';
   div.id = 'driverJob_' + idx;
 
+  const dq = driver.replace(/'/g, "\\'");
   const isOTF = job.onTheFly;
   const status = job.status || 'pending';
   const statusLabels = { pending: '⬜ Tap to Start', inprogress: '🟡 In Progress — Tap to Complete', completed: '✅ Completed' };
@@ -1086,6 +1087,7 @@ function buildDriverJobCard(job, idx) {
       <div>
         <div class="job-num">${job.jobNumber ? `<span style="background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">${esc(job.jobNumber)}</span>` : `Job ${idx + 1}`} ${isOTF ? '<span class="badge badge-orange" style="margin-left:6px;">ON THE FLY</span>' : ''} ${isOTF && job.ticketNo ? `<span class="badge badge-navy" style="margin-left:6px;">${esc(job.ticketNo)}</span>` : ''} ${job.signature ? '<span class="badge badge-green" style="margin-left:6px;">✅ Signed</span>' : ''}</div>
         <div class="job-customer">${esc(job.customer || 'Unknown Customer')}</div>
+        ${showDriverName ? `<div style="font-size:11px;color:var(--grey-400);margin-top:2px;">${esc(driver)}</div>` : ''}
       </div>
       <div style="text-align:right;">
         ${job.vehicle ? `<div style="font-size:12px;opacity:0.7;">${esc(job.vehicle)}</div>` : ''}
@@ -1093,34 +1095,45 @@ function buildDriverJobCard(job, idx) {
       </div>
     </div>
     <div class="job-card-body">
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <div class="autocomplete-wrapper">
+          <input type="text" class="form-input" value="${esc(job.customer||'')}" placeholder="Type customer name..."
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="driverCustomerAC(this,${idx})"
+            onfocus="driverCustomerAC(this,${idx})"
+            onchange="updateJobField('${dq}',${idx},'customer',this.value)">
+          <div class="autocomplete-list" id="ac_drvcustomer_${idx}" style="display:none;"></div>
+        </div>
+      </div>
       ${job.collectedFrom ? `<div class="job-field"><div class="job-field-label">Collected From</div><a class="address-link" href="${fromMapUrl}" target="_blank">${esc(job.collectedFrom)}</a></div>` : ''}
       ${job.deliveredTo ? `<div class="job-field"><div class="job-field-label">Delivered To</div><a class="address-link" href="${toMapUrl}" target="_blank">${esc(job.deliveredTo)}</a></div>` : ''}
 
       <div class="job-field">
         <div class="job-field-label">Materials</div>
         <div class="materials-list" id="materialsList_${idx}">
-          ${renderMaterialsDisplay(job.materials || [], idx)}
+          ${renderMaterialsDisplay(job.materials || [], idx, driver)}
         </div>
-        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="toggleMaterialEdit(${idx})">✏️ Edit Materials</button>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="toggleMaterialEdit('${dq}',${idx})">✏️ Edit Materials</button>
         <div id="materialEdit_${idx}" style="display:none;margin-top:12px;">
           <div id="materialEditRows_${idx}"></div>
-          <button class="btn btn-outline btn-sm" onclick="addMaterialRow(${idx})">➕ Add Material</button>
+          <button class="btn btn-outline btn-sm" onclick="addMaterialRow('${dq}',${idx})">➕ Add Material</button>
         </div>
       </div>
 
       <div class="form-group">
         <label class="form-label">Ticket Number</label>
-        <input type="text" class="form-input" value="${esc(job.ticketNo || '')}" placeholder="Enter ticket no." onchange="updateJobField(${idx}, 'ticketNo', this.value)">
+        <input type="text" class="form-input" value="${esc(job.ticketNo || '')}" placeholder="Enter ticket no." onchange="updateJobField('${dq}',${idx},'ticketNo',this.value)">
       </div>
 
       <!-- PHOTO -->
       <div class="form-group">
         <label class="form-label">Photo</label>
         <div id="photoArea_${idx}">
-          ${job.photo ? `<img src="${job.photo}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('${job.photo.substring(0,30)}',${idx})">
+          ${job.photo ? `<img src="${job.photo}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--grey-200);" onclick="showPhotoOverlay('${dq}',${idx})">
           <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="triggerPhotoInput(${idx})">📷 Replace</button>` : `<button class="btn btn-outline btn-sm" onclick="triggerPhotoInput(${idx})">📷 Add Photo</button>`}
         </div>
-        <input type="file" accept="image/*" capture="environment" id="photoInput_${idx}" style="display:none;" onchange="handlePhotoCapture(${idx}, this)">
+        <input type="file" accept="image/*" capture="environment" id="photoInput_${idx}" style="display:none;" onchange="handlePhotoCapture('${dq}',${idx},this)">
       </div>
 
       <!-- SIGNATURE -->
@@ -1135,7 +1148,7 @@ function buildDriverJobCard(job, idx) {
         <div id="sigPad_${idx}" style="display:none;margin-top:8px;">
           <canvas id="sigCanvas_${idx}" style="width:100%;height:160px;border:2px solid var(--navy);border-radius:8px;background:white;touch-action:none;"></canvas>
           <div style="display:flex;gap:8px;margin-top:8px;">
-            <button class="btn btn-navy btn-sm" onclick="saveSig(${idx})">✓ Done</button>
+            <button class="btn btn-navy btn-sm" onclick="saveSig('${dq}',${idx})">✓ Done</button>
             <button class="btn btn-outline btn-sm" onclick="clearSig(${idx})">Clear</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('sigPad_${idx}').style.display='none'">Cancel</button>
           </div>
@@ -1144,10 +1157,10 @@ function buildDriverJobCard(job, idx) {
 
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <textarea class="form-textarea" placeholder="Any notes..." onchange="updateJobField(${idx}, 'notes', this.value)">${esc(job.notes || '')}</textarea>
+        <textarea class="form-textarea" placeholder="Any notes..." onchange="updateJobField('${dq}',${idx},'notes',this.value)">${esc(job.notes || '')}</textarea>
       </div>
 
-      <button class="status-btn ${statusClasses[status]}" onclick="cycleStatus(${idx})">${statusLabels[status]}</button>
+      <button class="status-btn ${statusClasses[status]}" onclick="cycleStatus('${dq}',${idx})">${statusLabels[status]}</button>
     </div>
   `;
   return div;
@@ -1275,7 +1288,7 @@ function addMaterialRow(driver, jobIdx) {
   const job = (jobs[driver] || [])[jobIdx];
   if (!job.materials) job.materials = [];
   const newIdx = job.materials.length;
-  job.materials.push({ product: PRODUCTS[0], qty: '', unit: 'Tonnes' });
+  job.materials.push({ product: '', qty: '', unit: 'Tonnes' });
   setJobsForDate(state.currentDate, jobs);
   addMaterialRowData(driver, jobIdx, newIdx, job.materials[newIdx]);
   document.getElementById('materialsList_' + jobIdx).innerHTML = renderMaterialsDisplay(job.materials, jobIdx, driver);
@@ -1362,34 +1375,15 @@ async function addDriverJob() {
   const localTicket = generateLocalTicketRef(state.currentDate);
   jobs[state.currentDriver].push({
     customer: '', collectedFrom: '', deliveredTo: '',
-    materials: [{ product: MATERIALS[0].value, qty: '', unit: 'Tonnes' }],
+    materials: [{ product: '', qty: '', unit: 'Tonnes' }],
     ticketNo: localTicket, notes: '', status: 'pending', onTheFly: true, price: ''
   });
   setJobsForDate(state.currentDate, jobs);
+  cloudPutJobs(state.currentDate, jobs);
+  // Switch filter to current driver so new job is visible
+  state.viewDriver = state.currentDriver;
   renderDriverJobs();
   showToast('New job added — ticket: ' + localTicket);
-  const jobIdx = getJobsForDate(state.currentDate)[state.currentDriver].length - 1;
-  try {
-    const res = await fetch('https://pmg-ticket-receiver.jimpmgr.workers.dev/api/reserve-ticket', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer pmg-collect-2026' },
-      body: JSON.stringify({ date: state.currentDate })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.ticketRef) {
-        const freshJobs = getJobsForDate(state.currentDate);
-        if (freshJobs[state.currentDriver] && freshJobs[state.currentDriver][jobIdx]) {
-          freshJobs[state.currentDriver][jobIdx].ticketNo = data.ticketRef;
-          setJobsForDate(state.currentDate, freshJobs);
-          renderDriverJobs();
-          showToast('Ticket: ' + data.ticketRef);
-        }
-      }
-    }
-  } catch(e) {
-    // Keep local fallback — already set
-  }
 }
 
 function submitDaySheet() {
@@ -1649,8 +1643,7 @@ function renderPlanMaterials(materials, jobIdx) {
 function addPlanMaterial(jobIdx) {
   const jobs = getPlanJobsForCurrentDriver();
   if (!jobs[jobIdx].materials) jobs[jobIdx].materials = [];
-  const product = MATERIALS[0].value;
-  jobs[jobIdx].materials.push({ product, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(product) });
+  jobs[jobIdx].materials.push({ product: '', qty: '', unit: 'Tonnes', unitPrice: 0 });
   document.getElementById('planMaterials_' + jobIdx).innerHTML = renderPlanMaterials(jobs[jobIdx].materials, jobIdx);
 }
 
@@ -1777,6 +1770,32 @@ function customerAutocomplete(input, idx) {
   }, { once: true });
 }
 
+function driverCustomerAC(input, idx) {
+  const val = input.value.trim();
+  const dropdown = document.getElementById('ac_drvcustomer_' + idx);
+  if (!dropdown) return;
+  const matches = val.length === 0
+    ? CUSTOMERS_LIST.slice(0, 50)
+    : CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 20);
+  dropdown.innerHTML = '';
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+  matches.forEach(name => {
+    const d = document.createElement('div');
+    if (val.length > 0) {
+      const i2 = name.toLowerCase().indexOf(val.toLowerCase());
+      d.innerHTML = esc(name.slice(0, i2)) + `<strong>${esc(name.slice(i2, i2 + val.length))}</strong>` + esc(name.slice(i2 + val.length));
+    } else {
+      d.textContent = name;
+    }
+    d.onclick = () => { input.value = name; input.dispatchEvent(new Event('change')); dropdown.style.display = 'none'; };
+    dropdown.appendChild(d);
+  });
+  dropdown.style.display = 'block';
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none';
+  }, { once: true });
+}
+
 function refreshMatTotal(jobIdx) {
   const jobs = getPlanJobsForCurrentDriver();
   const job = jobs[jobIdx];
@@ -1850,11 +1869,10 @@ function addPlanJob() {
   if (!state.planJobs[date]) state.planJobs[date] = getJobsForDate(date);
   if (!state.planJobs[date][state.selectedPlanDriver]) state.planJobs[date][state.selectedPlanDriver] = [];
   const jobNumber = generateJobNumber(date);
-  const defMat = MATERIALS[0].value;
   state.planJobs[date][state.selectedPlanDriver].push({
     jobNumber,
     customer: '', vehicle: (typeof cloudConfig !== 'undefined' && cloudConfig && cloudConfig.drivers ? (cloudConfig.drivers.find(d => d.name === state.selectedPlanDriver) || {}).vehicle || '' : ''), collectedFrom: '', deliveredTo: '',
-    materials: [{ product: defMat, qty: '', unit: 'Tonnes', unitPrice: getMaterialPrice(defMat) }],
+    materials: [{ product: '', qty: '', unit: 'Tonnes', unitPrice: 0 }],
     price: '', ticketNo: '', notes: '', status: 'pending', onTheFly: false
   });
   renderPlanJobs();
@@ -2624,6 +2642,7 @@ let _jimEditSource = 'pending';
 let _jimHaulageDate = '';
 let _jimHaulageData = {};
 let _jimEditingJob = null;
+let _jimViewDriver = '__all__';
 
 function showJim() {
   ['viewDriver','viewRichard'].forEach(id => document.getElementById(id).classList.remove('active'));
@@ -2804,6 +2823,7 @@ async function jimSaveTicket() {
 
 // -- HAULAGE DAY SHEETS --
 async function jimOpenHaulage() {
+  _jimViewDriver = '__all__';
   jimShowScreen('jimHaulage');
   const di = document.getElementById('jimHaulageDatePicker');
   if (di) di.value = _jimHaulageDate;
