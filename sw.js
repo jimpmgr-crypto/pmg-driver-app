@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-driver-v5';
+const CACHE_NAME = 'pmg-driver-v6';
 const APP_URL = '/pmg-driver-app/index.html';
 
 // Pre-cache the app on install so it always works from home screen
