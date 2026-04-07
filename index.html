@@ -735,6 +735,8 @@ const MATERIALS = [
   { group: 'RECYCLED AGGREGATES', label: '40mm Recycled MOT', value: '40mm Recycled MOT' },
   { group: 'RECYCLED AGGREGATES', label: 'Large Clean Crush', value: 'Large Clean Crush' },
   { group: 'RECYCLED AGGREGATES', label: 'Road Plainings', value: 'Road Plainings' },
+  { group: 'RECYCLED AGGREGATES', label: '20-5mm Concrete Agg', value: '20-5mm Concrete Agg' },
+  { group: 'RECYCLED AGGREGATES', label: 'Type 3 MOT', value: 'Type 3 MOT' },
   { group: 'WASHED RECYCLED', label: '20mm Clean Washed', value: '20mm Clean Washed' },
   { group: 'WASHED RECYCLED', label: '10mm Clean Washed', value: '10mm Clean Washed' },
   { group: 'QUARRIED AGGREGATES', label: '40mm Quarried MOT', value: '40mm Quarried MOT' },
@@ -752,6 +754,7 @@ const MATERIALS = [
   { group: 'SANDS', label: 'Ballast', value: 'Ballast' },
   { group: 'SANDS', label: 'Fill Sand', value: 'Fill Sand' },
   { group: 'SANDS', label: 'Grano Dust', value: 'Grano Dust' },
+  { group: 'SANDS', label: 'Blended Sand', value: 'Blended Sand' },
   { group: 'DECORATIVE', label: 'Black Ice', value: 'Black Ice' },
   { group: 'DECORATIVE', label: 'Purple Slate', value: 'Purple Slate' },
   { group: 'DECORATIVE', label: '20mm Blue Slate', value: '20mm Blue Slate' },
@@ -869,11 +872,11 @@ const CUSTOMERS_LIST = [
 ];
 const DEFAULT_MATERIAL_PRICES = {
   'Mixed Spoil Tip':10,'Clay Tip':15,'Topsoil Tip':5,'Clean Concrete/Brick':0,'Tree Stump Disposal':40,
-  '6F2 Crushed Concrete':11,'40mm Recycled MOT':16,'Large Clean Crush':19.50,'Road Plainings':19.50,
+  '6F2 Crushed Concrete':11,'40mm Recycled MOT':16,'Large Clean Crush':19.50,'Road Plainings':19.50,'20-5mm Concrete Agg':18,'Type 3 MOT':14,
   '20mm Clean Washed':26.50,'10mm Clean Washed':28.50,'40mm Quarried MOT':29.50,'20mm Quarried MOT':31.50,
   '40mm Scalpings Blue':25.50,'20mm Clean Stone':37.50,'6mm Clean Stone':37.50,'Grade 1 Topsoil':22,
   'Blended Topsoil/Compost':32,'Fill':5,'Recycled Grit Sand':24,'Quarried Grit Sand':37.50,
-  'Building Sand loose':37,'Building Sand tonne bag':54,'Ballast':38,'Fill Sand':15,'Grano Dust':37.50,
+  'Building Sand loose':37,'Building Sand tonne bag':54,'Ballast':38,'Fill Sand':15,'Grano Dust':37.50,'Blended Sand':28,
   'Black Ice':132,'Purple Slate':80,'20mm Blue Slate':71,'Golden Gravel':71,'40mm Baja Slate':77,
   'Cotswold Buff':75,'Post Mix/Post Crete':5.75,'Plastic Cement Bags':7.50,'Paper Cement Bags':7.00,
   'Cold Lay Tar Bags':9.75,'Kiln Dried Sand':3.75,'Tonne Bags (empty)':4.50,'Path Edges 150mm':4.50,
@@ -1193,6 +1196,7 @@ function buildDriverJobCard(job, idx, driver, showDriverName) {
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
         <div style="display:flex;gap:6px;">
           <button onclick="openJobEditModal('${dq}',${idx})" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.2px;white-space:nowrap;">✏️ Edit</button>
+          <button onclick="duplicateJob('${dq}',${idx})" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Duplicate job to today">📋</button>
           ${(driver === state.currentDriver && status !== 'completed' && !job.signature) ? `<button onclick="driverDeleteJob('${dq}',${idx})" style="background:rgba(192,57,43,0.75);border:1px solid rgba(255,100,100,0.4);color:white;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️</button>` : ''}
         </div>
         ${job.vehicle ? `<div style="font-size:12px;opacity:0.7;">${esc(job.vehicle)}</div>` : ''}
@@ -1461,6 +1465,26 @@ function driverDeleteJob(driver, idx) {
   cloudPutJobs(state.currentDate, jobs);
   renderDriverJobs();
   showToast('Job removed');
+}
+
+function duplicateJob(driver, idx) {
+  const jobs = getJobsForDate(state.currentDate);
+  const job = (jobs[driver] || [])[idx];
+  if (!job) return;
+  const copy = JSON.parse(JSON.stringify(job));
+  copy.status = 'pending';
+  delete copy.signature;
+  delete copy.startedAt;
+  delete copy.completedAt;
+  const todayJobs = getJobsForDate(todayStr());
+  if (!todayJobs[driver]) todayJobs[driver] = [];
+  todayJobs[driver].unshift(copy);
+  setJobsForDate(todayStr(), todayJobs);
+  cloudPutJobs(todayStr(), todayJobs);
+  if (state.currentDate !== todayStr()) state.currentDate = todayStr();
+  renderDriverJobs();
+  showToast('Job duplicated');
+  openJobEditModal(driver, 0);
 }
 
 function customerAutocompleteInline(input, driver, idx, showAll) {
