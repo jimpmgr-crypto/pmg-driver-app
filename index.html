@@ -872,11 +872,11 @@ const CUSTOMERS_LIST = [
 ];
 const DEFAULT_MATERIAL_PRICES = {
   'Mixed Spoil Tip':10,'Clay Tip':15,'Topsoil Tip':5,'Clean Concrete/Brick':0,'Tree Stump Disposal':40,
-  '6F2 Crushed Concrete':11,'40mm Recycled MOT':16,'Large Clean Crush':19.50,'Road Plainings':19.50,'20-5mm Concrete Agg':18,'Type 3 MOT':14,
+  '6F2 Crushed Concrete':11,'40mm Recycled MOT':16,'Large Clean Crush':19.50,'Road Plainings':19.50,'20-5mm Concrete Agg':37.50,'Type 3 MOT':33,
   '20mm Clean Washed':26.50,'10mm Clean Washed':28.50,'40mm Quarried MOT':29.50,'20mm Quarried MOT':31.50,
   '40mm Scalpings Blue':25.50,'20mm Clean Stone':37.50,'6mm Clean Stone':37.50,'Grade 1 Topsoil':22,
   'Blended Topsoil/Compost':32,'Fill':5,'Recycled Grit Sand':24,'Quarried Grit Sand':37.50,
-  'Building Sand loose':37,'Building Sand tonne bag':54,'Ballast':38,'Fill Sand':15,'Grano Dust':37.50,'Blended Sand':28,
+  'Building Sand loose':37,'Building Sand tonne bag':54,'Ballast':38,'Fill Sand':15,'Grano Dust':37.50,'Blended Sand':37.50,
   'Black Ice':132,'Purple Slate':80,'20mm Blue Slate':71,'Golden Gravel':71,'40mm Baja Slate':77,
   'Cotswold Buff':75,'Post Mix/Post Crete':5.75,'Plastic Cement Bags':7.50,'Paper Cement Bags':7.00,
   'Cold Lay Tar Bags':9.75,'Kiln Dried Sand':3.75,'Tonne Bags (empty)':4.50,'Path Edges 150mm':4.50,
@@ -1354,6 +1354,8 @@ function addMaterialRowData(driver, jobIdx, matIdx, data) {
   row.className = 'material-edit-row';
   row.id = `matRow_${jobIdx}_${matIdx}`;
   row.style.cssText = 'display:block;padding:12px 0;border-bottom:1px solid var(--grey-100);';
+  const prices = getMaterialPrices();
+  const unitPrice = data.unitPrice !== undefined ? data.unitPrice : (prices[data.product] || '');
   row.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
       <div class="autocomplete-wrapper" style="flex:1;">
@@ -1366,12 +1368,17 @@ function addMaterialRowData(driver, jobIdx, matIdx, data) {
       </div>
       <button class="btn btn-danger btn-sm" style="min-width:36px;flex-shrink:0;" onclick="removeMaterialRow('${dq}', ${jobIdx}, ${matIdx})">&#128465;</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input type="number" class="form-input" style="flex:1;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'qty', this.value)">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="number" class="form-input" style="flex:1;min-width:60px;" value="${esc(data.qty||'')}" placeholder="Qty" min="0" step="0.1" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'qty', this.value)">
       ${data.product === 'Concrete'
-        ? `<select class="form-select" style="flex:1;min-width:80px;background:var(--amber-50,#fffbeb);font-weight:700;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)"><option selected>m³</option></select>`
-        : `<select class="form-select" style="flex:1;min-width:80px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}</select>`
+        ? `<select class="form-select" style="flex:1;min-width:70px;background:var(--amber-50,#fffbeb);font-weight:700;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)"><option selected>m³</option></select>`
+        : `<select class="form-select" style="flex:1;min-width:70px;" onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unit', this.value)">${UNITS.map(u => `<option ${data.unit===u?'selected':''}>${u}</option>`).join('')}</select>`
       }
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;" title="Price per unit — override default for this job">
+        <span style="color:var(--grey-600);font-size:13px;font-weight:600;">£</span>
+        <input type="number" class="form-input" style="width:68px;" value="${unitPrice}" placeholder="Price" min="0" step="0.01"
+          onchange="saveMaterialField('${dq}', ${jobIdx}, ${matIdx}, 'unitPrice', this.value)">
+      </div>
     </div>
     ${data.product === 'Concrete' ? `<div style="margin-top:8px;">
       <div style="font-size:11px;font-weight:600;color:var(--grey-600);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Concrete Type (optional)</div>
