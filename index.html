@@ -174,6 +174,35 @@
   .autocomplete-list div:hover { background: var(--grey-50); }
   .autocomplete-list div:last-child { border-bottom: none; }
 
+  /* EDIT MODAL CUSTOMER AUTOCOMPLETE — fixed position so modal overflow never clips it */
+  .edit-ac-dropdown {
+    position: fixed;
+    background: white;
+    border: 2px solid var(--amber);
+    border-radius: var(--radius-sm);
+    z-index: 3000;
+    max-height: 220px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+  }
+  .edit-ac-dropdown div {
+    padding: 13px 14px;
+    cursor: pointer;
+    font-size: 15px;
+    border-bottom: 1px solid var(--grey-100);
+    -webkit-tap-highlight-color: rgba(245,158,11,0.15);
+  }
+  .edit-ac-dropdown div:active { background: #fffbeb; }
+  .edit-ac-dropdown div:last-child { border-bottom: none; }
+  .edit-customer-clear {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--grey-400); font-size: 17px;
+    cursor: pointer; padding: 6px; line-height: 1; border-radius: 50%;
+    touch-action: manipulation;
+  }
+  .edit-customer-clear:active { color: var(--grey-600); }
+
   /* BUTTONS */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -1557,14 +1586,17 @@ function openJobEditModal(driver, idx, date) {
   const body = document.getElementById('jobEditBody');
   body.innerHTML = `
     <div class="form-group">
-      <label class="form-label">Customer</label>
+      <label class="form-label">Customer <span style="font-size:11px;color:var(--amber);font-weight:600;letter-spacing:.3px;">▼ tap to change</span></label>
       <div class="autocomplete-wrapper">
         <input type="text" class="form-input" id="editCustomer" value="${esc(job.customer||'')}"
           placeholder="Type to search or enter name…"
           autocomplete="off" autocorrect="off" spellcheck="false"
+          style="border-color:var(--amber);background:#fffdf5;padding-right:36px;"
           oninput="editCustomerAC(this)" onfocus="editCustomerAC(this)"
           onchange="state.editJob.customer=this.value">
-        <div class="autocomplete-list" id="ac_editCustomer" style="display:none;"></div>
+        <button type="button" class="edit-customer-clear" title="Clear customer"
+          onclick="var i=document.getElementById('editCustomer');i.value='';state.editJob.customer='';i.focus();editCustomerAC(i);">✕</button>
+        <div class="edit-ac-dropdown" id="ac_editCustomer" style="display:none;"></div>
       </div>
     </div>
 
@@ -1748,20 +1780,69 @@ function editCustomerAC(input) {
   const val = input.value.trim();
   const dropdown = document.getElementById('ac_editCustomer');
   if (!dropdown) return;
-  const matches = val.length === 0 ? CUSTOMERS_LIST.slice(0, 50) : CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 20);
+  const matches = val.length === 0
+    ? CUSTOMERS_LIST.slice(0, 50)
+    : CUSTOMERS_LIST.filter(c => c.toLowerCase().includes(val.toLowerCase())).slice(0, 20);
   dropdown.innerHTML = '';
   if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
   matches.forEach(name => {
     const d = document.createElement('div');
     if (val.length > 0) {
       const i = name.toLowerCase().indexOf(val.toLowerCase());
       d.innerHTML = esc(name.slice(0,i)) + `<strong>${esc(name.slice(i,i+val.length))}</strong>` + esc(name.slice(i+val.length));
-    } else { d.textContent = name; }
-    d.onclick = () => { input.value = name; state.editJob.customer = name; dropdown.style.display = 'none'; };
+    } else {
+      d.textContent = name;
+    }
+    // pointerdown fires before blur/click on mobile — most reliable for touch
+    d.addEventListener('pointerdown', e => {
+      e.preventDefault(); // prevent input blur from hiding dropdown first
+      input.value = name;
+      state.editJob.customer = name;
+      dropdown.style.display = 'none';
+      // brief green flash to confirm selection
+      input.style.borderColor = '#22c55e';
+      setTimeout(() => { input.style.borderColor = 'var(--amber)'; }, 900);
+    });
     dropdown.appendChild(d);
   });
+
+  // Position using fixed coords so modal overflow-y: auto never clips the dropdown
+  const rect = input.getBoundingClientRect();
+  const dropMaxH = 220;
+  const spaceBelow = window.innerHeight - rect.bottom - 4;
+  const spaceAbove = rect.top - 4;
+
+  dropdown.style.left  = rect.left + 'px';
+  dropdown.style.width = rect.width + 'px';
+  dropdown.style.top   = 'auto';
+  dropdown.style.bottom = 'auto';
+
+  if (spaceBelow >= Math.min(dropMaxH, matches.length * 46) || spaceBelow >= spaceAbove) {
+    // Show below input
+    dropdown.style.top = (rect.bottom + 2) + 'px';
+  } else {
+    // Show above input — better when keyboard is up
+    dropdown.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
+  }
+
   dropdown.style.display = 'block';
-  document.addEventListener('click', e => { if (!dropdown.contains(e.target) && e.target !== input) dropdown.style.display = 'none'; }, { once: true });
+
+  // Close on any tap/click outside — remove stale listener first
+  if (editCustomerAC._closeHandler) {
+    document.removeEventListener('pointerdown', editCustomerAC._closeHandler);
+  }
+  editCustomerAC._closeHandler = e => {
+    if (!dropdown.contains(e.target) && e.target !== input) {
+      dropdown.style.display = 'none';
+      document.removeEventListener('pointerdown', editCustomerAC._closeHandler);
+      editCustomerAC._closeHandler = null;
+    }
+  };
+  // defer so current pointerdown (focus tap) doesn't immediately close
+  setTimeout(() => {
+    document.addEventListener('pointerdown', editCustomerAC._closeHandler);
+  }, 0);
 }
 
 function editAddressAC(input, field) {
