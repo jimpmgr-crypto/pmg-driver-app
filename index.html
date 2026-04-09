@@ -1041,6 +1041,15 @@ document.addEventListener('DOMContentLoaded', () => {
   buildDriverGrid();
   buildRichardDriverTabs();
   loadPlanJobsFromStorage();
+
+  // ?view=yard — skip driver selection and go straight to Richard's yard view
+  if (new URLSearchParams(window.location.search).get('view') === 'yard') {
+    document.getElementById('viewDriver').classList.remove('active');
+    document.getElementById('viewRichard').classList.add('active');
+    document.getElementById('headerSubtitle').textContent = "Richard's View";
+    document.getElementById('richardAuth').style.display = 'none';
+    document.getElementById('richardMain').style.display = 'block';
+  }
 });
 
 // ============================================================
