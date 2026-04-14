@@ -198,6 +198,14 @@ export default {
       return corsResponse(JSON.stringify({ ok: true }));
     }
 
+    // GET /haultech-auth-admin — return FULL auth including refresh token (for token-refresh script)
+    if (path === '/haultech-auth-admin' && request.method === 'GET') {
+      if (!isAuth) return unauthorized();
+      const val = await env.PMG_DATA.get('haultech-auth');
+      if (!val) return corsResponse(JSON.stringify({ error: 'no_auth' }), 404);
+      return corsResponse(val);
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // CUSTOMERS
     // ══════════════════════════════════════════════════════════════════════════

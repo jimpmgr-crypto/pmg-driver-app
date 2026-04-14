@@ -1149,6 +1149,19 @@ function jobCardHTML(job, idx, showDriver) {
   const isComplete = status === 'complete';
   const isDeparted = status === 'departed';
 
+  // Build Apple Maps link from delivery address fields
+  const cons = (!job._cached) ? getJobConsignment(job) : null;
+  const mapAddrParts = [];
+  if (cons) {
+    if (cons.deliveryAddressLine1) mapAddrParts.push(cons.deliveryAddressLine1);
+    if (cons.deliveryAddressLine3) mapAddrParts.push(cons.deliveryAddressLine3);
+    if (cons.deliveryPostcode)     mapAddrParts.push(cons.deliveryPostcode);
+  } else if (to) {
+    mapAddrParts.push(to);
+  }
+  const mapAddr = mapAddrParts.join(', ');
+  const mapUrl = mapAddr ? `https://maps.apple.com/?daddr=${encodeURIComponent(mapAddr)}` : null;
+
   return `
     <div class="job-card" data-idx="${idx}">
       <div class="job-card-header">
@@ -1164,6 +1177,7 @@ function jobCardHTML(job, idx, showDriver) {
             ${weight ? `<span>· ${esc(String(weight))}t</span>` : ''}
             ${price ? `<span>· £${Number(price).toFixed(2)}</span>` : ''}
           </div>
+          ${mapUrl ? `<div style="margin-top:4px"><a href="${mapUrl}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;">📍 Open in Maps</a></div>` : ''}
         </div>
         <div>${statusBadge(status)}</div>
       </div>
@@ -1222,7 +1236,15 @@ async function departJob(job, btn) {
   if (job._cached) { toast('Live Haultech connection needed to depart'); return; }
 
   const consId = getJobConsignmentId(job);
-  if (!consId) { toast('No consignment ID found'); return; }
+  const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
+
+  // Driver-added jobs have no Haultech consignment — just update locally
+  if (isDriverAdded) {
+    job.deliveryStatus = 'Departed';
+    renderJobs();
+    toast('🚛 Departed (saved locally)');
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = '…';
@@ -1311,78 +1333,132 @@ $('pod-submit').addEventListener('click', async () => {
   if (podJob._cached) { toast('Live Haultech connection needed'); return; }
 
   const consId = getJobConsignmentId(podJob);
-  if (!consId) { toast('No consignment ID'); return; }
+  const isDriverAdded = !consId || podJob._driverAdded || (podJob.id && String(podJob.id).startsWith('driver-'));
 
   const btn = $('pod-submit');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  try {
-    // 1. Complete the job in Haultech
-    const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
-    if (!completeResp.ok) {
-      const err = await completeResp.json().catch(() => ({}));
-      throw new Error(err.error || err.message || 'Complete failed');
-    }
+  // Use job id or consId as the storage key
+  const storageKey = consId || podJob.id;
 
-    // 2. Upload photo if taken
-    if (photoFile) {
-      try {
-        const photoData = await photoFile.arrayBuffer();
-        await api(`/ht/mpod/${consId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': photoFile.type || 'image/jpeg' },
-          body: photoData,
-        });
-      } catch (pe) {
-        console.warn('Photo upload failed:', pe);
-        // Save to worker KV as backup
+  try {
+    if (!isDriverAdded) {
+      // 1. Complete the job in Haultech
+      const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
+      if (!completeResp.ok) {
+        const err = await completeResp.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Complete failed');
+      }
+
+      // 2. Upload photo if taken
+      if (photoFile) {
         try {
           const photoData = await photoFile.arrayBuffer();
-          await fetch(WORKER_URL + `/photos/pod-${consId}-${Date.now()}`, {
+          await api(`/ht/mpod/${consId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': photoFile.type || 'image/jpeg' },
+            body: photoData,
+          });
+        } catch (pe) {
+          console.warn('Photo upload failed:', pe);
+          // Save to worker KV as backup
+          try {
+            const photoData = await photoFile.arrayBuffer();
+            await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
+              method: 'PUT',
+              headers: { 'X-PMG-Key': API_KEY },
+              body: photoData,
+            });
+          } catch {}
+        }
+      }
+
+      // 3. Save signature to worker KV
+      const sigData = getSignatureData();
+      if (sigData) {
+        try {
+          const sigBlob = await (await fetch(sigData)).arrayBuffer();
+          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
+            method: 'PUT',
+            headers: { 'X-PMG-Key': API_KEY },
+            body: sigBlob,
+          });
+        } catch {}
+      }
+
+      // 4. Save POD metadata to worker KV
+      try {
+        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
+          method: 'PUT',
+          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            consignmentId: consId,
+            podCode,
+            podCodeId: POD_CODES[podCode],
+            notes: $('pod-notes').value.trim(),
+            hasSignature: !!sigData,
+            hasPhoto: !!photoFile,
+            driver: currentUser.name,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch {}
+
+      podJob.deliveryStatus = 'Completed';
+      closePodModal();
+      renderJobs();
+      toast('✓ Completed — Haultech updated');
+    } else {
+      // Driver-added job — save to Worker KV only, skip Haultech
+      const sigData = getSignatureData();
+
+      // Save signature if present
+      if (sigData) {
+        try {
+          const sigBlob = await (await fetch(sigData)).arrayBuffer();
+          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
+            method: 'PUT',
+            headers: { 'X-PMG-Key': API_KEY },
+            body: sigBlob,
+          });
+        } catch {}
+      }
+
+      // Save photo if taken
+      if (photoFile) {
+        try {
+          const photoData = await photoFile.arrayBuffer();
+          await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
             method: 'PUT',
             headers: { 'X-PMG-Key': API_KEY },
             body: photoData,
           });
         } catch {}
       }
-    }
 
-    // 3. Save signature to worker KV
-    const sigData = getSignatureData();
-    if (sigData) {
+      // Save POD metadata
       try {
-        const sigBlob = await (await fetch(sigData)).arrayBuffer();
-        await fetch(WORKER_URL + `/photos/sig-${consId}-${Date.now()}`, {
+        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
           method: 'PUT',
-          headers: { 'X-PMG-Key': API_KEY },
-          body: sigBlob,
+          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId: storageKey,
+            podCode,
+            notes: $('pod-notes').value.trim(),
+            hasSignature: !!sigData,
+            hasPhoto: !!photoFile,
+            driver: currentUser.name,
+            timestamp: new Date().toISOString(),
+          }),
         });
       } catch {}
+
+      podJob.deliveryStatus = 'Completed';
+      closePodModal();
+      renderJobs();
+      toast('✓ Job completed (saved locally)');
     }
-
-    // 4. Save POD metadata to worker KV
-    try {
-      await fetch(WORKER_URL + `/ticket/pod-${consId}`, {
-        method: 'PUT',
-        headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          consignmentId: consId,
-          podCode,
-          podCodeId: POD_CODES[podCode],
-          notes: $('pod-notes').value.trim(),
-          hasSignature: !!sigData,
-          hasPhoto: !!photoFile,
-          driver: currentUser.name,
-          timestamp: new Date().toISOString(),
-        }),
-      });
-    } catch {}
-
-    podJob.deliveryStatus = 'Completed';
-    closePodModal();
-    renderJobs();
-    toast('✓ Completed — Haultech updated');
   } catch (e) {
     toast('Error: ' + e.message);
   } finally {
