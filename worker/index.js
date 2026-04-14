@@ -23,6 +23,39 @@ function notFound() {
   return corsResponse(JSON.stringify({ error: 'Not found' }), 404);
 }
 
+// ── Haultech token auto-refresh via Microsoft ROPC refresh_token flow ────────
+async function refreshHaultechToken(env) {
+  const authVal = await env.PMG_DATA.get('haultech-auth');
+  if (!authVal) return null;
+  let auth;
+  try { auth = JSON.parse(authVal); } catch { return null; }
+  if (!auth.refreshToken || !auth.clientId || !auth.tenantId) return null;
+
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: auth.clientId,
+    refresh_token: auth.refreshToken,
+    scope: `${auth.clientId}/access_as_user offline_access`,
+  });
+
+  try {
+    const resp = await fetch(`https://login.microsoftonline.com/${auth.tenantId}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const result = await resp.json();
+    if (result.access_token) {
+      // Update stored auth with new tokens
+      auth.token = result.access_token;
+      if (result.refresh_token) auth.refreshToken = result.refresh_token;
+      await env.PMG_DATA.put('haultech-auth', JSON.stringify(auth));
+      return result.access_token;
+    }
+  } catch (e) {}
+  return null;
+}
+
 // ── Haultech proxy helper ────────────────────────────────────────────────────
 async function htFetch(env, apiPath, opts = {}) {
   const authVal = await env.PMG_DATA.get('haultech-auth');
@@ -30,12 +63,13 @@ async function htFetch(env, apiPath, opts = {}) {
   let auth;
   try { auth = JSON.parse(authVal); } catch { return corsResponse(JSON.stringify({ error: 'bad_auth_data' }), 500); }
 
+  let token = auth.token;
+
   const headers = {
-    'Authorization': `Bearer ${auth.token}`,
+    'Authorization': `Bearer ${token}`,
     'oauthTmsId': auth.tmsId || DEFAULT_TMS,
     'Accept': 'application/json',
   };
-  // Only set Content-Type for JSON bodies
   if (opts.body && typeof opts.body === 'string') {
     headers['Content-Type'] = 'application/json';
   }
@@ -45,6 +79,20 @@ async function htFetch(env, apiPath, opts = {}) {
     headers: { ...headers, ...(opts.headers || {}) },
     body: opts.body,
   });
+
+  // If 401, try one token refresh and retry
+  if (resp.status === 401 && auth.refreshToken) {
+    const newToken = await refreshHaultechToken(env);
+    if (newToken) {
+      const retryResp = await fetch(`${HT_BASE}${apiPath}`, {
+        method: opts.method || 'GET',
+        headers: { ...headers, 'Authorization': `Bearer ${newToken}`, ...(opts.headers || {}) },
+        body: opts.body,
+      });
+      return corsResponse(await retryResp.text(), retryResp.status);
+    }
+  }
+
   const data = await resp.text();
   return corsResponse(data, resp.status);
 }
@@ -77,6 +125,14 @@ export default {
     // ══════════════════════════════════════════════════════════════════════════
     // HAULTECH PROXY ENDPOINTS — /ht/*
     // ══════════════════════════════════════════════════════════════════════════
+
+    // POST /haultech-refresh — force token refresh
+    if (path === '/haultech-refresh' && request.method === 'POST') {
+      if (!isAuth) return unauthorized();
+      const newToken = await refreshHaultechToken(env);
+      if (newToken) return corsResponse(JSON.stringify({ ok: true, refreshed: true }));
+      return corsResponse(JSON.stringify({ error: 'refresh_failed' }), 500);
+    }
 
     // GET /ht/jobs?date=YYYY-MM-DD — fetch live jobs from Haultech
     if (path === '/ht/jobs' && request.method === 'GET') {
