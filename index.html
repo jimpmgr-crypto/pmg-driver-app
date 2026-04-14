@@ -854,6 +854,8 @@ function handlePinKey(key) {
     if (user && user.pin === pinBuffer) {
       currentUser = { username: selectedUsername, ...user };
       localStorage.setItem('pmg-user', selectedUsername);
+      // Richard auto-gets manager view
+      if (selectedUsername === 'richard') isManager = true;
       enterJobsScreen();
     } else {
       showPinError();
