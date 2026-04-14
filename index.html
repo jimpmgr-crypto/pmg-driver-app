@@ -663,6 +663,21 @@
         <label>Notes</label>
         <textarea id="f-notes" placeholder="Any extra info…"></textarea>
       </div>
+      <div class="form-group">
+        <label>SIGNATURE</label>
+        <div style="border:2px dashed var(--border);border-radius:8px;background:#fff;position:relative;">
+          <canvas id="f-sig-canvas" width="400" height="140" style="width:100%;height:140px;touch-action:none;"></canvas>
+          <button type="button" id="f-sig-clear" style="position:absolute;top:8px;right:8px;padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:#fff;">Clear</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PHOTO</label>
+        <div style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;">
+          <input type="file" id="f-photo" accept="image/*" capture="environment" style="display:none;">
+          <button type="button" id="f-photo-btn" onclick="document.getElementById('f-photo').click()" style="background:none;border:none;font-size:14px;color:var(--navy);cursor:pointer;">📷 Take Photo</button>
+          <img id="f-photo-preview" style="display:none;width:100%;border-radius:6px;margin-top:8px;">
+        </div>
+      </div>
       <button type="submit" class="btn-submit" id="add-job-submit">Save Job to Haultech</button>
     </form>
   </div>
@@ -1486,6 +1501,12 @@ function initSignatureCanvas() {
   sigHasData = false;
 }
 
+function isBlankCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  return !data.some(v => v !== 0);
+}
+
 function clearSignature() {
   const canvas = $('sig-canvas');
   if (sigCtx) {
@@ -1536,9 +1557,32 @@ $('sig-clear').addEventListener('click', clearSignature);
 // ADD JOB
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Add Job signature canvas setup
+let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
+
+function initAddJobSig() {
+  fSigCanvas = $('f-sig-canvas');
+  fSigCtx = fSigCanvas.getContext('2d');
+  fSigCtx.strokeStyle = '#1a2744'; fSigCtx.lineWidth = 2; fSigCtx.lineCap = 'round';
+  const getPos = e => { const r = fSigCanvas.getBoundingClientRect(); const src = e.touches?.[0] || e; return {x:(src.clientX-r.left)*(fSigCanvas.width/r.width),y:(src.clientY-r.top)*(fSigCanvas.height/r.height)}; };
+  fSigCanvas.addEventListener('pointerdown', e => { fSigDrawing=true; const p=getPos(e); fSigCtx.beginPath(); fSigCtx.moveTo(p.x,p.y); e.preventDefault(); });
+  fSigCanvas.addEventListener('pointermove', e => { if(!fSigDrawing) return; const p=getPos(e); fSigCtx.lineTo(p.x,p.y); fSigCtx.stroke(); e.preventDefault(); });
+  fSigCanvas.addEventListener('pointerup', ()=>fSigDrawing=false);
+  fSigCanvas.addEventListener('pointerleave', ()=>fSigDrawing=false);
+  $('f-sig-clear').addEventListener('click', ()=>{ fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height); });
+  $('f-photo').addEventListener('change', e => {
+    fPhotoFile = e.target.files[0];
+    if (fPhotoFile) { const r=new FileReader(); r.onload=ev=>{ const img=$('f-photo-preview'); img.src=ev.target.result; img.style.display='block'; $('f-photo-btn').textContent='📷 Change Photo'; }; r.readAsDataURL(fPhotoFile); }
+  });
+}
+
 $('add-job-btn').addEventListener('click', () => {
   $('add-job-modal').classList.remove('hidden');
   loadCustomers();
+  if (!fSigCtx) initAddJobSig();
+  fPhotoFile = null;
+  $('f-photo-preview').style.display = 'none';
+  $('f-photo-btn').textContent = '📷 Take Photo';
 });
 $('add-job-close').addEventListener('click', () => $('add-job-modal').classList.add('hidden'));
 $('add-job-modal').addEventListener('click', e => {
@@ -1661,11 +1705,25 @@ $('add-job-form').addEventListener('submit', async (e) => {
     });
 
     if (resp.ok) {
+      // Save signature + photo if provided
+      const jobResp = await resp.json().catch(()=>({}));
+      const newJobId = jobResp.id || jobResp.jobId || ('driver-'+Date.now());
+      const sigData = fSigCanvas ? fSigCanvas.toDataURL('image/png') : null;
+      const hasSig = sigData && fSigCtx && !isBlankCanvas(fSigCanvas);
+      if (hasSig || fPhotoFile) {
+        try {
+          let photoData = null;
+          if (fPhotoFile) { const ab = await fPhotoFile.arrayBuffer(); photoData = btoa(String.fromCharCode(...new Uint8Array(ab))); }
+          await api(`/ticket/pod-${newJobId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({driverName:currentUser.name,date:todayISO(),podCode:'SUCCESS',signature:hasSig?sigData:null,photo:photoData,notes:notes}) });
+        } catch {}
+      }
       $('add-job-modal').classList.add('hidden');
       $('add-job-form').reset();
       $('f-customer-id').value = '';
+      if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
+      fPhotoFile = null;
       toast('✓ Job added to Haultech');
-      setTimeout(loadJobs, 500); // Refresh to show new job
+      setTimeout(loadJobs, 500);
     } else {
       const err = await resp.json().catch(() => ({}));
       toast('Failed: ' + (err.error || err.message || 'Unknown error'));
