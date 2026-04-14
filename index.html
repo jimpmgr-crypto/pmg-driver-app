@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="theme-color" content="#1a2744">
+  <meta name="theme-color" content="#f97316">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,10 +15,9 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy: #1a2744;
-      --navy-light: #243561;
-      --amber: #f59e0b;
-      --amber-dark: #d97706;
+      --primary: #f97316;
+      --primary-dark: #ea580c;
+      --primary-light: #fb923c;
       --green: #10b981;
       --green-dark: #059669;
       --grey: #6b7280;
@@ -43,7 +42,7 @@
 
     /* ── Header ── */
     header {
-      background: var(--navy);
+      background: var(--primary);
       color: white;
       padding: 0 16px;
       height: 56px;
@@ -55,16 +54,19 @@
       z-index: 100;
     }
     header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
-    header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 1px; }
-    .header-left { display: flex; flex-direction: column; }
+    header .subtitle { font-size: 12px; opacity: 0.85; margin-top: 1px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-center { position: absolute; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 700; }
     .header-right { display: flex; align-items: center; gap: 8px; }
+    .header-col { display: flex; flex-direction: column; }
 
     .icon-btn {
       background: none; border: none; color: white; cursor: pointer;
       padding: 8px; border-radius: 8px; display: flex; align-items: center;
       justify-content: center; font-size: 20px; min-width: 44px; min-height: 44px;
     }
-    .icon-btn:hover { background: rgba(255,255,255,0.1); }
+    .icon-btn:hover { background: rgba(255,255,255,0.15); }
+    .back-btn { font-size: 24px; font-weight: 700; }
 
     /* ── Main ── */
     main {
@@ -75,131 +77,69 @@
     }
 
     /* ════════════════════════════════════════════════════════════════════════ */
-    /* LOGIN SCREEN                                                          */
+    /* LOGIN                                                                 */
     /* ════════════════════════════════════════════════════════════════════════ */
-
     #login-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 24px;
+      display: flex; flex-direction: column; align-items: center; padding-top: 24px;
     }
     #login-screen h2 {
-      font-size: 24px; font-weight: 800; color: var(--navy); margin-bottom: 4px;
+      font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 4px;
     }
     #login-screen .login-sub {
       color: var(--muted); margin-bottom: 28px; font-size: 15px;
     }
-
-    /* User buttons */
-    .user-grid {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .user-grid { width: 100%; display: flex; flex-direction: column; gap: 10px; }
     .user-btn {
-      background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      padding: 18px 20px;
-      font-family: 'Inter', sans-serif;
-      font-size: 17px;
-      font-weight: 600;
-      color: var(--navy);
-      cursor: pointer;
-      text-align: left;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      transition: border-color 0.15s, background 0.15s;
-      min-height: 64px;
+      background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+      padding: 18px 20px; font-family: 'Inter', sans-serif; font-size: 17px;
+      font-weight: 600; color: var(--primary); cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 14px;
+      transition: border-color 0.15s, background 0.15s; min-height: 64px;
     }
-    .user-btn:hover, .user-btn:active {
-      border-color: var(--amber); background: #fffbeb;
-    }
+    .user-btn:hover, .user-btn:active { border-color: var(--primary); background: #fff7ed; }
     .user-avatar {
       width: 44px; height: 44px; border-radius: 50%;
-      background: var(--navy); color: white;
+      background: var(--primary); color: white;
       display: flex; align-items: center; justify-content: center;
       font-size: 16px; font-weight: 700; flex-shrink: 0;
     }
 
     /* PIN entry */
-    #pin-screen {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 12px;
-    }
+    #pin-screen { width: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
     .pin-back {
-      align-self: flex-start;
-      background: none; border: none; color: var(--navy);
-      font-size: 15px; font-weight: 600; cursor: pointer;
-      padding: 8px 0; margin-bottom: 16px;
+      align-self: flex-start; background: none; border: none; color: var(--primary);
+      font-size: 15px; font-weight: 600; cursor: pointer; padding: 8px 0; margin-bottom: 16px;
       font-family: 'Inter', sans-serif;
     }
-    .pin-label {
-      font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 24px;
-    }
-    .pin-dots {
-      display: flex; gap: 16px; margin-bottom: 28px;
-    }
+    .pin-label { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 24px; }
+    .pin-dots { display: flex; gap: 16px; margin-bottom: 28px; }
     .pin-dot {
       width: 18px; height: 18px; border-radius: 50%;
-      border: 2px solid var(--border); background: white;
-      transition: all 0.15s;
+      border: 2px solid var(--border); background: white; transition: all 0.15s;
     }
-    .pin-dot.filled {
-      background: var(--navy); border-color: var(--navy);
-    }
-    .pin-dot.error {
-      background: var(--red); border-color: var(--red);
-      animation: shake 0.3s;
-    }
+    .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+    .pin-dot.error { background: var(--red); border-color: var(--red); animation: shake 0.3s; }
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
       25% { transform: translateX(-4px); }
       75% { transform: translateX(4px); }
     }
-
-    .pin-keypad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      max-width: 280px;
-      width: 100%;
-    }
+    .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; width: 100%; }
     .pin-key {
-      background: var(--card);
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      font-family: 'Inter', sans-serif;
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--navy);
-      cursor: pointer;
-      min-height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.1s;
-      -webkit-user-select: none;
-      user-select: none;
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+      font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 600;
+      color: var(--primary); cursor: pointer; min-height: 64px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s; -webkit-user-select: none; user-select: none;
     }
-    .pin-key:active { background: #e5e7eb; }
+    .pin-key:active { background: #fed7aa; }
     .pin-key.fn { font-size: 14px; color: var(--muted); }
 
     /* ════════════════════════════════════════════════════════════════════════ */
-    /* JOBS SCREEN                                                           */
+    /* JOBS LIST                                                             */
     /* ════════════════════════════════════════════════════════════════════════ */
-
     .date-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
     }
     .date-label {
       font-size: 13px; font-weight: 600; color: var(--muted);
@@ -208,49 +148,37 @@
     .refresh-btn {
       background: none; border: none; color: var(--muted); cursor: pointer;
       font-size: 14px; padding: 6px 10px; border-radius: 6px;
-      display: flex; align-items: center; gap: 4px;
-      font-family: 'Inter', sans-serif;
+      display: flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;
     }
-    .refresh-btn:hover { color: var(--navy); }
+    .refresh-btn:hover { color: var(--primary); }
 
-    /* ── Job card ── */
+    /* Job card */
     .job-card {
-      background: var(--card);
-      border-radius: 14px;
+      background: var(--card); border-radius: 14px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      margin-bottom: 10px;
-      overflow: hidden;
+      margin-bottom: 10px; overflow: hidden;
       border: 1.5px solid var(--border);
       transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .job-card.expanded { border-color: var(--amber); box-shadow: 0 2px 12px rgba(245,158,11,0.15); }
-
-    .job-card-header {
-      padding: 14px 16px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
       cursor: pointer;
     }
+    .job-card:active { border-color: var(--primary); box-shadow: 0 2px 12px rgba(249,115,22,0.15); }
+    .job-card-header {
+      padding: 14px 16px; display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 12px;
+    }
     .job-card-main { flex: 1; min-width: 0; }
+    .job-number { font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 2px; }
     .job-customer {
-      font-size: 16px; font-weight: 700; color: var(--navy);
-      margin-bottom: 4px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .job-vehicle {
-      font-size: 12px; font-weight: 600; color: var(--amber-dark);
-      margin-bottom: 4px;
-    }
+    .job-vehicle { font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 4px; }
     .job-meta {
       font-size: 13px; color: var(--muted);
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     }
-    .job-meta .arrow { color: var(--amber); font-weight: 700; }
-    .job-material {
-      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px;
-    }
+    .job-meta .arrow { color: var(--primary); font-weight: 700; }
+    .job-material { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
 
     /* Status badges */
     .badge {
@@ -259,166 +187,270 @@
       font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
       white-space: nowrap; flex-shrink: 0;
     }
-    .badge-scheduled  { background: #f3f4f6; color: #6b7280; }
-    .badge-departed   { background: #fef3c7; color: #d97706; }
-    .badge-complete   { background: #d1fae5; color: #065f46; }
+    .badge-scheduled { background: #f3f4f6; color: #6b7280; }
+    .badge-departed  { background: #fff7ed; color: #ea580c; }
+    .badge-complete  { background: #d1fae5; color: #065f46; }
     .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-    /* Driver tag (manager view) */
     .driver-tag {
-      font-size: 11px; font-weight: 600; color: var(--navy);
-      background: #e0e7ff; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; color: var(--primary);
+      background: #fff7ed; padding: 2px 8px; border-radius: 10px;
     }
-
-    /* Expanded detail */
-    .job-detail {
-      display: none;
-      padding: 0 16px 16px;
-      border-top: 1px solid var(--border);
-    }
-    .job-card.expanded .job-detail { display: block; }
-
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-      margin-bottom: 16px;
-    }
-    .detail-item label {
-      font-size: 11px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.4px;
-      display: block; margin-bottom: 2px;
-    }
-    .detail-item span {
-      font-size: 14px; font-weight: 500; color: var(--text);
-    }
-    .detail-notes {
-      font-size: 13px; color: var(--muted); margin-bottom: 12px;
-      padding: 10px; background: var(--bg); border-radius: 8px;
-    }
-
-    /* Action buttons */
-    .action-row { display: flex; gap: 8px; }
-    .btn {
-      flex: 1; padding: 14px; border: none; border-radius: 12px;
-      font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
-      cursor: pointer; min-height: 52px;
-      transition: opacity 0.15s, transform 0.1s;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .btn-depart  { background: var(--amber); color: white; }
-    .btn-depart:hover:not(:disabled) { background: var(--amber-dark); }
-    .btn-complete { background: var(--green); color: white; }
-    .btn-complete:hover:not(:disabled) { background: var(--green-dark); }
-
-    /* ── Driver section (manager view) ── */
     .driver-section { margin-bottom: 24px; }
     .driver-section-title {
       font-size: 12px; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.5px;
       margin-bottom: 8px; padding: 0 4px;
     }
-
-    /* ── Empty state ── */
     .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); }
     .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-    .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+    .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
     .empty-state p { font-size: 14px; }
-
-    /* ── Loading ── */
     .loading { text-align: center; padding: 32px; color: var(--muted); font-size: 14px; }
     .spinner {
       width: 32px; height: 32px;
-      border: 3px solid var(--border); border-top-color: var(--navy);
+      border: 3px solid var(--border); border-top-color: var(--primary);
       border-radius: 50%; animation: spin 0.8s linear infinite;
       margin: 0 auto 12px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── FAB: Add Job ── */
+    /* FAB */
     .fab {
-      position: fixed;
-      bottom: 24px;
+      position: fixed; bottom: 24px;
       right: 50%; transform: translateX(50%);
       max-width: calc(600px - 32px); width: calc(100% - 32px);
-      background: var(--navy); color: white; border: none; border-radius: 14px;
-      padding: 16px;
-      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(26,39,68,0.35);
+      background: var(--primary); color: white; border: none; border-radius: 14px;
+      padding: 16px; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(249,115,22,0.35);
       display: flex; align-items: center; justify-content: center; gap: 8px;
-      min-height: 54px; z-index: 50;
-      transition: background 0.15s;
+      min-height: 54px; z-index: 50; transition: background 0.15s;
     }
-    .fab:hover { background: var(--navy-light); }
+    .fab:hover { background: var(--primary-dark); }
     .fab:active { transform: translateX(50%) scale(0.98); }
+
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* JOB DETAIL SCREEN                                                     */
+    /* ════════════════════════════════════════════════════════════════════════ */
+    .detail-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      background: white; margin: 0 -16px; padding: 0 16px;
+    }
+    .detail-tab {
+      flex: 1; padding: 12px 8px; text-align: center; cursor: pointer;
+      font-size: 13px; font-weight: 700; color: var(--muted);
+      border: none; background: none; font-family: 'Inter', sans-serif;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .detail-tab.active { color: var(--text); border-bottom: 2px solid var(--primary); }
+    .detail-tab .tab-icon { font-size: 22px; }
+
+    .detail-content { padding-top: 16px; }
+    .detail-row { display: flex; gap: 16px; margin-bottom: 8px; }
+    .detail-left { flex: 1; }
+    .detail-right { width: 160px; flex-shrink: 0; }
+
+    .detail-label { font-size: 13px; color: var(--muted); margin-bottom: 2px; }
+    .detail-value { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+    .detail-value.address { font-size: 14px; font-weight: 700; line-height: 1.5; }
+    .detail-value a { color: #2563eb; text-decoration: none; }
+
+    .map-embed {
+      width: 160px; height: 160px; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); background: #e5e7eb;
+    }
+    .map-embed iframe { width: 100%; height: 100%; border: none; }
+    .map-embed img { width: 100%; height: 100%; object-fit: cover; }
+
+    .freight-heading {
+      text-align: center; font-size: 15px; font-weight: 700; color: var(--text);
+      margin: 16px 0 12px; padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .weight-row {
+      display: flex; align-items: center; gap: 10px;
+      background: #f3f4f6; border-radius: 10px; padding: 8px 12px; margin-bottom: 16px;
+    }
+    .weight-row label { font-size: 15px; font-weight: 600; white-space: nowrap; }
+    .weight-row input {
+      flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+      background: white; -webkit-appearance: none;
+    }
+    .weight-row input:focus { outline: none; border-color: var(--primary); }
+    .weight-save-btn {
+      background: var(--primary); color: white; border: none; border-radius: 8px;
+      width: 48px; height: 44px; cursor: pointer; font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .weight-save-btn:active { background: var(--primary-dark); }
+
+    .instructions-heading {
+      text-align: center; font-size: 15px; font-weight: 700; color: var(--text);
+      margin: 8px 0 8px;
+    }
+    .instructions-text {
+      font-size: 14px; color: var(--muted); padding: 8px 0;
+      min-height: 40px;
+    }
+
+    /* Bottom nav bar for detail/sign */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1f2937; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 12px 24px; z-index: 50;
+      max-width: 600px; margin: 0 auto;
+    }
+    .bottom-bar-btn {
+      background: none; border: none; color: white; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 4px 16px;
+    }
+    .bottom-bar-btn .bb-icon { font-size: 22px; }
+
+    /* Info button */
+    .info-fab {
+      position: fixed; bottom: 80px; right: 16px;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: white; border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: #2563eb; cursor: pointer; z-index: 40;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* SIGN SCREEN                                                           */
+    /* ════════════════════════════════════════════════════════════════════════ */
+    .sign-delivery-info {
+      display: flex; gap: 16px; padding: 20px 0 16px;
+      align-items: flex-start;
+    }
+    .sign-del-icon {
+      display: flex; flex-direction: column; align-items: center;
+      font-size: 24px; font-weight: 700; color: var(--text);
+    }
+    .sign-del-icon span { font-size: 13px; font-weight: 700; }
+    .sign-del-details { flex: 1; }
+    .sign-del-customer { font-size: 17px; font-weight: 700; color: var(--text); }
+    .sign-del-address { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .sign-del-postcode { font-size: 14px; color: var(--muted); }
+    .sign-divider { border: none; border-top: 1px solid var(--border); margin: 0 0 16px; }
+
+    .sign-field-label { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .sign-field { margin-bottom: 16px; }
+    .sign-input-row { display: flex; gap: 8px; }
+    .sign-input-row input {
+      flex: 1; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 15px; background: white;
+    }
+    .sign-input-row input:focus { outline: none; border-color: var(--primary); }
+    .sign-contact-btn {
+      width: 44px; height: 44px; background: var(--primary); color: white;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 20px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sign-textarea {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 15px; min-height: 80px;
+      resize: vertical; background: white;
+    }
+    .sign-textarea:focus { outline: none; border-color: var(--primary); }
+
+    .sign-sig-wrap {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      background: #e5e7eb; position: relative; overflow: hidden;
+    }
+    .sign-sig-wrap canvas {
+      width: 100%; height: 200px; display: block; touch-action: none;
+      background: #e5e7eb;
+    }
+    .sign-sig-indicator {
+      position: absolute; bottom: 8px; left: 8px;
+      font-size: 18px; color: var(--text); opacity: 0.6;
+    }
+    .sign-sig-line {
+      position: absolute; bottom: 0; left: 8px; right: 8px;
+      height: 2px; background: var(--text);
+    }
+    .sign-sig-clear {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(255,255,255,0.8); border: none; border-radius: 6px;
+      padding: 4px 10px; font-size: 12px; font-weight: 600;
+      color: var(--muted); cursor: pointer; font-family: 'Inter', sans-serif;
+    }
+
+    .sign-bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; z-index: 50;
+      max-width: 600px; margin: 0 auto;
+    }
+    .sign-camera-btn {
+      width: 48px; height: 48px; background: var(--primary); color: white;
+      border: none; border-radius: 10px; cursor: pointer; font-size: 22px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sign-weight-label { font-size: 14px; font-weight: 600; white-space: nowrap; margin-left: 4px; }
+    .sign-weight-input {
+      flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+      color: var(--primary); background: white; -webkit-appearance: none;
+    }
+    .sign-weight-input:focus { outline: none; border-color: var(--primary); }
+    .sign-save-btn {
+      width: 48px; height: 48px; background: var(--primary); color: white;
+      border: none; border-radius: 10px; cursor: pointer; font-size: 22px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sign-save-btn:active { background: var(--primary-dark); }
 
     /* ════════════════════════════════════════════════════════════════════════ */
     /* MODALS                                                                */
     /* ════════════════════════════════════════════════════════════════════════ */
-
     .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 200;
-      display: flex; align-items: flex-end; justify-content: center;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; display: flex; align-items: flex-end; justify-content: center;
     }
     .modal {
-      background: white;
-      border-radius: 20px 20px 0 0;
+      background: white; border-radius: 20px 20px 0 0;
       width: 100%; max-width: 600px; max-height: 92vh;
       overflow-y: auto; padding: 24px 20px 32px;
       -webkit-overflow-scrolling: touch;
     }
     .modal-title {
-      font-size: 19px; font-weight: 700; color: var(--navy);
-      margin-bottom: 20px;
-      display: flex; align-items: center; justify-content: space-between;
+      font-size: 19px; font-weight: 700; color: var(--primary);
+      margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;
     }
     .modal-close {
       background: var(--bg); border: none; border-radius: 50%;
       width: 36px; height: 36px; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--muted);
+      display: flex; align-items: center; justify-content: center; color: var(--muted);
     }
-
-    /* Form fields */
     .form-group { margin-bottom: 14px; }
     .form-group label {
-      display: block; font-size: 12px; font-weight: 600;
-      color: var(--muted); text-transform: uppercase;
-      letter-spacing: 0.4px; margin-bottom: 6px;
+      display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;
     }
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-      width: 100%; padding: 13px 14px;
-      border: 1.5px solid var(--border); border-radius: 10px;
-      font-family: 'Inter', sans-serif; font-size: 15px;
-      color: var(--text); background: white;
-      -webkit-appearance: none;
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 13px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 15px; color: var(--text);
+      background: white; -webkit-appearance: none;
     }
-    .form-group input:focus,
-    .form-group textarea:focus,
-    .form-group select:focus {
-      outline: none; border-color: var(--navy);
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: var(--primary);
     }
     .form-group textarea { min-height: 70px; resize: vertical; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
     .btn-submit {
-      width: 100%; padding: 16px;
-      background: var(--navy); color: white; border: none; border-radius: 12px;
-      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
-      cursor: pointer; min-height: 54px; margin-top: 8px;
+      width: 100%; padding: 16px; background: var(--primary); color: white;
+      border: none; border-radius: 12px; font-family: 'Inter', sans-serif;
+      font-size: 16px; font-weight: 700; cursor: pointer; min-height: 54px; margin-top: 8px;
     }
-    .btn-submit:hover { background: var(--navy-light); }
+    .btn-submit:hover { background: var(--primary-dark); }
     .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* Customer autocomplete */
     .autocomplete-wrap { position: relative; }
     .autocomplete-list {
       position: absolute; top: 100%; left: 0; right: 0;
@@ -428,104 +460,61 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .autocomplete-item {
-      padding: 12px 14px; cursor: pointer;
-      font-size: 14px; border-bottom: 1px solid var(--border);
+      padding: 12px 14px; cursor: pointer; font-size: 14px;
+      border-bottom: 1px solid var(--border);
     }
-    .autocomplete-item:hover, .autocomplete-item.active {
-      background: #fffbeb;
-    }
-    .autocomplete-item .ac-code {
-      font-size: 12px; color: var(--muted);
-    }
+    .autocomplete-item:hover, .autocomplete-item.active { background: #fff7ed; }
+    .autocomplete-item .ac-code { font-size: 12px; color: var(--muted); }
 
-    /* ════════════════════════════════════════════════════════════════════════ */
-    /* POD MODAL                                                             */
-    /* ════════════════════════════════════════════════════════════════════════ */
-
-    .pod-code-row {
-      display: flex; gap: 10px; margin-bottom: 16px;
-    }
-    .pod-code-btn {
-      flex: 1; padding: 14px; border: 2px solid var(--border);
-      border-radius: 12px; background: white;
-      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
-      cursor: pointer; text-align: center;
-      transition: all 0.15s;
-    }
-    .pod-code-btn.active-success {
-      border-color: var(--green); background: #ecfdf5; color: var(--green-dark);
-    }
-    .pod-code-btn.active-damaged {
-      border-color: var(--red); background: #fef2f2; color: var(--red);
-    }
-
-    /* Signature canvas */
     .sig-section { margin-bottom: 16px; }
     .sig-section label {
-      display: block; font-size: 12px; font-weight: 600;
-      color: var(--muted); text-transform: uppercase;
-      letter-spacing: 0.4px; margin-bottom: 8px;
-    }
-    .sig-canvas-wrap {
-      border: 2px dashed var(--border); border-radius: 12px;
-      background: white; position: relative; overflow: hidden;
-    }
-    .sig-canvas-wrap canvas {
-      width: 100%; height: 160px; display: block;
-      touch-action: none;
-    }
-    .sig-clear {
-      position: absolute; top: 8px; right: 8px;
-      background: rgba(0,0,0,0.05); border: none; border-radius: 6px;
-      padding: 4px 10px; font-size: 12px; font-weight: 600;
-      color: var(--muted); cursor: pointer;
-      font-family: 'Inter', sans-serif;
+      display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px;
     }
 
-    /* Photo */
-    .photo-section { margin-bottom: 16px; }
-    .photo-btn {
-      width: 100%; padding: 14px; border: 2px dashed var(--border);
-      border-radius: 12px; background: white;
-      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
-      color: var(--muted); cursor: pointer; text-align: center;
-      min-height: 52px;
-    }
-    .photo-btn:hover { border-color: var(--navy); color: var(--navy); }
-    .photo-preview {
-      width: 100%; max-height: 200px; object-fit: cover;
-      border-radius: 10px; margin-top: 8px;
-    }
-
-    /* ── Toast ── */
+    /* Toast */
     #toast {
       position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-      background: #1f2937; color: white;
-      padding: 10px 20px; border-radius: 10px;
-      font-size: 14px; font-weight: 500; z-index: 999;
-      opacity: 0; transition: opacity 0.2s;
-      pointer-events: none; white-space: nowrap;
+      background: #1f2937; color: white; padding: 10px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 500; z-index: 999; opacity: 0;
+      transition: opacity 0.2s; pointer-events: none; white-space: nowrap;
       max-width: 90vw; text-align: center;
     }
     #toast.show { opacity: 1; }
 
-    /* ── Error bar ── */
     .error-bar {
-      background: #fef2f2; border: 1px solid #fecaca;
-      border-radius: 10px; padding: 12px 16px;
-      margin-bottom: 16px; font-size: 13px; color: #991b1b;
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #991b1b;
       display: flex; align-items: center; gap: 8px;
     }
+
+    /* Action buttons (used in manager view etc) */
+    .action-row { display: flex; gap: 8px; margin-top: 12px; }
+    .btn {
+      flex: 1; padding: 14px; border: none; border-radius: 12px;
+      font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
+      cursor: pointer; min-height: 52px; transition: opacity 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-depart { background: var(--primary); color: white; }
+    .btn-depart:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-complete { background: var(--green); color: white; }
+    .btn-complete:hover:not(:disabled) { background: var(--green-dark); }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="header-left">
-    <h1>PMG Drivers</h1>
-    <div class="subtitle" id="header-subtitle">Login</div>
+<!-- ══ HEADER (shared, content changes per screen) ══ -->
+<header id="main-header">
+  <div class="header-left" id="header-left">
+    <div class="header-col">
+      <h1>PMG Drivers</h1>
+      <div class="subtitle" id="header-subtitle">Login</div>
+    </div>
   </div>
-  <div class="header-right">
+  <div class="header-right" id="header-right">
     <button class="icon-btn hidden" id="gear-btn" title="Manager view">⚙️</button>
     <button class="icon-btn hidden" id="logout-btn" title="Log out">🚪</button>
   </div>
@@ -537,7 +526,6 @@
     <h2>🚛 PMG Drivers</h2>
     <p class="login-sub">Select your name to start</p>
     <div class="user-grid" id="user-grid"></div>
-
     <div id="pin-screen" class="hidden">
       <button class="pin-back" id="pin-back">← Back</button>
       <div class="pin-label" id="pin-label">Enter PIN</div>
@@ -562,7 +550,7 @@
     </div>
   </div>
 
-  <!-- ══ JOBS SCREEN ══ -->
+  <!-- ══ JOBS LIST SCREEN ══ -->
   <div id="jobs-screen" class="hidden">
     <div id="error-bar" class="error-bar hidden"></div>
     <div class="date-bar">
@@ -571,51 +559,52 @@
     </div>
     <div id="jobs-container"></div>
   </div>
+
+  <!-- ══ JOB DETAIL SCREEN ══ -->
+  <div id="job-detail-screen" class="hidden">
+    <div class="detail-tabs">
+      <button class="detail-tab active" data-tab="delivery">
+        <span class="tab-icon">↓</span>
+        <span>Delivery</span>
+      </button>
+      <button class="detail-tab" data-tab="collection">
+        <span class="tab-icon">⇄</span>
+        <span>See Collection</span>
+      </button>
+      <button class="detail-tab" data-tab="std">
+        <span class="tab-icon">💼</span>
+        <span>STD</span>
+      </button>
+    </div>
+    <div class="detail-content" id="detail-content"></div>
+    <div class="info-fab" id="info-fab">ℹ</div>
+    <div class="bottom-bar" id="detail-bottom-bar">
+      <button class="bottom-bar-btn" id="detail-back-btn">
+        <span class="bb-icon">⏪</span>
+        <span>Back</span>
+      </button>
+      <button class="bottom-bar-btn" id="detail-sign-btn">
+        <span class="bb-icon">📝</span>
+        <span>Sign</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SIGN SCREEN ══ -->
+  <div id="sign-screen" class="hidden">
+    <div id="sign-content"></div>
+    <div class="sign-bottom-bar" id="sign-bottom-bar">
+      <button class="sign-camera-btn" id="sign-camera-btn">📷</button>
+      <input type="file" id="sign-photo-input" accept="image/*" capture="environment" style="display:none">
+      <span class="sign-weight-label">Weight:</span>
+      <input type="number" class="sign-weight-input" id="sign-weight" placeholder="0" step="0.1" min="0">
+      <button class="sign-save-btn" id="sign-save-btn">💾</button>
+    </div>
+  </div>
 </main>
 
 <!-- Add Job FAB -->
 <button class="fab hidden" id="add-job-btn">＋ Add Job</button>
-
-<!-- ══ POD MODAL ══ -->
-<div class="modal-overlay hidden" id="pod-modal">
-  <div class="modal">
-    <div class="modal-title">
-      Proof of Delivery
-      <button class="modal-close" id="pod-close">✕</button>
-    </div>
-    <div id="pod-job-info" style="font-size:14px;color:var(--muted);margin-bottom:16px;"></div>
-
-    <div class="form-group">
-      <label>POD Status</label>
-      <div class="pod-code-row">
-        <button class="pod-code-btn active-success" id="pod-success" data-code="success">✓ SUCCESS</button>
-        <button class="pod-code-btn" id="pod-damaged" data-code="damaged">⚠ DAMAGED</button>
-      </div>
-    </div>
-
-    <div class="sig-section">
-      <label>Signature</label>
-      <div class="sig-canvas-wrap">
-        <canvas id="sig-canvas"></canvas>
-        <button class="sig-clear" id="sig-clear">Clear</button>
-      </div>
-    </div>
-
-    <div class="photo-section">
-      <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:block">Photo</label>
-      <button class="photo-btn" id="photo-btn">📷 Take Photo</button>
-      <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
-      <img class="photo-preview hidden" id="photo-preview">
-    </div>
-
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="pod-notes" placeholder="Any delivery notes…"></textarea>
-    </div>
-
-    <button class="btn-submit" id="pod-submit">SUBMIT POD & COMPLETE</button>
-  </div>
-</div>
 
 <!-- ══ ADD JOB MODAL ══ -->
 <div class="modal-overlay hidden" id="add-job-modal">
@@ -674,7 +663,7 @@
         <label>PHOTO</label>
         <div style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;">
           <input type="file" id="f-photo" accept="image/*" capture="environment" style="display:none;">
-          <button type="button" id="f-photo-btn" onclick="document.getElementById('f-photo').click()" style="background:none;border:none;font-size:14px;color:var(--navy);cursor:pointer;">📷 Take Photo</button>
+          <button type="button" id="f-photo-btn" onclick="document.getElementById('f-photo').click()" style="background:none;border:none;font-size:14px;color:var(--primary);cursor:pointer;">📷 Take Photo</button>
           <img id="f-photo-preview" style="display:none;width:100%;border-radius:6px;margin-top:8px;">
         </div>
       </div>
@@ -744,14 +733,14 @@ const POD_CODES = {
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
 
-let currentUser = null;     // { username, pin, driverId, name }
-let allJobs = [];           // raw Haultech job objects
-let customers = [];         // customer list for add-job
+let currentUser = null;
+let allJobs = [];
+let customers = [];
 let isManager = false;
 let refreshTimer = null;
-let podJob = null;          // job being completed
-let podCode = 'success';
-let photoFile = null;
+let currentScreen = 'login'; // login | jobs | detail | sign
+let activeJob = null; // job being viewed/signed
+let signPhotoFile = null;
 
 const $ = id => document.getElementById(id);
 
@@ -805,6 +794,118 @@ function showError(msg) {
   const el = $('error-bar');
   if (msg) { el.textContent = '⚠️ ' + msg; el.classList.remove('hidden'); }
   else { el.classList.add('hidden'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+function setHeaderForList() {
+  $('main-header').innerHTML = `
+    <div class="header-left">
+      <div class="header-col">
+        <h1>PMG Drivers</h1>
+        <div class="subtitle" id="header-subtitle">${esc(currentUser?.name || 'Login')}</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="gear-btn" title="Manager view">⚙️</button>
+      <button class="icon-btn" id="logout-btn" title="Log out">🚪</button>
+    </div>`;
+  $('gear-btn').addEventListener('click', handleGearClick);
+  $('logout-btn').addEventListener('click', logout);
+}
+
+function setHeaderForLogin() {
+  $('main-header').innerHTML = `
+    <div class="header-left">
+      <div class="header-col">
+        <h1>PMG Drivers</h1>
+        <div class="subtitle">Login</div>
+      </div>
+    </div>
+    <div class="header-right"></div>`;
+}
+
+function setHeaderForDetail(jobNum) {
+  $('main-header').innerHTML = `
+    <div class="header-left">
+      <button class="icon-btn back-btn" id="detail-header-back">←</button>
+    </div>
+    <div class="header-center">Job: #${esc(String(jobNum))}</div>
+    <div class="header-right">
+      <button class="icon-btn" id="detail-header-gear">⚙️</button>
+    </div>`;
+  $('detail-header-back').addEventListener('click', showJobList);
+  $('detail-header-gear').addEventListener('click', handleGearClick);
+}
+
+function setHeaderForSign(jobNum) {
+  $('main-header').innerHTML = `
+    <div class="header-left">
+      <button class="icon-btn back-btn" id="sign-header-back">←</button>
+    </div>
+    <div class="header-center">Job: #${esc(String(jobNum))}</div>
+    <div class="header-right">
+      <button class="icon-btn" id="sign-header-gear">⚙️</button>
+    </div>`;
+  $('sign-header-back').addEventListener('click', () => showJobDetail(activeJob));
+  $('sign-header-gear').addEventListener('click', handleGearClick);
+}
+
+function hideAllScreens() {
+  $('login-screen').classList.add('hidden');
+  $('jobs-screen').classList.add('hidden');
+  $('job-detail-screen').classList.add('hidden');
+  $('sign-screen').classList.add('hidden');
+  $('add-job-btn').classList.add('hidden');
+  // Hide bottom bars
+  const db = $('detail-bottom-bar'); if (db) db.style.display = 'none';
+  const sb = $('sign-bottom-bar'); if (sb) sb.style.display = 'none';
+  const ib = $('info-fab'); if (ib) ib.style.display = 'none';
+}
+
+function showJobList() {
+  hideAllScreens();
+  currentScreen = 'jobs';
+  activeJob = null;
+  $('jobs-screen').classList.remove('hidden');
+  $('add-job-btn').classList.remove('hidden');
+  setHeaderForList();
+}
+
+function showJobDetail(job) {
+  hideAllScreens();
+  currentScreen = 'detail';
+  activeJob = job;
+  $('job-detail-screen').classList.remove('hidden');
+  $('detail-bottom-bar').style.display = 'flex';
+  $('info-fab').style.display = 'flex';
+  const jobNum = getJobNumber(job);
+  setHeaderForDetail(jobNum);
+  renderJobDetail(job, 'delivery');
+
+  // Tab listeners
+  document.querySelectorAll('.detail-tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderJobDetail(job, tab.dataset.tab);
+    };
+  });
+}
+
+function showSignScreen(job) {
+  hideAllScreens();
+  currentScreen = 'sign';
+  activeJob = job;
+  $('sign-screen').classList.remove('hidden');
+  $('sign-bottom-bar').style.display = 'flex';
+  const jobNum = getJobNumber(job);
+  setHeaderForSign(jobNum);
+  renderSignScreen(job);
+  signPhotoFile = null;
+  setTimeout(initSignCanvas, 50);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -869,7 +970,6 @@ function handlePinKey(key) {
     if (user && user.pin === pinBuffer) {
       currentUser = { username: selectedUsername, ...user };
       localStorage.setItem('pmg-user', selectedUsername);
-      // Richard auto-gets manager view
       if (selectedUsername === 'richard') isManager = true;
       enterJobsScreen();
     } else {
@@ -891,15 +991,11 @@ $('pin-keypad').addEventListener('click', e => {
 
 function enterJobsScreen() {
   $('login-screen').classList.add('hidden');
-  $('jobs-screen').classList.remove('hidden');
-  $('add-job-btn').classList.remove('hidden');
-  $('gear-btn').classList.remove('hidden');
-  $('logout-btn').classList.remove('hidden');
-  $('header-subtitle').textContent = currentUser.name;
   $('date-label').textContent = formatDate(todayISO());
   isManager = false;
+  showJobList();
   loadJobs();
-  refreshTimer = setInterval(loadJobs, 2 * 60 * 1000); // 2 min auto-refresh
+  refreshTimer = setInterval(loadJobs, 2 * 60 * 1000);
 }
 
 function logout() {
@@ -909,14 +1005,12 @@ function logout() {
   clearInterval(refreshTimer);
   refreshTimer = null;
   localStorage.removeItem('pmg-user');
+  hideAllScreens();
   $('login-screen').classList.remove('hidden');
-  $('jobs-screen').classList.add('hidden');
-  $('add-job-btn').classList.add('hidden');
-  $('gear-btn').classList.add('hidden');
-  $('logout-btn').classList.add('hidden');
-  $('header-subtitle').textContent = 'Login';
+  setHeaderForLogin();
   hidePinScreen();
   showError(null);
+  currentScreen = 'login';
 }
 
 async function loadJobs() {
@@ -935,7 +1029,6 @@ async function loadJobs() {
       throw new Error(err.error || `HTTP ${resp.status}`);
     }
     const data = await resp.json();
-    // Handle paginated response (could be array or {items: [...]})
     allJobs = Array.isArray(data) ? data : (data.items || data.data || []);
     renderJobs();
   } catch (e) {
@@ -946,22 +1039,13 @@ async function loadJobs() {
 }
 
 async function loadJobsFallback(date) {
-  // Fall back to cached KV diary data
   try {
     const resp = await api(`/haultech-jobs/${date}`);
     const cached = resp.ok ? await resp.json() : [];
-    // Convert cached format to Haultech-like format for rendering
     allJobs = cached.map(j => ({
-      jobId: j.id,
-      _cached: true,
-      _driver: j.driver,
-      _customer: j.customer,
-      _material: j.material,
-      _from: j.from,
-      _to: j.to,
-      _quantity: j.quantity,
-      _price: j.price,
-      _status: j.status,
+      jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
+      _material: j.material, _from: j.from, _to: j.to,
+      _quantity: j.quantity, _price: j.price, _status: j.status,
     }));
     renderJobs();
   } catch {
@@ -971,15 +1055,13 @@ async function loadJobsFallback(date) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// JOB DATA EXTRACTION HELPERS
+// JOB DATA EXTRACTION
 // ══════════════════════════════════════════════════════════════════════════════
 
 function getJobDriver(job) {
   if (job._cached) return job._driver || '';
-  // Use deliveryDriverId (direct field on job) — allocations are empty in this Haultech setup
   const did = job.deliveryDriverId || job.collectionDriverId;
   if (did && DRIVER_IDS[did]) return DRIVER_IDS[did];
-  // Fallback to allocations if present
   const alloc = (job.allocations || [])[0];
   return alloc?.driverName || alloc?.driver || job.driverName || '';
 }
@@ -1005,13 +1087,15 @@ function getJobConsignment(job) {
 }
 
 function getJobConsignmentId(job) {
-  // QuickCompleteJob/QuickReceiveJob use the top-level job UUID (job.id), not consignment UUID
   return job.id || job._id || null;
+}
+
+function getJobNumber(job) {
+  return job.jobNumber || job.jobId || job.id?.substring(0, 6) || '—';
 }
 
 function getJobCustomer(job) {
   if (job._cached) return job._customer || 'Unknown';
-  // Try to find customer name from our loaded customers list
   const cid = job.customerId;
   if (cid && customers.length) {
     const found = customers.find(c => c.id === cid);
@@ -1030,7 +1114,6 @@ function getJobFrom(job) {
   if (job._cached) return job._from || '';
   const c = getJobConsignment(job);
   if (!c) return '';
-  // Haultech uses flat fields: collectionAddressLine1, collectionPostcode, etc.
   return c.collectionAddressLine1 || c.collectionPostcode || '';
 }
 
@@ -1067,13 +1150,64 @@ function getJobRef(job) {
   return job.customerReference || '';
 }
 
+function getDeliveryAddress(job) {
+  if (job._cached) return { line1: job._to || '', line3: '', line4: '', postcode: '' };
+  const c = getJobConsignment(job);
+  if (!c) return { line1: '', line3: '', line4: '', postcode: '' };
+  return {
+    line1: c.deliveryAddressLine1 || '',
+    line3: c.deliveryAddressLine3 || '',
+    line4: c.deliveryAddressLine4 || '',
+    postcode: c.deliveryPostcode || '',
+  };
+}
+
+function getCollectionAddress(job) {
+  if (job._cached) return { line1: job._from || '', line3: '', line4: '', postcode: '' };
+  const c = getJobConsignment(job);
+  if (!c) return { line1: '', line3: '', line4: '', postcode: '' };
+  return {
+    line1: c.collectionAddressLine1 || '',
+    line3: c.collectionAddressLine3 || '',
+    line4: c.collectionAddressLine4 || '',
+    postcode: c.collectionPostcode || '',
+  };
+}
+
+function getJobContact(job) {
+  if (job._cached) return '';
+  const c = getJobConsignment(job);
+  return c?.deliveryContactNumber || c?.deliveryContactName || job.contactNumber || '';
+}
+
+function getJobSiteContact(job) {
+  if (job._cached) return '';
+  const c = getJobConsignment(job);
+  return c?.deliveryContactName || '';
+}
+
+function getDeliveryWindow(job) {
+  if (job._cached) return '';
+  const start = job.deliveryStartTime || '';
+  const end = job.deliveryEndTime || '';
+  if (!start && !end) return '';
+  const fmt = t => {
+    if (!t) return '';
+    if (t.includes('T')) {
+      const d = new Date(t);
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    return t;
+  };
+  return `${fmt(start)} – ${fmt(end)}`.trim();
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
-// RENDER JOBS
+// RENDER JOBS LIST
 // ══════════════════════════════════════════════════════════════════════════════
 
 function renderJobs() {
   const container = $('jobs-container');
-
   if (isManager) {
     renderManagerView(container);
   } else {
@@ -1093,7 +1227,6 @@ function getDriverJobs(driverId, driverName) {
 
 function renderDriverView(container) {
   const jobs = getDriverJobs(currentUser.driverId, currentUser.name);
-
   if (jobs.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -1103,51 +1236,52 @@ function renderDriverView(container) {
       </div>`;
     return;
   }
-
-  container.innerHTML = jobs.map((job, i) => jobCardHTML(job, i, false)).join('');
+  container.innerHTML = jobs.map(job => jobCardHTML(job, false)).join('');
   attachCardListeners(container, jobs);
 }
 
 function renderManagerView(container) {
   let html = '';
   const driverList = Object.entries(INCAB_USERS);
-  let allJobsList = [];
 
   for (const [username, user] of driverList) {
     const jobs = getDriverJobs(user.driverId, user.name);
-    const startIdx = allJobsList.length;
-    allJobsList.push(...jobs);
-
     const cards = jobs.length
-      ? jobs.map((job, i) => jobCardHTML(job, startIdx + i, true)).join('')
+      ? jobs.map(job => jobCardHTML(job, true)).join('')
       : `<div style="padding:12px 4px;color:var(--muted);font-size:13px;">No jobs today</div>`;
-
     html += `<div class="driver-section">
       <div class="driver-section-title">${esc(user.name)} (${jobs.length} jobs)</div>
       ${cards}
     </div>`;
   }
 
-  // Also show unassigned jobs
+  // Unassigned
   const assignedIds = new Set();
   for (const [, user] of driverList) {
-    getDriverJobs(user.driverId, user.name).forEach(j => assignedIds.add(j.jobId || j._cached));
+    getDriverJobs(user.driverId, user.name).forEach(j => assignedIds.add(j.id || j.jobId || j._cached));
   }
-  const unassigned = allJobs.filter(j => !assignedIds.has(j.jobId || j._cached));
+  const unassigned = allJobs.filter(j => !assignedIds.has(j.id || j.jobId || j._cached));
   if (unassigned.length) {
-    const startIdx = allJobsList.length;
-    allJobsList.push(...unassigned);
     html += `<div class="driver-section">
       <div class="driver-section-title">UNASSIGNED (${unassigned.length})</div>
-      ${unassigned.map((job, i) => jobCardHTML(job, startIdx + i, true)).join('')}
+      ${unassigned.map(job => jobCardHTML(job, true)).join('')}
     </div>`;
   }
 
   container.innerHTML = html;
-  attachCardListeners(container, allJobsList);
+
+  // Attach listeners for all cards
+  const allCards = container.querySelectorAll('.job-card');
+  allCards.forEach(card => {
+    const jobId = card.dataset.jobId;
+    const job = allJobs.find(j => (j.id || j.jobId || '') === jobId);
+    if (job) {
+      card.addEventListener('click', () => showJobDetail(job));
+    }
+  });
 }
 
-function jobCardHTML(job, idx, showDriver) {
+function jobCardHTML(job, showDriver) {
   const status = getJobStatus(job);
   const driver = getJobDriver(job);
   const vehicle = getJobVehicle(job);
@@ -1156,29 +1290,14 @@ function jobCardHTML(job, idx, showDriver) {
   const from = getJobFrom(job);
   const to = getJobTo(job);
   const weight = getJobWeight(job);
-  const price = getJobPrice(job);
-  const notes = getJobNotes(job);
-  const ref = getJobRef(job);
-  const isComplete = status === 'complete';
-  const isDeparted = status === 'departed';
-
-  // Build Apple Maps link from delivery address fields
-  const cons = (!job._cached) ? getJobConsignment(job) : null;
-  const mapAddrParts = [];
-  if (cons) {
-    if (cons.deliveryAddressLine1) mapAddrParts.push(cons.deliveryAddressLine1);
-    if (cons.deliveryAddressLine3) mapAddrParts.push(cons.deliveryAddressLine3);
-    if (cons.deliveryPostcode)     mapAddrParts.push(cons.deliveryPostcode);
-  } else if (to) {
-    mapAddrParts.push(to);
-  }
-  const mapAddr = mapAddrParts.join(', ');
-  const mapUrl = mapAddr ? `https://maps.apple.com/?daddr=${encodeURIComponent(mapAddr)}` : null;
+  const jobNum = getJobNumber(job);
+  const jobId = job.id || job.jobId || '';
 
   return `
-    <div class="job-card" data-idx="${idx}">
+    <div class="job-card" data-job-id="${esc(jobId)}">
       <div class="job-card-header">
         <div class="job-card-main">
+          <div class="job-number">#${esc(String(jobNum))}</div>
           <div class="job-customer">${esc(customer)}</div>
           ${showDriver && driver ? `<div style="margin-bottom:3px"><span class="driver-tag">${esc(driver)}</span></div>` : ''}
           ${vehicle ? `<div class="job-vehicle">🚛 ${esc(vehicle)}</div>` : ''}
@@ -1188,210 +1307,346 @@ function jobCardHTML(job, idx, showDriver) {
             <span class="arrow">→</span>
             <span>${esc(to || '—')}</span>
             ${weight ? `<span>· ${esc(String(weight))}t</span>` : ''}
-            ${price ? `<span>· £${Number(price).toFixed(2)}</span>` : ''}
           </div>
-          ${mapUrl ? `<div style="margin-top:4px"><a href="${mapUrl}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;">📍 Open in Maps</a></div>` : ''}
         </div>
         <div>${statusBadge(status)}</div>
-      </div>
-      <div class="job-detail">
-        <div class="detail-grid">
-          <div class="detail-item"><label>From</label><span>${esc(from || '—')}</span></div>
-          <div class="detail-item"><label>To</label><span>${esc(to || '—')}</span></div>
-          <div class="detail-item"><label>Quantity</label><span>${weight ? esc(String(weight)) + 't' : '—'}</span></div>
-          <div class="detail-item"><label>Price</label><span>${price ? '£' + Number(price).toFixed(2) : '—'}</span></div>
-          ${ref ? `<div class="detail-item"><label>Reference</label><span>${esc(ref)}</span></div>` : ''}
-          ${vehicle ? `<div class="detail-item"><label>Vehicle</label><span>${esc(vehicle)}</span></div>` : ''}
-        </div>
-        ${notes ? `<div class="detail-notes">${esc(notes)}</div>` : ''}
-        <div class="action-row">
-          <button class="btn btn-depart" data-action="depart"
-            ${isDeparted || isComplete ? 'disabled' : ''}>
-            🚛 DEPART
-          </button>
-          <button class="btn btn-complete" data-action="complete"
-            ${isComplete ? 'disabled' : ''}>
-            ✓ COMPLETE
-          </button>
-        </div>
       </div>
     </div>`;
 }
 
 function attachCardListeners(container, jobs) {
   container.querySelectorAll('.job-card').forEach(card => {
-    const idx = parseInt(card.dataset.idx);
-    const job = jobs[idx];
-    if (!job) return;
-
-    card.querySelector('.job-card-header').addEventListener('click', () => {
-      const isOpen = card.classList.contains('expanded');
-      container.querySelectorAll('.job-card.expanded').forEach(c => c.classList.remove('expanded'));
-      if (!isOpen) card.classList.add('expanded');
-    });
-
-    card.querySelector('[data-action="depart"]')?.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await departJob(job, e.target);
-    });
-    card.querySelector('[data-action="complete"]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openPodModal(job);
-    });
+    const jobId = card.dataset.jobId;
+    const job = jobs.find(j => (j.id || j.jobId || '') === jobId);
+    if (job) {
+      card.addEventListener('click', () => showJobDetail(job));
+    }
   });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// JOB ACTIONS — DEPART
+// JOB DETAIL SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
 
-async function departJob(job, btn) {
-  if (job._cached) { toast('Live Haultech connection needed to depart'); return; }
+function renderJobDetail(job, tab) {
+  const container = $('detail-content');
+  if (tab === 'delivery') {
+    renderDeliveryTab(container, job);
+  } else if (tab === 'collection') {
+    renderCollectionTab(container, job);
+  } else {
+    renderStdTab(container, job);
+  }
+}
 
+function renderDeliveryTab(container, job) {
+  const customer = getJobCustomer(job);
+  const addr = getDeliveryAddress(job);
+  const contact = getJobContact(job);
+  const siteContact = getJobSiteContact(job);
+  const window = getDeliveryWindow(job);
+  const material = getJobMaterial(job);
+  const weight = getJobWeight(job);
+  const notes = getJobNotes(job);
+
+  const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+  const mapQuery = addrParts.join(', ');
+  const mapUrl = mapQuery ? `https://maps.apple.com/?q=${encodeURIComponent(mapQuery)}` : '';
+
+  container.innerHTML = `
+    <div class="detail-row">
+      <div class="detail-left">
+        <div class="detail-label">Customer</div>
+        <div class="detail-value" style="font-size:16px;">${esc(customer)}</div>
+
+        <div class="detail-label">Address</div>
+        <div class="detail-value address">
+          ${addrParts.map(p => esc(p)).join('<br>')}
+        </div>
+
+        <div class="detail-label">Contact Number</div>
+        <div class="detail-value">
+          ${contact
+            ? `<a href="tel:${esc(contact)}">${esc(contact)}</a>`
+            : '<span style="color:var(--muted)">N/A</span>'}
+        </div>
+
+        <div class="detail-label">Site Contact</div>
+        <div class="detail-value">${esc(siteContact || 'N/A')}</div>
+      </div>
+      <div class="detail-right">
+        ${mapQuery
+          ? `<div class="map-embed">
+              <a href="${mapUrl}" target="_blank" rel="noopener">
+                <img src="https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(mapQuery)}&zoom=14&size=320x320&markers=${encodeURIComponent(mapQuery)}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8" alt="Map" onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--muted);font-size:12px\\'>📍 Map</div>'">
+              </a>
+            </div>`
+          : ''}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;margin-bottom:12px;">
+      <div style="flex:1;">
+        <div class="detail-label">Delivery Window</div>
+        <div class="detail-value">${esc(window || 'N/A')}</div>
+      </div>
+      <div style="flex:1;">
+        <div class="detail-label">Goods Description</div>
+        <div class="detail-value">${esc(material || 'N/A')}</div>
+      </div>
+    </div>
+
+    <div class="freight-heading">Freight Breakdown</div>
+    <div class="weight-row">
+      <label>Weight:</label>
+      <input type="number" id="detail-weight" value="${esc(String(weight || 0))}" step="0.1" min="0">
+      <button class="weight-save-btn" id="detail-weight-save">💾</button>
+    </div>
+
+    <div class="instructions-heading">Special Instructions</div>
+    <div class="instructions-text">${esc(notes) || '<span style="color:var(--muted)">None</span>'}</div>
+  `;
+
+  // Weight save handler
+  $('detail-weight-save')?.addEventListener('click', () => {
+    const w = $('detail-weight').value;
+    const c = getJobConsignment(job);
+    if (c) { c.weight = parseFloat(w) || 0; c.quantity = c.weight; }
+    toast('Weight saved: ' + w + 't');
+  });
+}
+
+function renderCollectionTab(container, job) {
+  const customer = getJobCustomer(job);
+  const addr = getCollectionAddress(job);
+  const material = getJobMaterial(job);
+  const weight = getJobWeight(job);
+
+  const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+
+  container.innerHTML = `
+    <div class="detail-label">Customer</div>
+    <div class="detail-value" style="font-size:16px;">${esc(customer)}</div>
+
+    <div class="detail-label">Collection Address</div>
+    <div class="detail-value address">
+      ${addrParts.map(p => esc(p)).join('<br>') || 'N/A'}
+    </div>
+
+    <div style="display:flex;gap:16px;margin-top:12px;">
+      <div style="flex:1;">
+        <div class="detail-label">Goods</div>
+        <div class="detail-value">${esc(material || 'N/A')}</div>
+      </div>
+      <div style="flex:1;">
+        <div class="detail-label">Weight</div>
+        <div class="detail-value">${weight ? esc(String(weight)) + 't' : 'N/A'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStdTab(container, job) {
+  const ref = getJobRef(job);
+  const vehicle = getJobVehicle(job);
+  const price = getJobPrice(job);
+  const status = getJobStatus(job);
+  const driver = getJobDriver(job);
+
+  container.innerHTML = `
+    <div class="detail-label">Status</div>
+    <div class="detail-value">${statusBadge(status)}</div>
+
+    <div class="detail-label">Driver</div>
+    <div class="detail-value">${esc(driver || 'Unassigned')}</div>
+
+    <div class="detail-label">Vehicle</div>
+    <div class="detail-value">${esc(vehicle || 'N/A')}</div>
+
+    <div class="detail-label">Reference</div>
+    <div class="detail-value">${esc(ref || 'N/A')}</div>
+
+    <div class="detail-label">Price</div>
+    <div class="detail-value">${price ? '£' + Number(price).toFixed(2) : 'N/A'}</div>
+
+    <div class="action-row" style="margin-top:24px;">
+      <button class="btn btn-depart" id="std-depart-btn" ${status !== 'scheduled' ? 'disabled' : ''}>
+        🚛 DEPART
+      </button>
+    </div>
+  `;
+
+  $('std-depart-btn')?.addEventListener('click', async (e) => {
+    await departJob(job, e.target);
+  });
+}
+
+// Detail bottom bar listeners
+$('detail-back-btn').addEventListener('click', showJobList);
+$('detail-sign-btn').addEventListener('click', () => {
+  if (activeJob) showSignScreen(activeJob);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SIGN SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
+
+function renderSignScreen(job) {
+  const customer = getJobCustomer(job);
+  const addr = getDeliveryAddress(job);
+  const weight = getJobWeight(job);
+
+  $('sign-content').innerHTML = `
+    <div class="sign-delivery-info">
+      <div class="sign-del-icon">
+        <span style="font-size:28px;">↓</span>
+        <span>Delivery</span>
+      </div>
+      <div class="sign-del-details">
+        <div class="sign-del-customer">${esc(customer)}</div>
+        <div class="sign-del-address">${esc(addr.line1 || '')}</div>
+        <div class="sign-del-postcode">${esc(addr.postcode || '')}</div>
+      </div>
+    </div>
+    <hr class="sign-divider">
+
+    <div class="sign-field">
+      <div class="sign-field-label">Consignee Name:</div>
+      <div class="sign-input-row">
+        <input type="text" id="sign-consignee" placeholder="Enter Name">
+        <button class="sign-contact-btn">👤</button>
+      </div>
+    </div>
+
+    <div class="sign-field">
+      <div class="sign-field-label">Driver Notes:</div>
+      <textarea class="sign-textarea" id="sign-notes" placeholder="Enter Notes..."></textarea>
+    </div>
+
+    <div class="sign-field">
+      <div class="sign-field-label">Signature:</div>
+      <div class="sign-sig-wrap">
+        <canvas id="sign-sig-canvas"></canvas>
+        <div class="sign-sig-indicator">▶</div>
+        <div class="sign-sig-line"></div>
+        <button class="sign-sig-clear" id="sign-sig-clear">Clear</button>
+      </div>
+    </div>
+  `;
+
+  $('sign-weight').value = weight || 0;
+}
+
+// Sign canvas
+let signSigCtx = null;
+let signSigDrawing = false;
+let signSigHasData = false;
+
+function initSignCanvas() {
+  const canvas = $('sign-sig-canvas');
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = 200;
+  signSigCtx = canvas.getContext('2d');
+  signSigCtx.strokeStyle = '#111827';
+  signSigCtx.lineWidth = 2.5;
+  signSigCtx.lineCap = 'round';
+  signSigCtx.lineJoin = 'round';
+  signSigHasData = false;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    signSigDrawing = true;
+    signSigHasData = true;
+    const pos = sigPos(e, canvas);
+    signSigCtx.beginPath();
+    signSigCtx.moveTo(pos.x, pos.y);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!signSigDrawing) return;
+    e.preventDefault();
+    const pos = sigPos(e, canvas);
+    signSigCtx.lineTo(pos.x, pos.y);
+    signSigCtx.stroke();
+  });
+  canvas.addEventListener('pointerup', () => signSigDrawing = false);
+  canvas.addEventListener('pointerleave', () => signSigDrawing = false);
+
+  $('sign-sig-clear')?.addEventListener('click', () => {
+    signSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+    signSigHasData = false;
+  });
+}
+
+function sigPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - rect.left) * scaleX, y: (src.clientY - rect.top) * scaleY };
+}
+
+function getSignSigData() {
+  if (!signSigHasData) return null;
+  return $('sign-sig-canvas')?.toDataURL('image/png') || null;
+}
+
+// Camera button
+$('sign-camera-btn').addEventListener('click', () => $('sign-photo-input').click());
+$('sign-photo-input').addEventListener('change', (e) => {
+  signPhotoFile = e.target.files[0];
+  if (signPhotoFile) toast('📷 Photo captured');
+});
+
+// Save/submit button
+$('sign-save-btn').addEventListener('click', async () => {
+  if (!activeJob) return;
+  const job = activeJob;
   const consId = getJobConsignmentId(job);
   const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
+  const storageKey = consId || job.id;
 
-  // Driver-added jobs have no Haultech consignment — just update locally
-  if (isDriverAdded) {
-    job.deliveryStatus = 'Departed';
-    renderJobs();
-    toast('🚛 Departed (saved locally)');
-    return;
-  }
-
+  const btn = $('sign-save-btn');
   btn.disabled = true;
-  btn.textContent = '…';
+
+  const consignee = $('sign-consignee')?.value?.trim() || '';
+  const notes = $('sign-notes')?.value?.trim() || '';
+  const weight = $('sign-weight')?.value || '0';
+  const sigData = getSignSigData();
 
   try {
-    const resp = await api(`/ht/receive/${consId}`, { method: 'PATCH' });
-    if (resp.ok) {
-      job.deliveryStatus = 'Departed';
-      renderJobs();
-      toast('🚛 Departed — Haultech updated');
-    } else {
-      const err = await resp.json().catch(() => ({}));
-      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
-      btn.disabled = false;
-      btn.textContent = '🚛 DEPART';
-    }
-  } catch (e) {
-    toast('Network error — try again');
-    btn.disabled = false;
-    btn.textContent = '🚛 DEPART';
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// JOB ACTIONS — COMPLETE (POD)
-// ══════════════════════════════════════════════════════════════════════════════
-
-function openPodModal(job) {
-  podJob = job;
-  podCode = 'success';
-  photoFile = null;
-  $('pod-success').className = 'pod-code-btn active-success';
-  $('pod-damaged').className = 'pod-code-btn';
-  $('pod-notes').value = '';
-  $('photo-preview').classList.add('hidden');
-  $('photo-input').value = '';
-  $('photo-btn').textContent = '📷 Take Photo';
-  clearSignature();
-
-  const customer = getJobCustomer(job);
-  const material = getJobMaterial(job);
-  $('pod-job-info').textContent = `${customer}${material ? ' — ' + material : ''}`;
-
-  $('pod-modal').classList.remove('hidden');
-  initSignatureCanvas();
-}
-
-function closePodModal() {
-  $('pod-modal').classList.add('hidden');
-  podJob = null;
-}
-
-// POD code selection
-$('pod-success').addEventListener('click', () => {
-  podCode = 'success';
-  $('pod-success').className = 'pod-code-btn active-success';
-  $('pod-damaged').className = 'pod-code-btn';
-});
-$('pod-damaged').addEventListener('click', () => {
-  podCode = 'damaged';
-  $('pod-damaged').className = 'pod-code-btn active-damaged';
-  $('pod-success').className = 'pod-code-btn';
-});
-
-$('pod-close').addEventListener('click', closePodModal);
-$('pod-modal').addEventListener('click', e => { if (e.target === $('pod-modal')) closePodModal(); });
-
-// Photo
-$('photo-btn').addEventListener('click', () => $('photo-input').click());
-$('photo-input').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  photoFile = file;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    $('photo-preview').src = ev.target.result;
-    $('photo-preview').classList.remove('hidden');
-    $('photo-btn').textContent = '📷 Change Photo';
-  };
-  reader.readAsDataURL(file);
-});
-
-// Submit POD
-$('pod-submit').addEventListener('click', async () => {
-  if (!podJob) return;
-  if (podJob._cached) { toast('Live Haultech connection needed'); return; }
-
-  const consId = getJobConsignmentId(podJob);
-  const isDriverAdded = !consId || podJob._driverAdded || (podJob.id && String(podJob.id).startsWith('driver-'));
-
-  const btn = $('pod-submit');
-  btn.disabled = true;
-  btn.textContent = 'Submitting…';
-
-  // Use job id or consId as the storage key
-  const storageKey = consId || podJob.id;
-
-  try {
-    if (!isDriverAdded) {
-      // 1. Complete the job in Haultech
+    if (!job._cached && !isDriverAdded) {
+      // Complete in Haultech
       const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
       if (!completeResp.ok) {
         const err = await completeResp.json().catch(() => ({}));
         throw new Error(err.error || err.message || 'Complete failed');
       }
 
-      // 2. Upload photo if taken
-      if (photoFile) {
+      // Upload photo
+      if (signPhotoFile) {
         try {
-          const photoData = await photoFile.arrayBuffer();
+          const photoData = await signPhotoFile.arrayBuffer();
           await api(`/ht/mpod/${consId}`, {
             method: 'POST',
-            headers: { 'Content-Type': photoFile.type || 'image/jpeg' },
+            headers: { 'Content-Type': signPhotoFile.type || 'image/jpeg' },
             body: photoData,
           });
         } catch (pe) {
           console.warn('Photo upload failed:', pe);
-          // Save to worker KV as backup
           try {
-            const photoData = await photoFile.arrayBuffer();
+            const photoData = await signPhotoFile.arrayBuffer();
             await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
-              method: 'PUT',
-              headers: { 'X-PMG-Key': API_KEY },
-              body: photoData,
+              method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: photoData,
             });
           } catch {}
         }
       }
 
-      // 3. Save signature — push to Haultech MPOD + Worker KV backup
-      const sigData = getSignatureData();
+      // Upload signature
       if (sigData) {
         try {
-          // Convert base64 data URL to blob and push to Haultech
           const sigBlob = await (await fetch(sigData)).arrayBuffer();
           await api(`/ht/mpod/${consId}`, {
             method: 'POST',
@@ -1399,66 +1654,13 @@ $('pod-submit').addEventListener('click', async () => {
             body: sigBlob,
           });
         } catch (se) {
-          // Fallback to Worker KV
           try {
             const sigBlob2 = await (await fetch(sigData)).arrayBuffer();
             await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
-              method: 'PUT',
-              headers: { 'X-PMG-Key': API_KEY },
-              body: sigBlob2,
+              method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: sigBlob2,
             });
           } catch {}
         }
-      }
-
-      // 4. Save POD metadata to worker KV
-      try {
-        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
-          method: 'PUT',
-          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            consignmentId: consId,
-            podCode,
-            podCodeId: POD_CODES[podCode],
-            notes: $('pod-notes').value.trim(),
-            hasSignature: !!sigData,
-            hasPhoto: !!photoFile,
-            driver: currentUser.name,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch {}
-
-      podJob.deliveryStatus = 'Completed';
-      closePodModal();
-      renderJobs();
-      toast('✓ Completed — Haultech updated');
-    } else {
-      // Driver-added job — save to Worker KV only, skip Haultech
-      const sigData = getSignatureData();
-
-      // Save signature if present
-      if (sigData) {
-        try {
-          const sigBlob = await (await fetch(sigData)).arrayBuffer();
-          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
-            method: 'PUT',
-            headers: { 'X-PMG-Key': API_KEY },
-            body: sigBlob,
-          });
-        } catch {}
-      }
-
-      // Save photo if taken
-      if (photoFile) {
-        try {
-          const photoData = await photoFile.arrayBuffer();
-          await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
-            method: 'PUT',
-            headers: { 'X-PMG-Key': API_KEY },
-            body: photoData,
-          });
-        } catch {}
       }
 
       // Save POD metadata
@@ -1467,114 +1669,143 @@ $('pod-submit').addEventListener('click', async () => {
           method: 'PUT',
           headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            jobId: storageKey,
-            podCode,
-            notes: $('pod-notes').value.trim(),
-            hasSignature: !!sigData,
-            hasPhoto: !!photoFile,
-            driver: currentUser.name,
-            timestamp: new Date().toISOString(),
+            consignmentId: consId, podCode: 'success', podCodeId: POD_CODES.success,
+            consigneeName: consignee, notes, weight: parseFloat(weight) || 0,
+            hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
+            driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
         });
       } catch {}
 
-      podJob.deliveryStatus = 'Completed';
-      closePodModal();
-      renderJobs();
+      job.deliveryStatus = 'Completed';
+      toast('✓ Completed — Haultech updated');
+    } else {
+      // Driver-added or cached job
+      if (sigData) {
+        try {
+          const sigBlob = await (await fetch(sigData)).arrayBuffer();
+          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
+            method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: sigBlob,
+          });
+        } catch {}
+      }
+      if (signPhotoFile) {
+        try {
+          const photoData = await signPhotoFile.arrayBuffer();
+          await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
+            method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: photoData,
+          });
+        } catch {}
+      }
+      try {
+        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
+          method: 'PUT',
+          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId: storageKey, podCode: 'success', consigneeName: consignee,
+            notes, weight: parseFloat(weight) || 0,
+            hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
+            driver: currentUser.name, timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch {}
+
+      job.deliveryStatus = 'Completed';
       toast('✓ Job completed (saved locally)');
     }
+
+    showJobList();
+    renderJobs();
   } catch (e) {
     toast('Error: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'SUBMIT POD & COMPLETE';
   }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SIGNATURE CANVAS
+// DEPART ACTION
 // ══════════════════════════════════════════════════════════════════════════════
 
-let sigCtx = null;
-let sigDrawing = false;
-let sigHasData = false;
+async function departJob(job, btn) {
+  if (job._cached) { toast('Live Haultech connection needed to depart'); return; }
+  const consId = getJobConsignmentId(job);
+  const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
 
-function initSignatureCanvas() {
-  const canvas = $('sig-canvas');
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = 160;
-  sigCtx = canvas.getContext('2d');
-  sigCtx.strokeStyle = '#1a2744';
-  sigCtx.lineWidth = 2.5;
-  sigCtx.lineCap = 'round';
-  sigCtx.lineJoin = 'round';
-  sigHasData = false;
-}
-
-function isBlankCanvas(canvas) {
-  const ctx = canvas.getContext('2d');
-  const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-  return !data.some(v => v !== 0);
-}
-
-function clearSignature() {
-  const canvas = $('sig-canvas');
-  if (sigCtx) {
-    sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  if (isDriverAdded) {
+    job.deliveryStatus = 'Departed';
+    if (currentScreen === 'jobs') renderJobs();
+    toast('🚛 Departed (saved locally)');
+    return;
   }
-  sigHasData = false;
-}
 
-function getSignatureData() {
-  if (!sigHasData) return null;
-  return $('sig-canvas').toDataURL('image/png');
-}
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
-function sigGetPos(e) {
-  const canvas = $('sig-canvas');
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  if (e.touches) {
-    return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+  try {
+    const resp = await api(`/ht/receive/${consId}`, { method: 'PATCH' });
+    if (resp.ok) {
+      job.deliveryStatus = 'Departed';
+      if (currentScreen === 'jobs') renderJobs();
+      toast('🚛 Departed — Haultech updated');
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
+      if (btn) { btn.disabled = false; btn.textContent = '🚛 DEPART'; }
+    }
+  } catch (e) {
+    toast('Network error — try again');
+    if (btn) { btn.disabled = false; btn.textContent = '🚛 DEPART'; }
   }
-  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
 }
 
-$('sig-canvas').addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  sigDrawing = true;
-  sigHasData = true;
-  const pos = sigGetPos(e);
-  sigCtx.beginPath();
-  sigCtx.moveTo(pos.x, pos.y);
+// ══════════════════════════════════════════════════════════════════════════════
+// MANAGER VIEW
+// ══════════════════════════════════════════════════════════════════════════════
+
+function handleGearClick() {
+  if (isManager) {
+    isManager = false;
+    showJobList();
+    renderJobs();
+    toast('Back to driver view');
+    return;
+  }
+  $('pw-modal').classList.remove('hidden');
+  $('pw-input').value = '';
+  setTimeout(() => $('pw-input').focus(), 100);
+}
+
+$('pw-close').addEventListener('click', () => $('pw-modal').classList.add('hidden'));
+$('pw-modal').addEventListener('click', e => {
+  if (e.target === $('pw-modal')) $('pw-modal').classList.add('hidden');
 });
 
-$('sig-canvas').addEventListener('pointermove', (e) => {
-  if (!sigDrawing) return;
-  e.preventDefault();
-  const pos = sigGetPos(e);
-  sigCtx.lineTo(pos.x, pos.y);
-  sigCtx.stroke();
-});
-
-$('sig-canvas').addEventListener('pointerup', () => { sigDrawing = false; });
-$('sig-canvas').addEventListener('pointerleave', () => { sigDrawing = false; });
-
-$('sig-clear').addEventListener('click', clearSignature);
+function tryManagerUnlock() {
+  const pw = $('pw-input').value;
+  if (pw === JIM_PASSWORD || pw === MANAGER_PASSWORD) {
+    isManager = true;
+    $('pw-modal').classList.add('hidden');
+    showJobList();
+    renderJobs();
+    toast('Manager view unlocked');
+  } else {
+    toast('Wrong password');
+    $('pw-input').value = '';
+  }
+}
+$('pw-submit').addEventListener('click', tryManagerUnlock);
+$('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManagerUnlock(); });
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ADD JOB
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Add Job signature canvas setup
 let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
 
 function initAddJobSig() {
   fSigCanvas = $('f-sig-canvas');
   fSigCtx = fSigCanvas.getContext('2d');
-  fSigCtx.strokeStyle = '#1a2744'; fSigCtx.lineWidth = 2; fSigCtx.lineCap = 'round';
+  fSigCtx.strokeStyle = '#f97316'; fSigCtx.lineWidth = 2; fSigCtx.lineCap = 'round';
   const getPos = e => { const r = fSigCanvas.getBoundingClientRect(); const src = e.touches?.[0] || e; return {x:(src.clientX-r.left)*(fSigCanvas.width/r.width),y:(src.clientY-r.top)*(fSigCanvas.height/r.height)}; };
   fSigCanvas.addEventListener('pointerdown', e => { fSigDrawing=true; const p=getPos(e); fSigCtx.beginPath(); fSigCtx.moveTo(p.x,p.y); e.preventDefault(); });
   fSigCanvas.addEventListener('pointermove', e => { if(!fSigDrawing) return; const p=getPos(e); fSigCtx.lineTo(p.x,p.y); fSigCtx.stroke(); e.preventDefault(); });
@@ -1585,6 +1816,12 @@ function initAddJobSig() {
     fPhotoFile = e.target.files[0];
     if (fPhotoFile) { const r=new FileReader(); r.onload=ev=>{ const img=$('f-photo-preview'); img.src=ev.target.result; img.style.display='block'; $('f-photo-btn').textContent='📷 Change Photo'; }; r.readAsDataURL(fPhotoFile); }
   });
+}
+
+function isBlankCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  return !data.some(v => v !== 0);
 }
 
 $('add-job-btn').addEventListener('click', () => {
@@ -1600,7 +1837,6 @@ $('add-job-modal').addEventListener('click', e => {
   if (e.target === $('add-job-modal')) $('add-job-modal').classList.add('hidden');
 });
 
-// Customer autocomplete
 let customerSearchTimeout = null;
 $('f-customer').addEventListener('input', (e) => {
   clearTimeout(customerSearchTimeout);
@@ -1630,7 +1866,6 @@ $('f-customer').addEventListener('input', (e) => {
   }, 150);
 });
 
-// Close dropdown on outside click
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.autocomplete-wrap')) $('customer-dropdown').classList.add('hidden');
 });
@@ -1639,21 +1874,17 @@ async function loadCustomers() {
   if (customers.length) return;
   try {
     const resp = await api('/customers');
-    if (resp.ok) {
-      customers = await resp.json();
-    }
+    if (resp.ok) customers = await resp.json();
   } catch {}
 }
 
 $('add-job-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-
   const customerId = $('f-customer-id').value;
   if (!customerId) { toast('Select a customer from the list'); return; }
 
   const btn = $('add-job-submit');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
+  btn.disabled = true; btn.textContent = 'Saving…';
 
   const date = todayISO();
   const weight = parseFloat($('f-qty').value) || 0;
@@ -1665,45 +1896,28 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const to = $('f-to').value.trim();
 
   const dt = new Date(date + 'T00:00:00Z');
-  const epoch = Math.floor(dt.getTime() / 1000) + 43200; // noon
+  const epoch = Math.floor(dt.getTime() / 1000) + 43200;
   const iso = `${date}T00:00:00.0000000`;
 
   const payload = {
-    active: true,
-    customerId,
-    jobTypeId: JOB_TYPE_STD,
-    serviceLevelId: SERVICE_LEVEL_STD,
-    customerReference: ref,
-    trafficNotes: notes,
-    accountNotes: '',
-    specialInstructions: '',
-    quotedPrice: price,
-    useQuotedPrice: true,
-    collectionRequired: false,
-    deliveryDateEpoch: epoch,
-    collectionDateEpoch: epoch,
-    deliveryDate: iso,
-    collectionDate: iso,
-    weight,
-    quantity: weight,
-    onOrBy: 'B',
-    collectionStatus: 'None',
-    deliveryStatus: 'Scheduled',
+    active: true, customerId, jobTypeId: JOB_TYPE_STD,
+    serviceLevelId: SERVICE_LEVEL_STD, customerReference: ref,
+    trafficNotes: notes, accountNotes: '', specialInstructions: '',
+    quotedPrice: price, useQuotedPrice: true, collectionRequired: false,
+    deliveryDateEpoch: epoch, collectionDateEpoch: epoch,
+    deliveryDate: iso, collectionDate: iso,
+    weight, quantity: weight, onOrBy: 'B',
+    collectionStatus: 'None', deliveryStatus: 'Scheduled',
     consignments: [{
-      active: true,
-      collection: false,
-      delivery: true,
-      goodsDescription: material,
-      consignmentReference: ref,
-      weight,
-      quantity: weight,
+      active: true, collection: false, delivery: true,
+      goodsDescription: material, consignmentReference: ref,
+      weight, quantity: weight,
       collectionAddressLine1: from || 'PM Groundworks Yard',
       collectionAddressLine3: 'Hambleton',
       collectionAddressLine4: 'Lancashire',
       collectionPostcode: from ? '' : 'FY6 9DJ',
       collectionCountry: 'United Kingdom',
-      deliveryAddressLine1: to,
-      deliveryPostcode: '',
+      deliveryAddressLine1: to, deliveryPostcode: '',
       deliveryCountry: 'United Kingdom',
     }],
   };
@@ -1714,9 +1928,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-
     if (resp.ok) {
-      // Save signature + photo as evidence (does NOT mark job complete)
       const jobResp = await resp.json().catch(()=>({}));
       const newJobId = jobResp.id || jobResp.jobId || ('driver-'+Date.now());
       const sigData = fSigCanvas ? fSigCanvas.toDataURL('image/png') : null;
@@ -1725,7 +1937,6 @@ $('add-job-form').addEventListener('submit', async (e) => {
         try {
           let photoData = null;
           if (fPhotoFile) { const ab = await fPhotoFile.arrayBuffer(); photoData = btoa(String.fromCharCode(...new Uint8Array(ab))); }
-          // Save as evidence only (podCode null = not a completion)
           await api(`/ticket/evidence-${newJobId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({driverName:currentUser.name,date:todayISO(),signature:hasSig?sigData:null,photo:photoData,notes:notes,type:'add_job_evidence'}) });
         } catch {}
       }
@@ -1743,54 +1954,14 @@ $('add-job-form').addEventListener('submit', async (e) => {
   } catch (e) {
     toast('Network error: ' + e.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Job to Haultech';
+    btn.disabled = false; btn.textContent = 'Save Job to Haultech';
   }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MANAGER VIEW
+// TOOLBAR
 // ══════════════════════════════════════════════════════════════════════════════
 
-$('gear-btn').addEventListener('click', () => {
-  if (isManager) {
-    isManager = false;
-    $('header-subtitle').textContent = currentUser.name;
-    renderJobs();
-    toast('Back to driver view');
-    return;
-  }
-  $('pw-modal').classList.remove('hidden');
-  $('pw-input').value = '';
-  setTimeout(() => $('pw-input').focus(), 100);
-});
-
-$('pw-close').addEventListener('click', () => $('pw-modal').classList.add('hidden'));
-$('pw-modal').addEventListener('click', e => {
-  if (e.target === $('pw-modal')) $('pw-modal').classList.add('hidden');
-});
-
-function tryManagerUnlock() {
-  const pw = $('pw-input').value;
-  if (pw === JIM_PASSWORD || pw === MANAGER_PASSWORD) {
-    isManager = true;
-    $('pw-modal').classList.add('hidden');
-    $('header-subtitle').textContent = 'All Drivers (Manager)';
-    renderJobs();
-    toast('Manager view unlocked');
-  } else {
-    toast('Wrong password');
-    $('pw-input').value = '';
-  }
-}
-$('pw-submit').addEventListener('click', tryManagerUnlock);
-$('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManagerUnlock(); });
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TOOLBAR BUTTONS
-// ══════════════════════════════════════════════════════════════════════════════
-
-$('logout-btn').addEventListener('click', logout);
 $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing…'); });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1799,18 +1970,16 @@ $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing
 
 function init() {
   renderUserButtons();
+  setHeaderForLogin();
 
-  // Auto-login if returning user
   const savedUser = localStorage.getItem('pmg-user');
   if (savedUser && INCAB_USERS[savedUser]) {
-    // Show PIN screen directly
     showPinScreen(savedUser);
   }
 }
 
 init();
 
-// ── Service Worker ──
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
