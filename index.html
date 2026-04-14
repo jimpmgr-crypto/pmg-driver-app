@@ -959,21 +959,26 @@ async function loadJobsFallback(date) {
 
 function getJobDriver(job) {
   if (job._cached) return job._driver || '';
+  // Use deliveryDriverId (direct field on job) — allocations are empty in this Haultech setup
+  const did = job.deliveryDriverId || job.collectionDriverId;
+  if (did && DRIVER_IDS[did]) return DRIVER_IDS[did];
+  // Fallback to allocations if present
   const alloc = (job.allocations || [])[0];
   return alloc?.driverName || alloc?.driver || job.driverName || '';
 }
 
 function getJobDriverId(job) {
   if (job._cached) return null;
-  const alloc = (job.allocations || [])[0];
-  return alloc?.driverId || null;
+  return job.deliveryDriverId || job.collectionDriverId || ((job.allocations || [])[0]?.driverId) || null;
 }
 
 function getJobVehicle(job) {
   if (job._cached) return '';
-  const alloc = (job.allocations || [])[0];
-  const vid = alloc?.vehicleId;
+  const vid = job.deliveryVehicleId || job.collectionVehicleId;
   if (vid && VEHICLES[vid]) return VEHICLES[vid];
+  const alloc = (job.allocations || [])[0];
+  const allocVid = alloc?.vehicleId;
+  if (allocVid && VEHICLES[allocVid]) return VEHICLES[allocVid];
   return alloc?.vehicleName || alloc?.vehicleRegistration || '';
 }
 
@@ -983,8 +988,10 @@ function getJobConsignment(job) {
 }
 
 function getJobConsignmentId(job) {
+  // id = UUID (used for QuickReceiveJob/QuickCompleteJob/MakeImageMpod)
+  // consignmentId = integer display ID
   const c = getJobConsignment(job);
-  return c?.id || c?.consignmentId || c?.trackerId || null;
+  return c?.id || null;
 }
 
 function getJobCustomer(job) {
@@ -1007,15 +1014,16 @@ function getJobMaterial(job) {
 function getJobFrom(job) {
   if (job._cached) return job._from || '';
   const c = getJobConsignment(job);
-  const addr = c?.collectionAddress || {};
-  return addr.name || addr.addressLine1 || addr.postcode || '';
+  if (!c) return '';
+  // Haultech uses flat fields: collectionAddressLine1, collectionPostcode, etc.
+  return c.collectionAddressLine1 || c.collectionPostcode || '';
 }
 
 function getJobTo(job) {
   if (job._cached) return job._to || '';
   const c = getJobConsignment(job);
-  const addr = c?.deliveryAddress || {};
-  return addr.name || addr.addressLine1 || addr.postcode || '';
+  if (!c) return '';
+  return c.deliveryAddressLine1 || c.deliveryPostcode || '';
 }
 
 function getJobWeight(job) {
