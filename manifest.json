@@ -2,7 +2,7 @@
   "name": "PMG Driver App",
   "short_name": "PMG Driver",
   "description": "PM Groundworks Ltd — Driver Day Sheet",
-  "start_url": "/",
+  "start_url": "/pmg-driver-app/",
   "display": "standalone",
   "background_color": "#f59e0b",
   "theme_color": "#1a2744",

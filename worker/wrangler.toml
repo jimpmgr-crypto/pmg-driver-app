@@ -1,0 +1,7 @@
+name = "pmg-driver-sync"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "PMG_DATA"
+id = "8620f47859fb4bf1b874754ed4d9b631"
