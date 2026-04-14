@@ -600,6 +600,7 @@ const API_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
 const API_KEY = 'pmg2026driver';
 const DRIVERS = ['John Bowman', 'Neil Antony', 'Ian Slater', 'Richard Whittaker', 'Andrew Whittaker'];
 const JIM_PASSWORD = 'jimpmg2026';
+const MANAGER_PASSWORD = 'PMGrichard1';
 
 let currentDriver = null;
 let isJim = false;
@@ -927,7 +928,7 @@ $('pw-modal').addEventListener('click', e => {
 });
 
 function tryJimUnlock() {
-  if ($('pw-input').value === JIM_PASSWORD) {
+  if ($('pw-input').value === JIM_PASSWORD || $('pw-input').value === MANAGER_PASSWORD) {
     isJim = true;
     $('pw-modal').classList.add('hidden');
     $('header-subtitle').textContent = 'All Drivers (Jim view)';
