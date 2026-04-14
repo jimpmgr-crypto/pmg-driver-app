@@ -990,10 +990,8 @@ function getJobConsignment(job) {
 }
 
 function getJobConsignmentId(job) {
-  // id = UUID (used for QuickReceiveJob/QuickCompleteJob/MakeImageMpod)
-  // consignmentId = integer display ID
-  const c = getJobConsignment(job);
-  return c?.id || null;
+  // QuickCompleteJob/QuickReceiveJob use the top-level job UUID (job.id), not consignment UUID
+  return job.id || job._id || null;
 }
 
 function getJobCustomer(job) {
