@@ -1387,17 +1387,28 @@ $('pod-submit').addEventListener('click', async () => {
         }
       }
 
-      // 3. Save signature to worker KV
+      // 3. Save signature — push to Haultech MPOD + Worker KV backup
       const sigData = getSignatureData();
       if (sigData) {
         try {
+          // Convert base64 data URL to blob and push to Haultech
           const sigBlob = await (await fetch(sigData)).arrayBuffer();
-          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
-            method: 'PUT',
-            headers: { 'X-PMG-Key': API_KEY },
+          await api(`/ht/mpod/${consId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'image/png' },
             body: sigBlob,
           });
-        } catch {}
+        } catch (se) {
+          // Fallback to Worker KV
+          try {
+            const sigBlob2 = await (await fetch(sigData)).arrayBuffer();
+            await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
+              method: 'PUT',
+              headers: { 'X-PMG-Key': API_KEY },
+              body: sigBlob2,
+            });
+          } catch {}
+        }
       }
 
       // 4. Save POD metadata to worker KV
@@ -1705,7 +1716,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     });
 
     if (resp.ok) {
-      // Save signature + photo if provided
+      // Save signature + photo as evidence (does NOT mark job complete)
       const jobResp = await resp.json().catch(()=>({}));
       const newJobId = jobResp.id || jobResp.jobId || ('driver-'+Date.now());
       const sigData = fSigCanvas ? fSigCanvas.toDataURL('image/png') : null;
@@ -1714,7 +1725,8 @@ $('add-job-form').addEventListener('submit', async (e) => {
         try {
           let photoData = null;
           if (fPhotoFile) { const ab = await fPhotoFile.arrayBuffer(); photoData = btoa(String.fromCharCode(...new Uint8Array(ab))); }
-          await api(`/ticket/pod-${newJobId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({driverName:currentUser.name,date:todayISO(),podCode:'SUCCESS',signature:hasSig?sigData:null,photo:photoData,notes:notes}) });
+          // Save as evidence only (podCode null = not a completion)
+          await api(`/ticket/evidence-${newJobId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({driverName:currentUser.name,date:todayISO(),signature:hasSig?sigData:null,photo:photoData,notes:notes,type:'add_job_evidence'}) });
         } catch {}
       }
       $('add-job-modal').classList.add('hidden');
