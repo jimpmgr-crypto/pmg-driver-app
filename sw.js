@@ -23,6 +23,8 @@ self.addEventListener('activate', e => {
 // Network-first for everything — always try to get latest from server
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Don't cache API calls
+  if (e.request.url.includes('pmg-driver-sync') || e.request.url.includes('httms.azurewebsites.net')) return;
   e.respondWith(
     fetch(e.request)
       .then(resp => {

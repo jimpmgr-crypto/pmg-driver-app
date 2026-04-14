@@ -20,7 +20,7 @@
       --amber: #f59e0b;
       --amber-dark: #d97706;
       --green: #10b981;
-      --green-dark: #065f46;
+      --green-dark: #059669;
       --grey: #6b7280;
       --red: #ef4444;
       --bg: #f3f4f6;
@@ -36,7 +36,10 @@
       color: var(--text);
       min-height: 100vh;
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
+
+    .hidden { display: none !important; }
 
     /* ── Header ── */
     header {
@@ -54,7 +57,7 @@
     header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
     header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 1px; }
     .header-left { display: flex; flex-direction: column; }
-    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
 
     .icon-btn {
       background: none; border: none; color: white; cursor: pointer;
@@ -65,79 +68,138 @@
 
     /* ── Main ── */
     main {
-      max-width: 600px; margin: 0 auto; padding: 16px; padding-bottom: 100px;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-bottom: 100px;
     }
 
-    /* ── Login Screen ── */
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* LOGIN SCREEN                                                          */
+    /* ════════════════════════════════════════════════════════════════════════ */
+
     #login-screen {
-      display: flex; flex-direction: column; align-items: center; padding-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 24px;
     }
-    .login-logo {
-      width: 80px; height: 80px; background: var(--navy); border-radius: 20px;
+    #login-screen h2 {
+      font-size: 24px; font-weight: 800; color: var(--navy); margin-bottom: 4px;
+    }
+    #login-screen .login-sub {
+      color: var(--muted); margin-bottom: 28px; font-size: 15px;
+    }
+
+    /* User buttons */
+    .user-grid {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .user-btn {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      font-family: 'Inter', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--navy);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.15s, background 0.15s;
+      min-height: 64px;
+    }
+    .user-btn:hover, .user-btn:active {
+      border-color: var(--amber); background: #fffbeb;
+    }
+    .user-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--navy); color: white;
       display: flex; align-items: center; justify-content: center;
-      font-size: 28px; font-weight: 800; color: var(--amber); margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(26,39,68,0.3);
+      font-size: 16px; font-weight: 700; flex-shrink: 0;
     }
-    #login-screen h2 { font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
-    #login-screen p { color: var(--muted); margin-bottom: 28px; font-size: 14px; }
 
-    .login-box {
-      width: 100%; max-width: 320px; background: var(--card);
-      border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    /* PIN entry */
+    #pin-screen {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px;
     }
-    .login-field { margin-bottom: 16px; }
-    .login-field label {
-      display: block; font-size: 12px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;
+    .pin-back {
+      align-self: flex-start;
+      background: none; border: none; color: var(--navy);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      padding: 8px 0; margin-bottom: 16px;
+      font-family: 'Inter', sans-serif;
     }
-    .login-field input {
-      width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 12px;
-      font-family: 'Inter', sans-serif; font-size: 16px; color: var(--text);
-      background: white; -webkit-appearance: none; text-align: center;
+    .pin-label {
+      font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 24px;
     }
-    .login-field input:focus { outline: none; border-color: var(--navy); }
-
-    .pin-display {
-      display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; padding: 14px 0;
+    .pin-dots {
+      display: flex; gap: 16px; margin-bottom: 28px;
     }
     .pin-dot {
-      width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border);
-      transition: background 0.15s, border-color 0.15s;
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--border); background: white;
+      transition: all 0.15s;
     }
-    .pin-dot.filled { background: var(--navy); border-color: var(--navy); }
+    .pin-dot.filled {
+      background: var(--navy); border-color: var(--navy);
+    }
+    .pin-dot.error {
+      background: var(--red); border-color: var(--red);
+      animation: shake 0.3s;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
 
-    .pin-pad {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+    .pin-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 280px;
+      width: 100%;
     }
     .pin-key {
-      background: var(--bg); border: none; border-radius: 12px; padding: 16px;
-      font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 600;
-      color: var(--navy); cursor: pointer; min-height: 56px;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--navy);
+      cursor: pointer;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: background 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    .pin-key:active { background: #d1d5db; }
-    .pin-key.fn { font-size: 14px; font-weight: 600; }
-    .pin-key.clear { color: var(--red); }
-    .pin-key.empty { visibility: hidden; }
+    .pin-key:active { background: #e5e7eb; }
+    .pin-key.fn { font-size: 14px; color: var(--muted); }
 
-    .login-btn {
-      width: 100%; padding: 16px; background: var(--navy); color: white; border: none;
-      border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 16px;
-      font-weight: 700; cursor: pointer; min-height: 54px; transition: background 0.15s;
-    }
-    .login-btn:hover { background: var(--navy-light); }
-    .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .login-error {
-      color: var(--red); font-size: 13px; font-weight: 500; text-align: center;
-      margin-top: 10px; min-height: 20px;
-    }
-
-    /* ── Jobs screen ── */
-    #jobs-screen { display: none; }
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* JOBS SCREEN                                                           */
+    /* ════════════════════════════════════════════════════════════════════════ */
 
     .date-bar {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
     }
     .date-label {
       font-size: 13px; font-weight: 600; color: var(--muted);
@@ -145,75 +207,92 @@
     }
     .refresh-btn {
       background: none; border: none; color: var(--muted); cursor: pointer;
-      font-size: 14px; padding: 4px 8px; border-radius: 6px;
+      font-size: 14px; padding: 6px 10px; border-radius: 6px;
       display: flex; align-items: center; gap: 4px;
+      font-family: 'Inter', sans-serif;
     }
     .refresh-btn:hover { color: var(--navy); }
 
     /* ── Job card ── */
     .job-card {
-      background: var(--card); border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 10px;
-      overflow: hidden; border: 1px solid var(--border); transition: box-shadow 0.15s;
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      margin-bottom: 10px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .job-card.expanded { border-color: var(--amber); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .job-card.expanded { border-color: var(--amber); box-shadow: 0 2px 12px rgba(245,158,11,0.15); }
 
     .job-card-header {
-      padding: 14px 16px; display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 12px; cursor: pointer;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
     }
     .job-card-main { flex: 1; min-width: 0; }
     .job-customer {
-      font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 4px;
+      font-size: 16px; font-weight: 700; color: var(--navy);
+      margin-bottom: 4px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .job-ref {
-      font-size: 11px; font-weight: 600; color: var(--amber-dark);
-      background: #fef3c7; padding: 1px 6px; border-radius: 6px;
-      display: inline-block; margin-bottom: 4px;
+    .job-vehicle {
+      font-size: 12px; font-weight: 600; color: var(--amber-dark);
+      margin-bottom: 4px;
     }
-    .job-material { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
     .job-meta {
-      font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap;
-      gap: 6px; align-items: center;
+      font-size: 13px; color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     }
     .job-meta .arrow { color: var(--amber); font-weight: 700; }
-    .job-vehicle {
-      font-size: 11px; font-weight: 700; color: var(--navy); background: #e0e7ff;
-      padding: 2px 7px; border-radius: 6px; display: inline-block; margin-top: 4px;
+    .job-material {
+      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px;
     }
 
     /* Status badges */
     .badge {
-      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
-      border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
       white-space: nowrap; flex-shrink: 0;
     }
-    .badge-scheduled   { background: #f3f4f6; color: #6b7280; }
-    .badge-departed    { background: #fef3c7; color: #d97706; }
-    .badge-delivered   { background: #d1fae5; color: #065f46; }
+    .badge-scheduled  { background: #f3f4f6; color: #6b7280; }
+    .badge-departed   { background: #fef3c7; color: #d97706; }
+    .badge-complete   { background: #d1fae5; color: #065f46; }
     .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
+    /* Driver tag (manager view) */
     .driver-tag {
-      font-size: 11px; font-weight: 600; color: var(--navy); background: #e0e7ff;
-      padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; color: var(--navy);
+      background: #e0e7ff; padding: 2px 8px; border-radius: 10px;
     }
 
     /* Expanded detail */
     .job-detail {
-      display: none; padding: 0 16px 16px; border-top: 1px solid var(--border);
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
     }
     .job-card.expanded .job-detail { display: block; }
 
     .detail-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-      margin-top: 12px; margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 16px;
     }
     .detail-item label {
       font-size: 11px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 2px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      display: block; margin-bottom: 2px;
     }
-    .detail-item span { font-size: 14px; font-weight: 500; color: var(--text); }
+    .detail-item span {
+      font-size: 14px; font-weight: 500; color: var(--text);
+    }
     .detail-notes {
       font-size: 13px; color: var(--muted); margin-bottom: 12px;
       padding: 10px; background: var(--bg); border-radius: 8px;
@@ -222,28 +301,29 @@
     /* Action buttons */
     .action-row { display: flex; gap: 8px; }
     .btn {
-      flex: 1; padding: 14px; border: none; border-radius: 10px;
-      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
-      cursor: pointer; min-height: 48px; transition: opacity 0.15s, transform 0.1s;
+      flex: 1; padding: 14px; border: none; border-radius: 12px;
+      font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
+      cursor: pointer; min-height: 52px;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-depart   { background: var(--amber); color: white; }
-    .btn-depart:hover:not(:disabled) { background: #d97706; }
-    .btn-deliver  { background: var(--green); color: white; }
-    .btn-deliver:hover:not(:disabled) { background: #059669; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-depart  { background: var(--amber); color: white; }
+    .btn-depart:hover:not(:disabled) { background: var(--amber-dark); }
+    .btn-complete { background: var(--green); color: white; }
+    .btn-complete:hover:not(:disabled) { background: var(--green-dark); }
 
-    /* POD submitted indicator */
-    .pod-indicator {
-      display: flex; align-items: center; gap: 6px; padding: 10px 12px;
-      background: #d1fae5; border-radius: 8px; font-size: 13px; font-weight: 600;
-      color: var(--green-dark); margin-top: 8px;
+    /* ── Driver section (manager view) ── */
+    .driver-section { margin-bottom: 24px; }
+    .driver-section-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 8px; padding: 0 4px;
     }
 
     /* ── Empty state ── */
-    .empty-state {
-      text-align: center; padding: 48px 16px; color: var(--muted);
-    }
+    .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); }
     .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
     .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
     .empty-state p { font-size: 14px; }
@@ -251,150 +331,191 @@
     /* ── Loading ── */
     .loading { text-align: center; padding: 32px; color: var(--muted); font-size: 14px; }
     .spinner {
-      width: 32px; height: 32px; border: 3px solid var(--border);
-      border-top-color: var(--navy); border-radius: 50%;
-      animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+      width: 32px; height: 32px;
+      border: 3px solid var(--border); border-top-color: var(--navy);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── FAB ── */
+    /* ── FAB: Add Job ── */
     .fab {
-      position: fixed; bottom: 24px; right: 50%; transform: translateX(50%);
+      position: fixed;
+      bottom: 24px;
+      right: 50%; transform: translateX(50%);
       max-width: calc(600px - 32px); width: calc(100% - 32px);
       background: var(--navy); color: white; border: none; border-radius: 14px;
-      padding: 16px; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(26,39,68,0.35);
+      padding: 16px;
+      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(26,39,68,0.35);
       display: flex; align-items: center; justify-content: center; gap: 8px;
-      min-height: 54px; transition: background 0.15s; z-index: 50;
+      min-height: 54px; z-index: 50;
+      transition: background 0.15s;
     }
-    .fab.hidden { display: none; }
     .fab:hover { background: var(--navy-light); }
     .fab:active { transform: translateX(50%) scale(0.98); }
 
-    /* ── Modals ── */
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* MODALS                                                                */
+    /* ════════════════════════════════════════════════════════════════════════ */
+
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
       display: flex; align-items: flex-end; justify-content: center;
     }
-    .modal-overlay.hidden { display: none; }
     .modal {
-      background: white; border-radius: 20px 20px 0 0; width: 100%;
-      max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 24px 20px 32px;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 600px; max-height: 92vh;
+      overflow-y: auto; padding: 24px 20px 32px;
+      -webkit-overflow-scrolling: touch;
     }
     .modal-title {
-      font-size: 19px; font-weight: 700; color: var(--navy); margin-bottom: 20px;
+      font-size: 19px; font-weight: 700; color: var(--navy);
+      margin-bottom: 20px;
       display: flex; align-items: center; justify-content: space-between;
     }
     .modal-close {
       background: var(--bg); border: none; border-radius: 50%;
-      width: 32px; height: 32px; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; color: var(--muted);
+      width: 36px; height: 36px; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
     }
 
-    /* ── Form ── */
+    /* Form fields */
     .form-group { margin-bottom: 14px; }
     .form-group label {
-      display: block; font-size: 12px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.4px; margin-bottom: 6px;
     }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 13px 14px; border: 1.5px solid var(--border);
-      border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 15px;
-      color: var(--text); background: white; -webkit-appearance: none;
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%; padding: 13px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 15px;
+      color: var(--text); background: white;
+      -webkit-appearance: none;
     }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
       outline: none; border-color: var(--navy);
     }
-    .form-group textarea { min-height: 80px; resize: vertical; }
+    .form-group textarea { min-height: 70px; resize: vertical; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
     .btn-submit {
-      width: 100%; padding: 16px; background: var(--navy); color: white; border: none;
-      border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 16px;
-      font-weight: 700; cursor: pointer; min-height: 54px; margin-top: 8px;
-      transition: background 0.15s;
+      width: 100%; padding: 16px;
+      background: var(--navy); color: white; border: none; border-radius: 12px;
+      font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700;
+      cursor: pointer; min-height: 54px; margin-top: 8px;
     }
     .btn-submit:hover { background: var(--navy-light); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── POD Modal ── */
-    .pod-section { margin-bottom: 18px; }
-    .pod-section h3 {
-      font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    /* Customer autocomplete */
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: white; border: 1.5px solid var(--border);
+      border-radius: 0 0 10px 10px; border-top: none;
+      max-height: 200px; overflow-y: auto; z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .autocomplete-item {
+      padding: 12px 14px; cursor: pointer;
+      font-size: 14px; border-bottom: 1px solid var(--border);
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background: #fffbeb;
+    }
+    .autocomplete-item .ac-code {
+      font-size: 12px; color: var(--muted);
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════ */
+    /* POD MODAL                                                             */
+    /* ════════════════════════════════════════════════════════════════════════ */
+
+    .pod-code-row {
+      display: flex; gap: 10px; margin-bottom: 16px;
+    }
+    .pod-code-btn {
+      flex: 1; padding: 14px; border: 2px solid var(--border);
+      border-radius: 12px; background: white;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; text-align: center;
+      transition: all 0.15s;
+    }
+    .pod-code-btn.active-success {
+      border-color: var(--green); background: #ecfdf5; color: var(--green-dark);
+    }
+    .pod-code-btn.active-damaged {
+      border-color: var(--red); background: #fef2f2; color: var(--red);
+    }
+
+    /* Signature canvas */
+    .sig-section { margin-bottom: 16px; }
+    .sig-section label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase;
       letter-spacing: 0.4px; margin-bottom: 8px;
     }
-
-    .pod-code-row { display: flex; gap: 8px; }
-    .pod-code-btn {
-      flex: 1; padding: 14px; border: 2px solid var(--border); border-radius: 10px;
-      background: white; font-family: 'Inter', sans-serif; font-size: 14px;
-      font-weight: 700; cursor: pointer; text-align: center; transition: all 0.15s;
-    }
-    .pod-code-btn.selected-success { border-color: var(--green); background: #d1fae5; color: var(--green-dark); }
-    .pod-code-btn.selected-damaged { border-color: var(--red); background: #fee2e2; color: #991b1b; }
-
     .sig-canvas-wrap {
-      border: 2px solid var(--border); border-radius: 12px; overflow: hidden;
-      position: relative; background: white; touch-action: none;
+      border: 2px dashed var(--border); border-radius: 12px;
+      background: white; position: relative; overflow: hidden;
     }
-    .sig-canvas { width: 100%; height: 180px; display: block; }
+    .sig-canvas-wrap canvas {
+      width: 100%; height: 160px; display: block;
+      touch-action: none;
+    }
     .sig-clear {
-      position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.06);
-      border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px;
-      font-weight: 600; color: var(--muted); cursor: pointer;
-    }
-    .sig-label {
-      text-align: center; font-size: 12px; color: var(--muted); padding: 6px;
-      border-top: 1px dashed var(--border);
-    }
-
-    .photo-area {
-      border: 2px dashed var(--border); border-radius: 12px; padding: 20px;
-      text-align: center; cursor: pointer; transition: border-color 0.15s;
-    }
-    .photo-area:hover { border-color: var(--navy); }
-    .photo-area .icon { font-size: 32px; margin-bottom: 8px; }
-    .photo-area p { font-size: 13px; color: var(--muted); }
-    .photo-preview {
-      max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: none;
-    }
-    .photo-area.has-photo { border-style: solid; border-color: var(--green); }
-
-    /* Driver sections */
-    .driver-section { margin-bottom: 24px; }
-    .driver-section-title {
-      font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 4px;
-    }
-
-    /* ── Manager edit modal ── */
-    .mgr-job-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 0; border-bottom: 1px solid var(--border);
-    }
-    .mgr-job-info { flex: 1; }
-    .mgr-job-customer { font-size: 14px; font-weight: 600; }
-    .mgr-job-meta { font-size: 12px; color: var(--muted); }
-    .mgr-job-actions { display: flex; gap: 6px; }
-    .mgr-btn-sm {
-      padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
-      background: white; font-size: 12px; font-weight: 600; cursor: pointer;
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,0.05); border: none; border-radius: 6px;
+      padding: 4px 10px; font-size: 12px; font-weight: 600;
+      color: var(--muted); cursor: pointer;
       font-family: 'Inter', sans-serif;
     }
-    .mgr-btn-sm:hover { background: var(--bg); }
 
-    /* POD view in manager */
-    .pod-view-img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+    /* Photo */
+    .photo-section { margin-bottom: 16px; }
+    .photo-btn {
+      width: 100%; padding: 14px; border: 2px dashed var(--border);
+      border-radius: 12px; background: white;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+      color: var(--muted); cursor: pointer; text-align: center;
+      min-height: 52px;
+    }
+    .photo-btn:hover { border-color: var(--navy); color: var(--navy); }
+    .photo-preview {
+      width: 100%; max-height: 200px; object-fit: cover;
+      border-radius: 10px; margin-top: 8px;
+    }
 
     /* ── Toast ── */
     #toast {
       position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-      background: #1f2937; color: white; padding: 10px 20px; border-radius: 10px;
-      font-size: 14px; font-weight: 500; z-index: 999; opacity: 0;
-      transition: opacity 0.2s; pointer-events: none; white-space: nowrap;
+      background: #1f2937; color: white;
+      padding: 10px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 500; z-index: 999;
+      opacity: 0; transition: opacity 0.2s;
+      pointer-events: none; white-space: nowrap;
+      max-width: 90vw; text-align: center;
     }
     #toast.show { opacity: 1; }
 
-    /* ── Select styling ── */
-    .form-group select { appearance: auto; -webkit-appearance: menulist; }
+    /* ── Error bar ── */
+    .error-bar {
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 10px; padding: 12px 16px;
+      margin-bottom: 16px; font-size: 13px; color: #991b1b;
+      display: flex; align-items: center; gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -402,55 +523,48 @@
 <header>
   <div class="header-left">
     <h1>PMG Drivers</h1>
-    <div class="subtitle" id="header-subtitle">Sign in</div>
+    <div class="subtitle" id="header-subtitle">Login</div>
   </div>
   <div class="header-right">
-    <button class="icon-btn" id="gear-btn" title="Manager" style="display:none">⚙️</button>
-    <button class="icon-btn" id="back-btn" title="Sign out" style="display:none">← Out</button>
+    <button class="icon-btn hidden" id="gear-btn" title="Manager view">⚙️</button>
+    <button class="icon-btn hidden" id="logout-btn" title="Log out">🚪</button>
   </div>
 </header>
 
 <main>
-  <!-- Login screen -->
+  <!-- ══ LOGIN SCREEN ══ -->
   <div id="login-screen">
-    <div class="login-logo">PMG</div>
-    <h2>Driver Sign In</h2>
-    <p>Enter your username and PIN</p>
-    <div class="login-box">
-      <div class="login-field">
-        <label>Username</label>
-        <input type="text" id="login-username" placeholder="e.g. john" autocomplete="off" autocapitalize="off">
+    <h2>🚛 PMG Drivers</h2>
+    <p class="login-sub">Select your name to start</p>
+    <div class="user-grid" id="user-grid"></div>
+
+    <div id="pin-screen" class="hidden">
+      <button class="pin-back" id="pin-back">← Back</button>
+      <div class="pin-label" id="pin-label">Enter PIN</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
       </div>
-      <div class="login-field">
-        <label>PIN</label>
-        <div class="pin-display" id="pin-display">
-          <div class="pin-dot" id="dot-0"></div>
-          <div class="pin-dot" id="dot-1"></div>
-          <div class="pin-dot" id="dot-2"></div>
-          <div class="pin-dot" id="dot-3"></div>
-        </div>
-        <div class="pin-pad" id="pin-pad">
-          <button class="pin-key" data-val="1">1</button>
-          <button class="pin-key" data-val="2">2</button>
-          <button class="pin-key" data-val="3">3</button>
-          <button class="pin-key" data-val="4">4</button>
-          <button class="pin-key" data-val="5">5</button>
-          <button class="pin-key" data-val="6">6</button>
-          <button class="pin-key" data-val="7">7</button>
-          <button class="pin-key" data-val="8">8</button>
-          <button class="pin-key" data-val="9">9</button>
-          <button class="pin-key fn clear" data-val="clear">Clear</button>
-          <button class="pin-key" data-val="0">0</button>
-          <button class="pin-key fn" data-val="back">⌫</button>
-        </div>
+      <div class="pin-keypad" id="pin-keypad">
+        <button class="pin-key" data-key="1">1</button>
+        <button class="pin-key" data-key="2">2</button>
+        <button class="pin-key" data-key="3">3</button>
+        <button class="pin-key" data-key="4">4</button>
+        <button class="pin-key" data-key="5">5</button>
+        <button class="pin-key" data-key="6">6</button>
+        <button class="pin-key" data-key="7">7</button>
+        <button class="pin-key" data-key="8">8</button>
+        <button class="pin-key" data-key="9">9</button>
+        <button class="pin-key fn" data-key="clear">CLR</button>
+        <button class="pin-key" data-key="0">0</button>
+        <button class="pin-key fn" data-key="back">⌫</button>
       </div>
-      <button class="login-btn" id="login-btn">Sign In</button>
-      <div class="login-error" id="login-error"></div>
     </div>
   </div>
 
-  <!-- Jobs view -->
-  <div id="jobs-screen">
+  <!-- ══ JOBS SCREEN ══ -->
+  <div id="jobs-screen" class="hidden">
+    <div id="error-bar" class="error-bar hidden"></div>
     <div class="date-bar">
       <span class="date-label" id="date-label"></span>
       <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
@@ -462,7 +576,48 @@
 <!-- Add Job FAB -->
 <button class="fab hidden" id="add-job-btn">＋ Add Job</button>
 
-<!-- Add Job Modal -->
+<!-- ══ POD MODAL ══ -->
+<div class="modal-overlay hidden" id="pod-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Proof of Delivery
+      <button class="modal-close" id="pod-close">✕</button>
+    </div>
+    <div id="pod-job-info" style="font-size:14px;color:var(--muted);margin-bottom:16px;"></div>
+
+    <div class="form-group">
+      <label>POD Status</label>
+      <div class="pod-code-row">
+        <button class="pod-code-btn active-success" id="pod-success" data-code="success">✓ SUCCESS</button>
+        <button class="pod-code-btn" id="pod-damaged" data-code="damaged">⚠ DAMAGED</button>
+      </div>
+    </div>
+
+    <div class="sig-section">
+      <label>Signature</label>
+      <div class="sig-canvas-wrap">
+        <canvas id="sig-canvas"></canvas>
+        <button class="sig-clear" id="sig-clear">Clear</button>
+      </div>
+    </div>
+
+    <div class="photo-section">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:block">Photo</label>
+      <button class="photo-btn" id="photo-btn">📷 Take Photo</button>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
+      <img class="photo-preview hidden" id="photo-preview">
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="pod-notes" placeholder="Any delivery notes…"></textarea>
+    </div>
+
+    <button class="btn-submit" id="pod-submit">SUBMIT POD & COMPLETE</button>
+  </div>
+</div>
+
+<!-- ══ ADD JOB MODAL ══ -->
 <div class="modal-overlay hidden" id="add-job-modal">
   <div class="modal">
     <div class="modal-title">
@@ -470,12 +625,14 @@
       <button class="modal-close" id="add-job-close">✕</button>
     </div>
     <form id="add-job-form">
-      <div class="form-group">
+      <div class="form-group autocomplete-wrap">
         <label>Customer</label>
-        <input type="text" id="f-customer" placeholder="Customer name" required>
+        <input type="text" id="f-customer" placeholder="Start typing customer name…" autocomplete="off" required>
+        <input type="hidden" id="f-customer-id">
+        <div id="customer-dropdown" class="autocomplete-list hidden"></div>
       </div>
       <div class="form-group">
-        <label>Material</label>
+        <label>Material / Goods Description</label>
         <input type="text" id="f-material" placeholder="e.g. MOT Type 1">
       </div>
       <div class="form-row">
@@ -488,15 +645,9 @@
           <input type="text" id="f-to" placeholder="e.g. Site name">
         </div>
       </div>
-      <div class="form-group">
-        <label>Vehicle</label>
-        <select id="f-vehicle">
-          <option value="">Select vehicle…</option>
-        </select>
-      </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Weight (t)</label>
+          <label>Quantity (t)</label>
           <input type="number" id="f-qty" placeholder="0" step="0.5" min="0">
         </div>
         <div class="form-group">
@@ -505,62 +656,19 @@
         </div>
       </div>
       <div class="form-group">
+        <label>Reference</label>
+        <input type="text" id="f-ref" placeholder="Ticket/ref number">
+      </div>
+      <div class="form-group">
         <label>Notes</label>
         <textarea id="f-notes" placeholder="Any extra info…"></textarea>
       </div>
-      <button type="submit" class="btn-submit">Save Job</button>
+      <button type="submit" class="btn-submit" id="add-job-submit">Save Job to Haultech</button>
     </form>
   </div>
 </div>
 
-<!-- POD Modal -->
-<div class="modal-overlay hidden" id="pod-modal">
-  <div class="modal">
-    <div class="modal-title">
-      Proof of Delivery
-      <button class="modal-close" id="pod-close">✕</button>
-    </div>
-    <div id="pod-job-info" style="margin-bottom:16px; font-size:14px; color:var(--muted);"></div>
-
-    <div class="pod-section">
-      <h3>POD Code</h3>
-      <div class="pod-code-row">
-        <button class="pod-code-btn" id="pod-success" data-code="SUCCESS">✓ SUCCESS</button>
-        <button class="pod-code-btn" id="pod-damaged" data-code="DAMAGED">✗ DAMAGED</button>
-      </div>
-    </div>
-
-    <div class="pod-section">
-      <h3>Signature</h3>
-      <div class="sig-canvas-wrap">
-        <canvas class="sig-canvas" id="sig-canvas"></canvas>
-        <button class="sig-clear" id="sig-clear">Clear</button>
-      </div>
-      <div class="sig-label">Sign above with your finger</div>
-    </div>
-
-    <div class="pod-section">
-      <h3>Photo</h3>
-      <div class="photo-area" id="photo-area">
-        <div class="icon">📷</div>
-        <p>Tap to take photo</p>
-        <img class="photo-preview" id="photo-preview">
-      </div>
-      <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
-    </div>
-
-    <div class="pod-section">
-      <h3>Notes</h3>
-      <div class="form-group" style="margin-bottom:0">
-        <textarea id="pod-notes" placeholder="Optional delivery notes…" style="min-height:60px"></textarea>
-      </div>
-    </div>
-
-    <button class="btn-submit" id="pod-submit">Submit POD</button>
-  </div>
-</div>
-
-<!-- Manager Password Modal -->
+<!-- ══ MANAGER PASSWORD MODAL ══ -->
 <div class="modal-overlay hidden" id="pw-modal">
   <div class="modal">
     <div class="modal-title">
@@ -577,59 +685,28 @@
   </div>
 </div>
 
-<!-- Manager POD View Modal -->
-<div class="modal-overlay hidden" id="pod-view-modal">
-  <div class="modal">
-    <div class="modal-title">
-      POD Details
-      <button class="modal-close" id="pod-view-close">✕</button>
-    </div>
-    <div id="pod-view-content"></div>
-  </div>
-</div>
-
-<!-- Manager Edit Job Modal -->
-<div class="modal-overlay hidden" id="edit-job-modal">
-  <div class="modal">
-    <div class="modal-title">
-      Edit Job
-      <button class="modal-close" id="edit-job-close">✕</button>
-    </div>
-    <form id="edit-job-form">
-      <div class="form-group">
-        <label>Status</label>
-        <select id="e-status">
-          <option value="not_started">Scheduled</option>
-          <option value="in_progress">Departed</option>
-          <option value="complete">Delivered</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Price (£)</label>
-        <input type="number" id="e-price" placeholder="0.00" step="0.01" min="0">
-      </div>
-      <button type="submit" class="btn-submit">Save Changes</button>
-    </form>
-  </div>
-</div>
-
 <div id="toast"></div>
 
 <script>
-const API_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
-const API_KEY = 'pmg2026driver';
-const MANAGER_PASSWORDS = ['jimpmg2026', 'PMGrichard1'];
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG & CONSTANTS
+// ══════════════════════════════════════════════════════════════════════════════
 
-// Driver credentials (from Haultech incab_users)
+const WORKER_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
+const API_KEY = 'pmg2026driver';
+const TMS_ID = 'd80fd468-e802-492d-b73c-e09ab51bee88';
+const JIM_PASSWORD = 'jimpmg2026';
+const MANAGER_PASSWORD = 'PMGrichard1';
+const JOB_TYPE_STD = '4cbd566c-7fd6-41e2-b11a-29a5116457e2';
+const SERVICE_LEVEL_STD = '6c19efc0-0664-41df-a2f3-ad2375659a66';
+
 const INCAB_USERS = {
   john:    { pin: '1234', driverId: 'f5c31070-2945-408a-bc7a-0245159a191a', name: 'John Bowman' },
   richard: { pin: '1409', driverId: '201938f2-da93-4987-bd42-32342fcce78f', name: 'Richard Whittaker' },
   andrew:  { pin: '3333', driverId: 'd6795d54-a5f4-441b-b09a-df06558f7154', name: 'Andrew Whittaker' },
   neil:    { pin: '1962', driverId: '42374caa-5cf2-446e-823e-a40e9d2a2d28', name: 'Neil Antony' },
-  ian:     { pin: '1234', driverId: '0c472976-88ac-4610-bccb-e5b9ffde707c', name: 'Ian Slater' }
+  ian:     { pin: '1234', driverId: '0c472976-88ac-4610-bccb-e5b9ffde707c', name: 'Ian Slater' },
 };
-
-const DRIVERS = Object.values(INCAB_USERS).map(u => u.name);
 
 const VEHICLES = {
   '3acf3f0b-462d-4b75-9072-3f0890ea036a': 'EY15BOV',
@@ -637,23 +714,35 @@ const VEHICLES = {
   'fdc27b69-6da3-41fc-8492-d349a2538191': 'YJ13GRF',
   '695b915e-d817-476c-b3e1-a1768233edd9': 'PN25FLF',
   '31aa7aef-e40a-4095-b796-e8ed80639aa8': 'PN25AMU',
-  '112689c0-e2f4-4e32-9bfb-8e4fa24bb422': 'LL21HJJ'
+  '112689c0-e2f4-4e32-9bfb-8e4fa24bb422': 'LL21HJJ',
 };
-const VEHICLE_REGS = Object.values(VEHICLES);
 
-let currentDriver = null;
-let currentDriverId = null;
+const DRIVER_IDS = {};
+for (const [k, v] of Object.entries(INCAB_USERS)) DRIVER_IDS[v.driverId] = v.name;
+
+const POD_CODES = {
+  success: '933d89d0-aaf6-45c4-a34a-7e33efcb7d36',
+  damaged: 'b357e342-790e-4143-a460-95845fdadad0',
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+
+let currentUser = null;     // { username, pin, driverId, name }
+let allJobs = [];           // raw Haultech job objects
+let customers = [];         // customer list for add-job
 let isManager = false;
-let allJobsData = [];
-let manualJobsData = {};
-let podCache = {};
 let refreshTimer = null;
-let pinValue = '';
-let podState = { jobId: null, job: null, code: null, signature: null, photo: null };
+let podJob = null;          // job being completed
+let podCode = 'success';
+let photoFile = null;
 
 const $ = id => document.getElementById(id);
 
-// ── Helpers ──
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
 
 function todayISO() { return new Date().toISOString().split('T')[0]; }
 
@@ -663,9 +752,9 @@ function formatDate(iso) {
 }
 
 function api(path, opts = {}) {
-  return fetch(API_URL + path, {
+  return fetch(WORKER_URL + path, {
     ...opts,
-    headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    headers: { 'X-PMG-Key': API_KEY, ...(opts.headers || {}) },
   });
 }
 
@@ -676,164 +765,318 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-function initials(name) { return name.split(' ').map(w => w[0]).join('').toUpperCase(); }
-
 function esc(str) {
-  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function resolveVehicleReg(job) {
-  if (job.vehicleReg) return job.vehicleReg;
-  if (job.vehicleId && VEHICLES[job.vehicleId]) return VEHICLES[job.vehicleId];
-  if (job.vehicle) return job.vehicle;
-  return null;
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase();
+}
+
+function mapStatus(deliveryStatus) {
+  const s = (deliveryStatus || '').toLowerCase();
+  if (['delivered', 'completed', 'received'].includes(s)) return 'complete';
+  if (['departed', 'in progress', 'collected'].includes(s)) return 'departed';
+  return 'scheduled';
 }
 
 function statusBadge(status) {
-  if (status === 'in_progress') return '<span class="badge badge-departed"><span class="badge-dot"></span>DEPARTED</span>';
-  if (status === 'complete')    return '<span class="badge badge-delivered"><span class="badge-dot"></span>DELIVERED</span>';
-  return '<span class="badge badge-scheduled"><span class="badge-dot"></span>SCHEDULED</span>';
+  if (status === 'complete')  return `<span class="badge badge-complete"><span class="badge-dot"></span>COMPLETE</span>`;
+  if (status === 'departed')  return `<span class="badge badge-departed"><span class="badge-dot"></span>DEPARTED</span>`;
+  return `<span class="badge badge-scheduled"><span class="badge-dot"></span>SCHEDULED</span>`;
 }
 
-function statusLabel(status) {
-  if (status === 'in_progress') return 'Departed';
-  if (status === 'complete') return 'Delivered';
-  return 'Scheduled';
+function showError(msg) {
+  const el = $('error-bar');
+  if (msg) { el.textContent = '⚠️ ' + msg; el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
 }
 
-// ── PIN Login ──
+// ══════════════════════════════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════════════════════════════
 
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    $('dot-' + i).classList.toggle('filled', i < pinValue.length);
-  }
-}
+let selectedUsername = null;
+let pinBuffer = '';
 
-$('pin-pad').addEventListener('click', e => {
-  const btn = e.target.closest('.pin-key');
-  if (!btn) return;
-  const val = btn.dataset.val;
-  if (val === 'clear') { pinValue = ''; }
-  else if (val === 'back') { pinValue = pinValue.slice(0, -1); }
-  else if (pinValue.length < 4) { pinValue += val; }
-  updatePinDots();
-  $('login-error').textContent = '';
-});
-
-$('login-btn').addEventListener('click', attemptLogin);
-$('login-username').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('pin-pad').querySelector('[data-val="1"]').focus(); } });
-
-function attemptLogin() {
-  const username = $('login-username').value.trim().toLowerCase();
-  const pin = pinValue;
-
-  if (!username) { $('login-error').textContent = 'Enter your username'; return; }
-  if (pin.length !== 4) { $('login-error').textContent = 'Enter your 4-digit PIN'; return; }
-
-  const user = INCAB_USERS[username];
-  if (!user || user.pin !== pin) {
-    $('login-error').textContent = 'Invalid username or PIN';
-    pinValue = '';
-    updatePinDots();
-    return;
-  }
-
-  currentDriver = user.name;
-  currentDriverId = user.driverId;
-  enterJobsView();
-}
-
-function enterJobsView() {
-  $('login-screen').style.display = 'none';
-  $('jobs-screen').style.display = 'block';
-  $('add-job-btn').classList.remove('hidden');
-  $('back-btn').style.display = 'flex';
-  $('gear-btn').style.display = 'flex';
-  $('header-subtitle').textContent = currentDriver;
-  $('date-label').textContent = formatDate(todayISO());
-  populateVehicleDropdown();
-  loadJobs();
-  refreshTimer = setInterval(loadJobs, 5 * 60 * 1000);
-}
-
-function signOut() {
-  currentDriver = null;
-  currentDriverId = null;
-  isManager = false;
-  allJobsData = [];
-  manualJobsData = {};
-  podCache = {};
-  pinValue = '';
-  updatePinDots();
-  clearInterval(refreshTimer);
-  refreshTimer = null;
-  $('login-screen').style.display = 'flex';
-  $('jobs-screen').style.display = 'none';
-  $('add-job-btn').classList.add('hidden');
-  $('back-btn').style.display = 'none';
-  $('gear-btn').style.display = 'none';
-  $('header-subtitle').textContent = 'Sign in';
-  $('login-username').value = '';
-  $('login-error').textContent = '';
-}
-
-function populateVehicleDropdown() {
-  const sel = $('f-vehicle');
-  sel.innerHTML = '<option value="">Select vehicle…</option>';
-  VEHICLE_REGS.forEach(reg => {
-    sel.innerHTML += `<option value="${esc(reg)}">${esc(reg)}</option>`;
+function renderUserButtons() {
+  const grid = $('user-grid');
+  grid.innerHTML = Object.entries(INCAB_USERS).map(([username, user]) => `
+    <button class="user-btn" data-user="${esc(username)}">
+      <div class="user-avatar">${initials(user.name)}</div>
+      <span>${esc(user.name)}</span>
+    </button>
+  `).join('');
+  grid.querySelectorAll('.user-btn').forEach(btn => {
+    btn.addEventListener('click', () => showPinScreen(btn.dataset.user));
   });
 }
 
-// ── Load jobs ──
+function showPinScreen(username) {
+  selectedUsername = username;
+  pinBuffer = '';
+  $('user-grid').classList.add('hidden');
+  $('pin-screen').classList.remove('hidden');
+  $('pin-label').textContent = `Enter PIN for ${INCAB_USERS[username].name}`;
+  updatePinDots();
+}
+
+function hidePinScreen() {
+  selectedUsername = null;
+  pinBuffer = '';
+  $('pin-screen').classList.add('hidden');
+  $('user-grid').classList.remove('hidden');
+}
+
+function updatePinDots() {
+  const dots = $('pin-dots').querySelectorAll('.pin-dot');
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('filled', i < pinBuffer.length);
+    dot.classList.remove('error');
+  });
+}
+
+function showPinError() {
+  const dots = $('pin-dots').querySelectorAll('.pin-dot');
+  dots.forEach(d => { d.classList.add('error'); d.classList.remove('filled'); });
+  pinBuffer = '';
+  setTimeout(updatePinDots, 600);
+}
+
+function handlePinKey(key) {
+  if (key === 'clear') { pinBuffer = ''; updatePinDots(); return; }
+  if (key === 'back') { pinBuffer = pinBuffer.slice(0, -1); updatePinDots(); return; }
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += key;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    const user = INCAB_USERS[selectedUsername];
+    if (user && user.pin === pinBuffer) {
+      currentUser = { username: selectedUsername, ...user };
+      localStorage.setItem('pmg-user', selectedUsername);
+      enterJobsScreen();
+    } else {
+      showPinError();
+      toast('Wrong PIN');
+    }
+  }
+}
+
+$('pin-back').addEventListener('click', hidePinScreen);
+$('pin-keypad').addEventListener('click', e => {
+  const btn = e.target.closest('.pin-key');
+  if (btn) handlePinKey(btn.dataset.key);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// JOBS SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
+
+function enterJobsScreen() {
+  $('login-screen').classList.add('hidden');
+  $('jobs-screen').classList.remove('hidden');
+  $('add-job-btn').classList.remove('hidden');
+  $('gear-btn').classList.remove('hidden');
+  $('logout-btn').classList.remove('hidden');
+  $('header-subtitle').textContent = currentUser.name;
+  $('date-label').textContent = formatDate(todayISO());
+  isManager = false;
+  loadJobs();
+  refreshTimer = setInterval(loadJobs, 2 * 60 * 1000); // 2 min auto-refresh
+}
+
+function logout() {
+  currentUser = null;
+  isManager = false;
+  allJobs = [];
+  clearInterval(refreshTimer);
+  refreshTimer = null;
+  localStorage.removeItem('pmg-user');
+  $('login-screen').classList.remove('hidden');
+  $('jobs-screen').classList.add('hidden');
+  $('add-job-btn').classList.add('hidden');
+  $('gear-btn').classList.add('hidden');
+  $('logout-btn').classList.add('hidden');
+  $('header-subtitle').textContent = 'Login';
+  hidePinScreen();
+  showError(null);
+}
 
 async function loadJobs() {
   const date = todayISO();
-  showLoading();
+  $('jobs-container').innerHTML = `<div class="loading"><div class="spinner"></div>Loading jobs from Haultech…</div>`;
+  showError(null);
+
   try {
-    const [htResp, manualResp] = await Promise.all([
-      api('/haultech-jobs/' + date),
-      api('/jobs/' + date),
-    ]);
-    allJobsData = htResp.ok ? await htResp.json() : [];
-    manualJobsData = manualResp.ok ? await manualResp.json() : {};
+    const resp = await api(`/ht/jobs?date=${date}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if (err.error === 'no_haultech_auth') {
+        showError('Haultech auth token not set. Falling back to cached data.');
+        return loadJobsFallback(date);
+      }
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    // Handle paginated response (could be array or {items: [...]})
+    allJobs = Array.isArray(data) ? data : (data.items || data.data || []);
+    renderJobs();
   } catch (e) {
-    allJobsData = [];
-    manualJobsData = {};
+    console.error('Load jobs error:', e);
+    showError('Could not reach Haultech. Showing cached data.');
+    return loadJobsFallback(date);
   }
-  renderJobs();
 }
 
-function showLoading() {
-  $('jobs-container').innerHTML = '<div class="loading"><div class="spinner"></div>Loading jobs…</div>';
+async function loadJobsFallback(date) {
+  // Fall back to cached KV diary data
+  try {
+    const resp = await api(`/haultech-jobs/${date}`);
+    const cached = resp.ok ? await resp.json() : [];
+    // Convert cached format to Haultech-like format for rendering
+    allJobs = cached.map(j => ({
+      jobId: j.id,
+      _cached: true,
+      _driver: j.driver,
+      _customer: j.customer,
+      _material: j.material,
+      _from: j.from,
+      _to: j.to,
+      _quantity: j.quantity,
+      _price: j.price,
+      _status: j.status,
+    }));
+    renderJobs();
+  } catch {
+    allJobs = [];
+    renderJobs();
+  }
 }
 
-// ── Render jobs ──
+// ══════════════════════════════════════════════════════════════════════════════
+// JOB DATA EXTRACTION HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function getJobDriver(job) {
+  if (job._cached) return job._driver || '';
+  const alloc = (job.allocations || [])[0];
+  return alloc?.driverName || alloc?.driver || job.driverName || '';
+}
+
+function getJobDriverId(job) {
+  if (job._cached) return null;
+  const alloc = (job.allocations || [])[0];
+  return alloc?.driverId || null;
+}
+
+function getJobVehicle(job) {
+  if (job._cached) return '';
+  const alloc = (job.allocations || [])[0];
+  const vid = alloc?.vehicleId;
+  if (vid && VEHICLES[vid]) return VEHICLES[vid];
+  return alloc?.vehicleName || alloc?.vehicleRegistration || '';
+}
+
+function getJobConsignment(job) {
+  if (job._cached) return null;
+  return (job.consignments || [])[0] || null;
+}
+
+function getJobConsignmentId(job) {
+  const c = getJobConsignment(job);
+  return c?.id || c?.consignmentId || c?.trackerId || null;
+}
+
+function getJobCustomer(job) {
+  if (job._cached) return job._customer || 'Unknown';
+  // Try to find customer name from our loaded customers list
+  const cid = job.customerId;
+  if (cid && customers.length) {
+    const found = customers.find(c => c.id === cid);
+    if (found) return found.name || found.code;
+  }
+  return job.customerName || job.customerId?.substring(0, 8) || 'Unknown';
+}
+
+function getJobMaterial(job) {
+  if (job._cached) return job._material || '';
+  const c = getJobConsignment(job);
+  return c?.goodsDescription || '';
+}
+
+function getJobFrom(job) {
+  if (job._cached) return job._from || '';
+  const c = getJobConsignment(job);
+  const addr = c?.collectionAddress || {};
+  return addr.name || addr.addressLine1 || addr.postcode || '';
+}
+
+function getJobTo(job) {
+  if (job._cached) return job._to || '';
+  const c = getJobConsignment(job);
+  const addr = c?.deliveryAddress || {};
+  return addr.name || addr.addressLine1 || addr.postcode || '';
+}
+
+function getJobWeight(job) {
+  if (job._cached) return job._quantity || '';
+  const c = getJobConsignment(job);
+  return c?.weight || c?.quantity || '';
+}
+
+function getJobPrice(job) {
+  if (job._cached) return job._price || '';
+  return job.quotedPrice || '';
+}
+
+function getJobStatus(job) {
+  if (job._cached) return job._status || 'scheduled';
+  return mapStatus(job.deliveryStatus);
+}
+
+function getJobNotes(job) {
+  if (job._cached) return '';
+  return job.trafficNotes || job.specialInstructions || '';
+}
+
+function getJobRef(job) {
+  if (job._cached) return '';
+  return job.customerReference || '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDER JOBS
+// ══════════════════════════════════════════════════════════════════════════════
 
 function renderJobs() {
   const container = $('jobs-container');
-  if (isManager) { renderManagerView(container); }
-  else { renderDriverView(container); }
+
+  if (isManager) {
+    renderManagerView(container);
+  } else {
+    renderDriverView(container);
+  }
 }
 
-function getManualJobs(driver) {
-  return (manualJobsData[driver] || []).map((j, i) => ({
-    ...j, _manual: true, id: j.id || ('manual-' + driver + '-' + i),
-  }));
+function getDriverJobs(driverId, driverName) {
+  return allJobs.filter(j => {
+    if (j._cached) return (j._driver || '').toLowerCase() === driverName.toLowerCase();
+    const jDriverId = getJobDriverId(j);
+    if (jDriverId) return jDriverId === driverId;
+    const jDriverName = getJobDriver(j);
+    return jDriverName.toLowerCase() === driverName.toLowerCase();
+  });
 }
 
 function renderDriverView(container) {
-  const htJobs = allJobsData.filter(j =>
-    (j.driver || '').toLowerCase() === currentDriver.toLowerCase()
-  );
-  const jobs = [...htJobs, ...getManualJobs(currentDriver)];
+  const jobs = getDriverJobs(currentUser.driverId, currentUser.name);
 
   if (jobs.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="icon">🚛</div>
         <h3>No jobs today</h3>
-        <p>Your jobs from Haultech will appear here.<br>Tap "Add Job" to add one manually.</p>
+        <p>Your jobs from Haultech will appear here.<br>Tap "Add Job" to create one.</p>
       </div>`;
     return;
   }
@@ -844,21 +1087,37 @@ function renderDriverView(container) {
 
 function renderManagerView(container) {
   let html = '';
-  const allJobsList = [];
+  const driverList = Object.entries(INCAB_USERS);
+  let allJobsList = [];
 
-  for (const driver of DRIVERS) {
-    const htJobs = allJobsData.filter(j =>
-      (j.driver || '').toLowerCase() === driver.toLowerCase()
-    );
-    const jobs = [...htJobs, ...getManualJobs(driver)];
+  for (const [username, user] of driverList) {
+    const jobs = getDriverJobs(user.driverId, user.name);
     const startIdx = allJobsList.length;
     allJobsList.push(...jobs);
 
     const cards = jobs.length
       ? jobs.map((job, i) => jobCardHTML(job, startIdx + i, true)).join('')
-      : '<div style="padding:12px 4px;color:var(--muted);font-size:13px;">No jobs today</div>';
+      : `<div style="padding:12px 4px;color:var(--muted);font-size:13px;">No jobs today</div>`;
 
-    html += `<div class="driver-section"><div class="driver-section-title">${esc(driver)}</div>${cards}</div>`;
+    html += `<div class="driver-section">
+      <div class="driver-section-title">${esc(user.name)} (${jobs.length} jobs)</div>
+      ${cards}
+    </div>`;
+  }
+
+  // Also show unassigned jobs
+  const assignedIds = new Set();
+  for (const [, user] of driverList) {
+    getDriverJobs(user.driverId, user.name).forEach(j => assignedIds.add(j.jobId || j._cached));
+  }
+  const unassigned = allJobs.filter(j => !assignedIds.has(j.jobId || j._cached));
+  if (unassigned.length) {
+    const startIdx = allJobsList.length;
+    allJobsList.push(...unassigned);
+    html += `<div class="driver-section">
+      <div class="driver-section-title">UNASSIGNED (${unassigned.length})</div>
+      ${unassigned.map((job, i) => jobCardHTML(job, startIdx + i, true)).join('')}
+    </div>`;
   }
 
   container.innerHTML = html;
@@ -866,49 +1125,58 @@ function renderManagerView(container) {
 }
 
 function jobCardHTML(job, idx, showDriver) {
-  const status = job.status || 'not_started';
-  const vehReg = resolveVehicleReg(job);
-  const ref = job.customerRef || job.reference || job.ref || '';
-  const hasPod = podCache[job.id];
+  const status = getJobStatus(job);
+  const driver = getJobDriver(job);
+  const vehicle = getJobVehicle(job);
+  const customer = getJobCustomer(job);
+  const material = getJobMaterial(job);
+  const from = getJobFrom(job);
+  const to = getJobTo(job);
+  const weight = getJobWeight(job);
+  const price = getJobPrice(job);
+  const notes = getJobNotes(job);
+  const ref = getJobRef(job);
+  const isComplete = status === 'complete';
+  const isDeparted = status === 'departed';
 
   return `
     <div class="job-card" data-idx="${idx}">
       <div class="job-card-header">
         <div class="job-card-main">
-          ${ref ? `<span class="job-ref">${esc(ref)}</span>` : ''}
-          <div class="job-customer">${esc(job.customer || 'Unknown customer')}</div>
-          ${showDriver && job.driver ? `<div style="margin-bottom:4px"><span class="driver-tag">${esc(job.driver)}</span></div>` : ''}
-          ${job.material ? `<div class="job-material">${esc(job.material)}</div>` : ''}
+          <div class="job-customer">${esc(customer)}</div>
+          ${showDriver && driver ? `<div style="margin-bottom:3px"><span class="driver-tag">${esc(driver)}</span></div>` : ''}
+          ${vehicle ? `<div class="job-vehicle">🚛 ${esc(vehicle)}</div>` : ''}
+          ${material ? `<div class="job-material">${esc(material)}</div>` : ''}
           <div class="job-meta">
-            <span>${esc(job.from || '—')}</span>
+            <span>${esc(from || '—')}</span>
             <span class="arrow">→</span>
-            <span>${esc(job.to || '—')}</span>
-            ${job.quantity ? `<span>· ${esc(String(job.quantity))}t</span>` : ''}
-            ${job.price ? `<span>· £${Number(job.price).toFixed(2)}</span>` : ''}
+            <span>${esc(to || '—')}</span>
+            ${weight ? `<span>· ${esc(String(weight))}t</span>` : ''}
+            ${price ? `<span>· £${Number(price).toFixed(2)}</span>` : ''}
           </div>
-          ${vehReg ? `<span class="job-vehicle">🚛 ${esc(vehReg)}</span>` : ''}
         </div>
         <div>${statusBadge(status)}</div>
       </div>
       <div class="job-detail">
         <div class="detail-grid">
-          <div class="detail-item"><label>From</label><span>${esc(job.from || '—')}</span></div>
-          <div class="detail-item"><label>To</label><span>${esc(job.to || '—')}</span></div>
-          <div class="detail-item"><label>Weight</label><span>${job.quantity ? esc(String(job.quantity)) + 't' : '—'}</span></div>
-          <div class="detail-item"><label>Price</label><span>${job.price ? '£' + Number(job.price).toFixed(2) : '—'}</span></div>
-          ${vehReg ? `<div class="detail-item"><label>Vehicle</label><span>${esc(vehReg)}</span></div>` : ''}
-          <div class="detail-item"><label>Status</label><span>${statusLabel(status)}</span></div>
+          <div class="detail-item"><label>From</label><span>${esc(from || '—')}</span></div>
+          <div class="detail-item"><label>To</label><span>${esc(to || '—')}</span></div>
+          <div class="detail-item"><label>Quantity</label><span>${weight ? esc(String(weight)) + 't' : '—'}</span></div>
+          <div class="detail-item"><label>Price</label><span>${price ? '£' + Number(price).toFixed(2) : '—'}</span></div>
+          ${ref ? `<div class="detail-item"><label>Reference</label><span>${esc(ref)}</span></div>` : ''}
+          ${vehicle ? `<div class="detail-item"><label>Vehicle</label><span>${esc(vehicle)}</span></div>` : ''}
         </div>
-        ${job.notes ? `<div class="detail-notes">${esc(job.notes)}</div>` : ''}
-        ${status === 'complete' && hasPod ? `<div class="pod-indicator">✓ POD submitted</div>` : ''}
+        ${notes ? `<div class="detail-notes">${esc(notes)}</div>` : ''}
         <div class="action-row">
-          <button class="btn btn-depart" data-action="depart" ${status !== 'not_started' ? 'disabled' : ''}>▶ DEPART</button>
-          <button class="btn btn-deliver" data-action="deliver" ${status !== 'in_progress' ? 'disabled' : ''}>✓ DELIVER</button>
+          <button class="btn btn-depart" data-action="depart"
+            ${isDeparted || isComplete ? 'disabled' : ''}>
+            🚛 DEPART
+          </button>
+          <button class="btn btn-complete" data-action="complete"
+            ${isComplete ? 'disabled' : ''}>
+            ✓ COMPLETE
+          </button>
         </div>
-        ${isManager ? `<div class="action-row" style="margin-top:6px">
-          <button class="btn" style="background:#6366f1;color:white" data-action="mgr-edit">✎ Edit</button>
-          ${status === 'complete' ? `<button class="btn" style="background:#8b5cf6;color:white" data-action="mgr-pod">📋 View POD</button>` : ''}
-        </div>` : ''}
       </div>
     </div>`;
 }
@@ -927,230 +1195,413 @@ function attachCardListeners(container, jobs) {
 
     card.querySelector('[data-action="depart"]')?.addEventListener('click', async (e) => {
       e.stopPropagation();
-      await updateJobStatus(job, 'in_progress');
+      await departJob(job, e.target);
     });
-
-    card.querySelector('[data-action="deliver"]')?.addEventListener('click', (e) => {
+    card.querySelector('[data-action="complete"]')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      openPODModal(job);
-    });
-
-    card.querySelector('[data-action="mgr-edit"]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openEditModal(job);
-    });
-
-    card.querySelector('[data-action="mgr-pod"]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      viewPOD(job);
+      openPodModal(job);
     });
   });
 }
 
-async function updateJobStatus(job, status) {
-  if (job._manual) {
-    toast('Status tracking only works for Haultech jobs');
-    return;
-  }
+// ══════════════════════════════════════════════════════════════════════════════
+// JOB ACTIONS — DEPART
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function departJob(job, btn) {
+  if (job._cached) { toast('Live Haultech connection needed to depart'); return; }
+
+  const consId = getJobConsignmentId(job);
+  if (!consId) { toast('No consignment ID found'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '…';
+
   try {
-    const resp = await api('/job-status/' + job.id, {
-      method: 'POST',
-      body: JSON.stringify({ status, driver: job.driver || currentDriver, date: todayISO() }),
-    });
+    const resp = await api(`/ht/receive/${consId}`, { method: 'PATCH' });
     if (resp.ok) {
-      const idx = allJobsData.findIndex(j => j.id === job.id);
-      if (idx !== -1) allJobsData[idx].status = status;
+      job.deliveryStatus = 'Departed';
       renderJobs();
-      toast(status === 'in_progress' ? 'Departed ▶' : 'Delivered ✓');
+      toast('🚛 Departed — Haultech updated');
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
+      btn.disabled = false;
+      btn.textContent = '🚛 DEPART';
     }
-  } catch (e) { toast('Failed to update — check connection'); }
+  } catch (e) {
+    toast('Network error — try again');
+    btn.disabled = false;
+    btn.textContent = '🚛 DEPART';
+  }
 }
 
-// ── POD Modal ──
+// ══════════════════════════════════════════════════════════════════════════════
+// JOB ACTIONS — COMPLETE (POD)
+// ══════════════════════════════════════════════════════════════════════════════
 
-let sigCanvas, sigCtx, sigDrawing = false;
-
-function openPODModal(job) {
-  podState = { jobId: job.id, job, code: null, signature: null, photo: null };
-  $('pod-modal').classList.remove('hidden');
-  $('pod-job-info').innerHTML = `<strong>${esc(job.customer)}</strong> — ${esc(job.material || '')} · ${esc(job.from || '')} → ${esc(job.to || '')}`;
-  $('pod-success').className = 'pod-code-btn';
+function openPodModal(job) {
+  podJob = job;
+  podCode = 'success';
+  photoFile = null;
+  $('pod-success').className = 'pod-code-btn active-success';
   $('pod-damaged').className = 'pod-code-btn';
   $('pod-notes').value = '';
-  $('photo-preview').style.display = 'none';
-  $('photo-area').classList.remove('has-photo');
+  $('photo-preview').classList.add('hidden');
+  $('photo-input').value = '';
+  $('photo-btn').textContent = '📷 Take Photo';
+  clearSignature();
+
+  const customer = getJobCustomer(job);
+  const material = getJobMaterial(job);
+  $('pod-job-info').textContent = `${customer}${material ? ' — ' + material : ''}`;
+
+  $('pod-modal').classList.remove('hidden');
   initSignatureCanvas();
 }
 
-$('pod-close').addEventListener('click', () => $('pod-modal').classList.add('hidden'));
-$('pod-modal').addEventListener('click', e => { if (e.target === $('pod-modal')) $('pod-modal').classList.add('hidden'); });
+function closePodModal() {
+  $('pod-modal').classList.add('hidden');
+  podJob = null;
+}
 
 // POD code selection
 $('pod-success').addEventListener('click', () => {
-  podState.code = 'SUCCESS';
-  $('pod-success').className = 'pod-code-btn selected-success';
+  podCode = 'success';
+  $('pod-success').className = 'pod-code-btn active-success';
   $('pod-damaged').className = 'pod-code-btn';
 });
 $('pod-damaged').addEventListener('click', () => {
-  podState.code = 'DAMAGED';
-  $('pod-damaged').className = 'pod-code-btn selected-damaged';
+  podCode = 'damaged';
+  $('pod-damaged').className = 'pod-code-btn active-damaged';
   $('pod-success').className = 'pod-code-btn';
 });
 
-// Signature canvas
-function initSignatureCanvas() {
-  sigCanvas = $('sig-canvas');
-  sigCtx = sigCanvas.getContext('2d');
-  const rect = sigCanvas.parentElement.getBoundingClientRect();
-  sigCanvas.width = rect.width;
-  sigCanvas.height = 180;
-  sigCtx.fillStyle = 'white';
-  sigCtx.fillRect(0, 0, sigCanvas.width, sigCanvas.height);
-  sigCtx.strokeStyle = '#1a2744';
-  sigCtx.lineWidth = 2.5;
-  sigCtx.lineCap = 'round';
-  sigCtx.lineJoin = 'round';
-  sigDrawing = false;
+$('pod-close').addEventListener('click', closePodModal);
+$('pod-modal').addEventListener('click', e => { if (e.target === $('pod-modal')) closePodModal(); });
 
-  // Remove old listeners by cloning
-  const newCanvas = sigCanvas.cloneNode(true);
-  sigCanvas.parentElement.replaceChild(newCanvas, sigCanvas);
-  sigCanvas = newCanvas;
-  sigCtx = sigCanvas.getContext('2d');
-  sigCtx.fillStyle = 'white';
-  sigCtx.fillRect(0, 0, sigCanvas.width, sigCanvas.height);
-  sigCtx.strokeStyle = '#1a2744';
-  sigCtx.lineWidth = 2.5;
-  sigCtx.lineCap = 'round';
-  sigCtx.lineJoin = 'round';
-
-  function getPos(e) {
-    const r = sigCanvas.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
-  }
-
-  sigCanvas.addEventListener('mousedown', e => { sigDrawing = true; sigCtx.beginPath(); const p = getPos(e); sigCtx.moveTo(p.x, p.y); });
-  sigCanvas.addEventListener('mousemove', e => { if (!sigDrawing) return; const p = getPos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); });
-  sigCanvas.addEventListener('mouseup', () => sigDrawing = false);
-  sigCanvas.addEventListener('mouseleave', () => sigDrawing = false);
-
-  sigCanvas.addEventListener('touchstart', e => { e.preventDefault(); sigDrawing = true; sigCtx.beginPath(); const p = getPos(e); sigCtx.moveTo(p.x, p.y); }, { passive: false });
-  sigCanvas.addEventListener('touchmove', e => { e.preventDefault(); if (!sigDrawing) return; const p = getPos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); }, { passive: false });
-  sigCanvas.addEventListener('touchend', () => sigDrawing = false);
-}
-
-$('sig-clear').addEventListener('click', (e) => {
-  e.preventDefault();
-  if (sigCanvas && sigCtx) {
-    sigCtx.fillStyle = 'white';
-    sigCtx.fillRect(0, 0, sigCanvas.width, sigCanvas.height);
-  }
-});
-
-// Photo capture
-$('photo-area').addEventListener('click', () => $('photo-input').click());
+// Photo
+$('photo-btn').addEventListener('click', () => $('photo-input').click());
 $('photo-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  photoFile = file;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    podState.photo = ev.target.result;
     $('photo-preview').src = ev.target.result;
-    $('photo-preview').style.display = 'block';
-    $('photo-area').classList.add('has-photo');
+    $('photo-preview').classList.remove('hidden');
+    $('photo-btn').textContent = '📷 Change Photo';
   };
   reader.readAsDataURL(file);
 });
 
 // Submit POD
 $('pod-submit').addEventListener('click', async () => {
-  if (!podState.code) { toast('Select POD code (Success or Damaged)'); return; }
+  if (!podJob) return;
+  if (podJob._cached) { toast('Live Haultech connection needed'); return; }
 
-  // Get signature as base64
-  const sigData = sigCanvas.toDataURL('image/png');
-  const isBlank = await isCanvasBlank();
-  if (isBlank) { toast('Please sign the delivery pad'); return; }
+  const consId = getJobConsignmentId(podJob);
+  if (!consId) { toast('No consignment ID'); return; }
 
-  const body = {
-    driverName: currentDriver,
-    date: todayISO(),
-    podCode: podState.code,
-    signature: sigData,
-    photo: podState.photo || null,
-    notes: $('pod-notes').value.trim() || null
-  };
+  const btn = $('pod-submit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
 
   try {
-    const resp = await api('/job-pod/' + podState.jobId, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    if (resp.ok) {
-      podCache[podState.jobId] = body;
-      await updateJobStatus(podState.job, 'complete');
-      $('pod-modal').classList.add('hidden');
-      toast('POD submitted — Delivered ✓');
-    } else {
-      toast('Failed to submit POD');
+    // 1. Complete the job in Haultech
+    const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
+    if (!completeResp.ok) {
+      const err = await completeResp.json().catch(() => ({}));
+      throw new Error(err.error || err.message || 'Complete failed');
     }
-  } catch (e) { toast('Failed — check connection'); }
+
+    // 2. Upload photo if taken
+    if (photoFile) {
+      try {
+        const photoData = await photoFile.arrayBuffer();
+        await api(`/ht/mpod/${consId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': photoFile.type || 'image/jpeg' },
+          body: photoData,
+        });
+      } catch (pe) {
+        console.warn('Photo upload failed:', pe);
+        // Save to worker KV as backup
+        try {
+          const photoData = await photoFile.arrayBuffer();
+          await fetch(WORKER_URL + `/photos/pod-${consId}-${Date.now()}`, {
+            method: 'PUT',
+            headers: { 'X-PMG-Key': API_KEY },
+            body: photoData,
+          });
+        } catch {}
+      }
+    }
+
+    // 3. Save signature to worker KV
+    const sigData = getSignatureData();
+    if (sigData) {
+      try {
+        const sigBlob = await (await fetch(sigData)).arrayBuffer();
+        await fetch(WORKER_URL + `/photos/sig-${consId}-${Date.now()}`, {
+          method: 'PUT',
+          headers: { 'X-PMG-Key': API_KEY },
+          body: sigBlob,
+        });
+      } catch {}
+    }
+
+    // 4. Save POD metadata to worker KV
+    try {
+      await fetch(WORKER_URL + `/ticket/pod-${consId}`, {
+        method: 'PUT',
+        headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consignmentId: consId,
+          podCode,
+          podCodeId: POD_CODES[podCode],
+          notes: $('pod-notes').value.trim(),
+          hasSignature: !!sigData,
+          hasPhoto: !!photoFile,
+          driver: currentUser.name,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch {}
+
+    podJob.deliveryStatus = 'Completed';
+    closePodModal();
+    renderJobs();
+    toast('✓ Completed — Haultech updated');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'SUBMIT POD & COMPLETE';
+  }
 });
 
-async function isCanvasBlank() {
-  const ctx = sigCanvas.getContext('2d');
-  const data = ctx.getImageData(0, 0, sigCanvas.width, sigCanvas.height).data;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] < 250 || data[i+1] < 250 || data[i+2] < 250) return false;
-  }
-  return true;
+// ══════════════════════════════════════════════════════════════════════════════
+// SIGNATURE CANVAS
+// ══════════════════════════════════════════════════════════════════════════════
+
+let sigCtx = null;
+let sigDrawing = false;
+let sigHasData = false;
+
+function initSignatureCanvas() {
+  const canvas = $('sig-canvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = 160;
+  sigCtx = canvas.getContext('2d');
+  sigCtx.strokeStyle = '#1a2744';
+  sigCtx.lineWidth = 2.5;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+  sigHasData = false;
 }
 
-// ── Add Job ──
+function clearSignature() {
+  const canvas = $('sig-canvas');
+  if (sigCtx) {
+    sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  sigHasData = false;
+}
 
-$('add-job-btn').addEventListener('click', () => $('add-job-modal').classList.remove('hidden'));
+function getSignatureData() {
+  if (!sigHasData) return null;
+  return $('sig-canvas').toDataURL('image/png');
+}
+
+function sigGetPos(e) {
+  const canvas = $('sig-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  if (e.touches) {
+    return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+  }
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+
+$('sig-canvas').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  sigDrawing = true;
+  sigHasData = true;
+  const pos = sigGetPos(e);
+  sigCtx.beginPath();
+  sigCtx.moveTo(pos.x, pos.y);
+});
+
+$('sig-canvas').addEventListener('pointermove', (e) => {
+  if (!sigDrawing) return;
+  e.preventDefault();
+  const pos = sigGetPos(e);
+  sigCtx.lineTo(pos.x, pos.y);
+  sigCtx.stroke();
+});
+
+$('sig-canvas').addEventListener('pointerup', () => { sigDrawing = false; });
+$('sig-canvas').addEventListener('pointerleave', () => { sigDrawing = false; });
+
+$('sig-clear').addEventListener('click', clearSignature);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADD JOB
+// ══════════════════════════════════════════════════════════════════════════════
+
+$('add-job-btn').addEventListener('click', () => {
+  $('add-job-modal').classList.remove('hidden');
+  loadCustomers();
+});
 $('add-job-close').addEventListener('click', () => $('add-job-modal').classList.add('hidden'));
-$('add-job-modal').addEventListener('click', e => { if (e.target === $('add-job-modal')) $('add-job-modal').classList.add('hidden'); });
+$('add-job-modal').addEventListener('click', e => {
+  if (e.target === $('add-job-modal')) $('add-job-modal').classList.add('hidden');
+});
+
+// Customer autocomplete
+let customerSearchTimeout = null;
+$('f-customer').addEventListener('input', (e) => {
+  clearTimeout(customerSearchTimeout);
+  $('f-customer-id').value = '';
+  const q = e.target.value.trim().toLowerCase();
+  if (q.length < 2) { $('customer-dropdown').classList.add('hidden'); return; }
+  customerSearchTimeout = setTimeout(() => {
+    const matches = customers.filter(c =>
+      c.name.toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q)
+    ).slice(0, 8);
+    const dd = $('customer-dropdown');
+    if (matches.length === 0) { dd.classList.add('hidden'); return; }
+    dd.innerHTML = matches.map(c => `
+      <div class="autocomplete-item" data-id="${esc(c.id)}" data-name="${esc(c.name)}">
+        ${esc(c.name)}
+        ${c.code ? `<span class="ac-code">(${esc(c.code)})</span>` : ''}
+      </div>
+    `).join('');
+    dd.classList.remove('hidden');
+    dd.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('click', () => {
+        $('f-customer').value = item.dataset.name;
+        $('f-customer-id').value = item.dataset.id;
+        dd.classList.add('hidden');
+      });
+    });
+  }, 150);
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.autocomplete-wrap')) $('customer-dropdown').classList.add('hidden');
+});
+
+async function loadCustomers() {
+  if (customers.length) return;
+  try {
+    const resp = await api('/customers');
+    if (resp.ok) {
+      customers = await resp.json();
+    }
+  } catch {}
+}
 
 $('add-job-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const customerId = $('f-customer-id').value;
+  if (!customerId) { toast('Select a customer from the list'); return; }
+
+  const btn = $('add-job-submit');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
   const date = todayISO();
-  const driver = currentDriver;
-  const job = {
-    id: 'manual-' + Date.now(),
-    customer: $('f-customer').value.trim(),
-    material: $('f-material').value.trim(),
-    from: $('f-from').value.trim(),
-    to: $('f-to').value.trim(),
-    vehicle: $('f-vehicle').value,
-    quantity: $('f-qty').value || '',
-    price: $('f-price').value || '',
-    notes: $('f-notes').value.trim(),
-    status: 'not_started',
-    createdAt: new Date().toISOString(),
+  const weight = parseFloat($('f-qty').value) || 0;
+  const price = parseFloat($('f-price').value) || 0;
+  const material = $('f-material').value.trim();
+  const ref = $('f-ref').value.trim();
+  const notes = $('f-notes').value.trim();
+  const from = $('f-from').value.trim();
+  const to = $('f-to').value.trim();
+
+  const dt = new Date(date + 'T00:00:00Z');
+  const epoch = Math.floor(dt.getTime() / 1000) + 43200; // noon
+  const iso = `${date}T00:00:00.0000000`;
+
+  const payload = {
+    active: true,
+    customerId,
+    jobTypeId: JOB_TYPE_STD,
+    serviceLevelId: SERVICE_LEVEL_STD,
+    customerReference: ref,
+    trafficNotes: notes,
+    accountNotes: '',
+    specialInstructions: '',
+    quotedPrice: price,
+    useQuotedPrice: true,
+    collectionRequired: false,
+    deliveryDateEpoch: epoch,
+    collectionDateEpoch: epoch,
+    deliveryDate: iso,
+    collectionDate: iso,
+    weight,
+    quantity: weight,
+    onOrBy: 'B',
+    collectionStatus: 'None',
+    deliveryStatus: 'Scheduled',
+    consignments: [{
+      active: true,
+      collection: false,
+      delivery: true,
+      goodsDescription: material,
+      consignmentReference: ref,
+      weight,
+      quantity: weight,
+      collectionAddressLine1: from || 'PM Groundworks Yard',
+      collectionAddressLine3: 'Hambleton',
+      collectionAddressLine4: 'Lancashire',
+      collectionPostcode: from ? '' : 'FY6 9DJ',
+      collectionCountry: 'United Kingdom',
+      deliveryAddressLine1: to,
+      deliveryPostcode: '',
+      deliveryCountry: 'United Kingdom',
+    }],
   };
 
   try {
-    const updated = { ...manualJobsData };
-    if (!updated[driver]) updated[driver] = [];
-    updated[driver] = [...updated[driver], job];
-    const resp = await api('/jobs/' + date, { method: 'PUT', body: JSON.stringify(updated) });
+    const resp = await api('/ht/upsert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
     if (resp.ok) {
-      manualJobsData = updated;
       $('add-job-modal').classList.add('hidden');
       $('add-job-form').reset();
-      renderJobs();
-      toast('Job added');
-    } else { toast('Failed to save job'); }
-  } catch (e) { toast('Failed to save — check connection'); }
+      $('f-customer-id').value = '';
+      toast('✓ Job added to Haultech');
+      setTimeout(loadJobs, 500); // Refresh to show new job
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
+    }
+  } catch (e) {
+    toast('Network error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Job to Haultech';
+  }
 });
 
-// ── Manager ──
+// ══════════════════════════════════════════════════════════════════════════════
+// MANAGER VIEW
+// ══════════════════════════════════════════════════════════════════════════════
 
 $('gear-btn').addEventListener('click', () => {
   if (isManager) {
     isManager = false;
-    $('header-subtitle').textContent = currentDriver;
+    $('header-subtitle').textContent = currentUser.name;
     renderJobs();
     toast('Back to driver view');
     return;
@@ -1161,13 +1612,16 @@ $('gear-btn').addEventListener('click', () => {
 });
 
 $('pw-close').addEventListener('click', () => $('pw-modal').classList.add('hidden'));
-$('pw-modal').addEventListener('click', e => { if (e.target === $('pw-modal')) $('pw-modal').classList.add('hidden'); });
+$('pw-modal').addEventListener('click', e => {
+  if (e.target === $('pw-modal')) $('pw-modal').classList.add('hidden');
+});
 
 function tryManagerUnlock() {
-  if (MANAGER_PASSWORDS.includes($('pw-input').value)) {
+  const pw = $('pw-input').value;
+  if (pw === JIM_PASSWORD || pw === MANAGER_PASSWORD) {
     isManager = true;
     $('pw-modal').classList.add('hidden');
-    $('header-subtitle').textContent = 'Manager — All Drivers';
+    $('header-subtitle').textContent = 'All Drivers (Manager)';
     renderJobs();
     toast('Manager view unlocked');
   } else {
@@ -1178,102 +1632,31 @@ function tryManagerUnlock() {
 $('pw-submit').addEventListener('click', tryManagerUnlock);
 $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManagerUnlock(); });
 
-// Manager: edit job
-let editingJob = null;
+// ══════════════════════════════════════════════════════════════════════════════
+// TOOLBAR BUTTONS
+// ══════════════════════════════════════════════════════════════════════════════
 
-function openEditModal(job) {
-  editingJob = job;
-  $('e-status').value = job.status || 'not_started';
-  $('e-price').value = job.price || '';
-  $('edit-job-modal').classList.remove('hidden');
-}
-
-$('edit-job-close').addEventListener('click', () => $('edit-job-modal').classList.add('hidden'));
-$('edit-job-modal').addEventListener('click', e => { if (e.target === $('edit-job-modal')) $('edit-job-modal').classList.add('hidden'); });
-
-$('edit-job-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (!editingJob) return;
-
-  const newStatus = $('e-status').value;
-  const newPrice = $('e-price').value;
-
-  try {
-    // Update status
-    if (newStatus !== (editingJob.status || 'not_started')) {
-      await api('/job-status/' + editingJob.id, {
-        method: 'POST',
-        body: JSON.stringify({ status: newStatus, driver: editingJob.driver || currentDriver, date: todayISO() }),
-      });
-    }
-
-    const idx = allJobsData.findIndex(j => j.id === editingJob.id);
-    if (idx !== -1) {
-      allJobsData[idx].status = newStatus;
-      if (newPrice) allJobsData[idx].price = newPrice;
-    }
-
-    $('edit-job-modal').classList.add('hidden');
-    renderJobs();
-    toast('Job updated');
-  } catch (e) { toast('Failed to update'); }
-});
-
-// Manager: view POD
-async function viewPOD(job) {
-  $('pod-view-modal').classList.remove('hidden');
-  $('pod-view-content').innerHTML = '<div class="loading"><div class="spinner"></div>Loading POD…</div>';
-
-  // Check local cache first
-  if (podCache[job.id]) {
-    renderPODView(podCache[job.id], job);
-    return;
-  }
-
-  try {
-    const resp = await api('/job-pod/' + job.id);
-    if (resp.ok) {
-      const data = await resp.json();
-      podCache[job.id] = data;
-      renderPODView(data, job);
-    } else {
-      $('pod-view-content').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">No POD data found for this job</p>';
-    }
-  } catch (e) {
-    $('pod-view-content').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">Failed to load POD</p>';
-  }
-}
-
-function renderPODView(pod, job) {
-  $('pod-view-content').innerHTML = `
-    <div style="margin-bottom:12px">
-      <strong>${esc(job.customer)}</strong> — ${esc(job.material || '')}
-    </div>
-    <div class="detail-grid">
-      <div class="detail-item"><label>Driver</label><span>${esc(pod.driverName || '—')}</span></div>
-      <div class="detail-item"><label>Date</label><span>${esc(pod.date || '—')}</span></div>
-      <div class="detail-item"><label>POD Code</label><span style="font-weight:700;color:${pod.podCode === 'SUCCESS' ? 'var(--green)' : 'var(--red)'}">${esc(pod.podCode || '—')}</span></div>
-    </div>
-    ${pod.notes ? `<div class="detail-notes" style="margin-bottom:12px">${esc(pod.notes)}</div>` : ''}
-    ${pod.signature ? `<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px">Signature</label><img src="${pod.signature}" class="pod-view-img" style="border:1px solid var(--border)"></div>` : ''}
-    ${pod.photo ? `<div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px">Photo</label><img src="${pod.photo}" class="pod-view-img"></div>` : ''}
-  `;
-}
-
-$('pod-view-close').addEventListener('click', () => $('pod-view-modal').classList.add('hidden'));
-$('pod-view-modal').addEventListener('click', e => { if (e.target === $('pod-view-modal')) $('pod-view-modal').classList.add('hidden'); });
-
-// ── Navigation ──
-
-$('back-btn').addEventListener('click', signOut);
+$('logout-btn').addEventListener('click', logout);
 $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing…'); });
 
-// ── Init ──
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
 
-$('login-username').focus();
+function init() {
+  renderUserButtons();
+
+  // Auto-login if returning user
+  const savedUser = localStorage.getItem('pmg-user');
+  if (savedUser && INCAB_USERS[savedUser]) {
+    // Show PIN screen directly
+    showPinScreen(savedUser);
+  }
+}
+
+init();
 
 // ── Service Worker ──
-
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
