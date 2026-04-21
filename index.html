@@ -202,6 +202,13 @@
       text-transform: uppercase; letter-spacing: 0.5px;
       margin-bottom: 8px; padding: 0 4px;
     }
+    .driver-section.unassigned {
+      background: #fff7ed; border: 2px solid var(--primary);
+      border-radius: 12px; padding: 12px; margin-bottom: 28px;
+    }
+    .driver-section.unassigned .driver-section-title {
+      color: var(--primary); font-size: 14px;
+    }
     .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); }
     .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
     .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
@@ -488,6 +495,29 @@
       display: flex; align-items: center; gap: 8px;
     }
 
+    /* ── Sync Banner ── */
+    #sync-banner {
+      position: fixed; top: 56px; left: 0; right: 0; z-index: 90;
+      background: #fef2f2; border-bottom: 2px solid #ef4444;
+      padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 600; color: #991b1b;
+    }
+    #sync-banner.hidden { display: none !important; }
+    .sync-retry-btn {
+      margin-left: auto; background: #ef4444; color: white; border: none;
+      border-radius: 6px; padding: 6px 14px; font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; min-height: 32px;
+    }
+    body.has-sync-banner main { padding-top: 60px; }
+
+    /* ── Sync Dot ── */
+    .sync-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #6b7280; flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+      transition: background 0.3s;
+    }
+
     /* Action buttons (used in manager view etc) */
     .action-row { display: flex; gap: 8px; margin-top: 12px; }
     .btn {
@@ -502,6 +532,13 @@
     .btn-depart:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-complete { background: var(--green); color: white; }
     .btn-complete:hover:not(:disabled) { background: var(--green-dark); }
+
+    /* ── Desktop layout ── */
+    @media (min-width: 600px) {
+      body { background: #1a2744; }
+      header, main, #login-screen { max-width: 480px; margin-left: auto; margin-right: auto; }
+      header { border-radius: 0 0 12px 12px; position: relative; top: auto; }
+    }
   </style>
 </head>
 <body>
@@ -519,6 +556,12 @@
     <button class="icon-btn hidden" id="logout-btn" title="Log out">🚪</button>
   </div>
 </header>
+
+<!-- ══ SYNC BANNER ══ -->
+<div id="sync-banner" class="hidden">
+  <span>⚠️ Job not synced — retrying...</span>
+  <button class="sync-retry-btn" id="sync-retry-btn">Retry Now</button>
+</div>
 
 <main>
   <!-- ══ LOGIN SCREEN ══ -->
@@ -737,6 +780,146 @@ let currentUser = null;
 let allJobs = [];
 let customers = [];
 let isManager = false;
+
+// Static customer map built from known Haultech customer IDs
+const CUSTOMER_MAP = {
+  "8e8b6ba3-0ff6-4c42-8d97-4da565fd6746": "Test Customer 1",
+  "8ad448ba-ad79-4bc5-9cb3-4c74c89d3fee": "Test Customer 2",
+  "b6edf99f-aeb1-46f7-8560-1623b8f4036f": "Wyre Drives",
+  "2cbbb83b-ab82-40b4-89cb-04125d69b4a7": "J. Adamson Outdoor Spaces",
+  "18caa2fe-0318-420a-a502-eaf9fad63786": "Pondpride Landscapes",
+  "cb06aa78-92d0-4a61-98dc-c7a009b1ceac": "Driveways Northwest",
+  "1f93853b-2e2f-436d-bf6d-7119b719eeef": "KSG Groundworks and Landscapes",
+  "df05b8e4-c377-492d-b349-8c9e65b69c72": "Lytham Edge Lodge Resorts",
+  "6535e4c1-333d-427f-853f-457626db08d6": "Armer Landscapes and Groundworks",
+  "fd681bd1-94f7-4f9f-8afc-0f3eaf740a6e": "G.S.T building",
+  "abda59fe-70cb-4311-b5de-22f2a58d3002": "A.D Developments",
+  "f3504eff-30f2-48f8-a10b-87ffc9923cea": "P. Baker Groundworks",
+  "ef5e3853-20d7-437e-ab1c-ec4eca56b767": "Residential Parks",
+  "c84fd6af-76ed-43e7-bb30-c5de301d54f4": "Cardwell Landscaspes and Groundworks",
+  "3ba40e89-5ee0-4625-baae-c5c9d1c164e7": "G.M Groundworks Ltd",
+  "e6bb3952-62e0-422c-a7b2-7f6109ec51ed": "Carr Royd Leisure Ltd",
+  "650fea1c-aa1d-47f5-891e-77300886eef4": "Wyre Building Supplies Limited",
+  "d0067ba7-0474-435e-a83b-2fb9b7cad8de": "Shard Developments",
+  "3dc00288-8c4e-4abb-8f8e-784f266a0362": "Pipescan Ltd",
+  "1c66d0d0-9e7d-4e57-938a-8e11f808866e": "NJ Powell Groundworks Ltd",
+  "20162a01-94ad-433a-b566-8bf0000cf047": "Wyre Landscapes",
+  "b40433c9-4060-4435-a7eb-4b72cf37edb4": "Huck Construction Ltd",
+  "fc4c9346-7f3f-458a-bc4b-4d86fc920634": "Jos Jeffries Paving Design",
+  "1ea642ea-a21d-4251-8a16-aff629ca1b50": "A. Parkinson Groundworks",
+  "b8bcf111-6be9-4821-9f3a-041e9678b6db": "JC Groundworks Limited",
+  "6f97b523-7538-4fb9-b140-de52cad31091": "Saltcoat Motors",
+  "ca615615-f931-435b-a5c4-553ef6414a1c": "Jeffries Contractors",
+  "9b5ffa30-25c8-4ad4-98a0-7db918d73e14": "Mark Jackson Joinery Limited",
+  "884096de-3fad-4516-9ae9-311e342b775e": "LG Property Development and Services Limited",
+  "b4482d71-a8ac-4648-8ae1-ced8074f0972": "Simon Ward Groundworks Limited",
+  "0264440a-cf53-4f96-9bf8-7a373a9e419c": "DN Isles Building Services",
+  "601cbe9a-8c52-44e7-b81f-f0770ca4f9cb": "S and A Cookson",
+  "4c478dd1-354a-44ac-bc0d-b2ea7c139b2f": "Grant Parker LTD",
+  "5ca42691-faf0-4e48-a116-47bf30bcf6e9": "Hambleton Lakeside Lodges and Fisheries",
+  "50030abd-dc83-4fd5-9db7-855c2c2bda6c": "Enhance and Build Limited",
+  "f266fdac-3c22-4579-8cb5-6f48b8a7bfd2": "Lancashire Building and Brickwork",
+  "8032bf7a-c615-422d-8079-15bf53e953df": "MJ Teale",
+  "2e2e6f93-8446-4e52-938b-5a6f85ecb275": "J.R Singleton",
+  "09eafd23-d13a-4754-9762-cc05def2869f": "Shard Riverside Lodge Park",
+  "bb2da142-5507-4e4d-a228-87a72a875db5": "White Feather Homes",
+  "3098f0a8-b633-4224-8deb-10dd6b65542f": "Fylde Drives and Patios",
+  "37faa1d5-d282-436e-84be-56ad72643885": "Lawson",
+  "3bbce3fd-6d7a-4e5a-9ca5-4845e6b4aca9": "Hy Fly",
+  "bb2616de-eaf2-43ae-97fb-54d9cd4038b8": "Tom France",
+  "df438516-dbbf-45a9-ab25-72af757e873a": "Jamie Humphrey",
+  "2dfea998-fbf3-4500-8023-f168a85f15c7": "A1",
+  "6861767c-4418-45ec-ac56-a0673ecce127": "PM Groundworks",
+  "c939427a-892a-41ab-8717-812cb347f824": "Park Farm",
+  "e76120de-2d25-466e-9139-12f7435b90d4": "Andrews Bowen",
+  "1585b83f-adfa-4aec-ad6f-d59fb6bccf34": "E.S Williams Peter",
+  "43d9eba1-f572-4fe8-81fe-bc1d0467d30b": "J F J C Hewitt and Family",
+  "3833fa0e-79b5-4ff8-96cf-30a9b57113e3": "Cowley Construction",
+  "e0a3556b-9471-4e00-83a4-9dc8cb1dc630": "Ameon",
+  "d71da6d1-7bb1-46a6-91c1-def03f12f542": "DJC Groundworks",
+  "9fda2dcb-9801-47be-b8c3-26cef3dd83f9": "R Cowell Construction",
+  "ef872f6c-9d5b-4ed9-bbcc-448f60619818": "John Fausset",
+  "ab4b65d7-a62f-4baf-a519-8db659a1c1c4": "Mark Wrathall",
+  "c40c8be1-76c4-4547-b09d-5c3554f71f8b": "SJM Builders",
+  "5070edf0-9cac-4972-be98-323da364be35": "GL Huck and Son",
+  "bc21814e-e933-415a-b0c0-d4539674dffc": "Adrian Lewis Builders",
+  "995d9ff1-ec0e-4c5c-93fa-4ab970f006a2": "James Wiseman",
+  "6bb52a69-9a61-4e98-8282-02bbdbf09bdc": "Garry Claxton",
+  "0760ff46-8374-48d0-b973-4ff3617cc842": "MW Estates",
+  "37091c3c-5dfd-4010-b873-4a8699e0b908": "Anderson & Sons. Contracting",
+  "0b7bcd1b-f90c-462d-b60b-d921f7cdd986": "Charlie Butler",
+  "39ba827d-b6da-4903-94c8-fdec4b76cced": "Ian Carter",
+  "d73308d1-5a39-4b93-b404-61b0ddf0f987": "Brands",
+  "da2d2a59-c536-4046-8120-6382c50b602d": "Sean Lynden",
+  "05d38858-8dd4-4355-9c44-0e792ad308a6": "A.P and L.A Worledge",
+  "f1800e62-54c0-4ebc-a161-24833a483848": "Hoyles Contractors",
+  "429d9f20-6360-48ed-bf75-c28fa3d9d071": "Meanley Estate",
+  "a490004c-8e57-4888-965e-7e3b1e6d2c01": "Arnfield Developments",
+  "b4529f15-c075-4655-b25b-0543c8b78f24": "G Wilkinson Buildings ltd",
+  "e9d61d6f-a64e-4eaa-ad4e-0c5858b1ecde": "Vehicle inspection pits uk Ltd",
+  "c8a9efc2-bb9f-4002-885e-4ac81eea2273": "Swarbrick Builders",
+  "806203c0-9c49-4c65-a370-ace342f7d670": "Boothfield House Caravan Park",
+  "4d3f6df5-d064-4277-8b94-9e9fcc55417a": "T and T Builders",
+  "e2c035f7-a10d-4931-bf42-7d9d7194334e": "GT Fencing",
+  "dadfe3a8-5653-4a48-8363-e257a305b807": "T.S Groundworks",
+  "d443fd17-98a7-4e6b-b4cc-81f6ffb51e1e": "Tudor Farm and Equine",
+  "ff7968dd-1c56-4fb5-9276-e9f2c1cf31b2": "Quayside Construction",
+  "407a870c-7b7e-4a3f-a1df-2c878101f8d4": "Moore readymix",
+  "302cb1e3-21bf-422c-acc4-c93aa3b22482": "Nick Fairhurst",
+  "0f347fd7-38e0-4872-a678-78b9ecf3ff34": "Archway",
+  "1e5b723c-3658-40f8-9bca-8a91fe867205": "Mark Thomas",
+  "8742a619-0e19-4f1f-a5d0-fe4afe1cb4fa": "drainage experts",
+  "30ab86d6-6309-4aa1-886d-4a123a9d4ca3": "Grange Farm Caravan Park",
+  "1330690e-faad-426c-a1b7-4cce53b74296": "Glasdon UK",
+  "598c75a1-4f69-436b-bf85-942f9c66928c": "Andrew Scott",
+  "da7af814-94bd-4b3f-b7a5-bc81e3612458": "Mason Groundworks",
+  "e7e107bf-3f3a-4596-83a6-caf3ea9995ac": "Andrei",
+  "353bcd9d-0e98-4249-9c2c-9a9d15d10570": "Alex Degnen",
+  "40d9a07b-3459-4ee1-a219-39378c58909e": "Highfield fisheries",
+  "da80921d-528d-4724-bec8-7457c685de18": "Mark Rhode RHD Construction",
+  "93cd2173-5ff2-4684-b23e-6ac7fe60e3e8": "Mick Skelly",
+  "dd059b9a-426e-456e-8460-523fd2254a23": "SJH Plant Ltd",
+  "5ddeef1b-0ccd-4354-a810-9f95e96e45c7": "WJ Davidson",
+  "f29b3b6a-4f3b-4c1a-812c-8ab08869d671": "A.G Precision engineering",
+  "0d8b9791-aebb-4622-a537-c785586d6c69": "AVPM LTD",
+  "004d141c-f87c-457d-aa66-c9b233b75e9a": "Burlington Aggregates",
+  "e5a6600a-36ee-4f82-a737-bdcdc319d0a1": "Plan It Developments",
+  "9a19e11a-52ab-400d-872d-4fb4df4dad7c": "Taymin Ltd",
+  "7b452c92-45da-4f09-bdd0-14ad00c5d629": "Mr A Makinson",
+  "b2612f48-6d18-4e7c-a781-555bab4f9081": "MJS Groundworks",
+  "b27067ac-8458-4361-9208-3e589c781851": "Frank Barrow",
+  "8ad4becf-d51b-4af4-9246-ab297b45000d": "Raby Contract Services",
+  "0ea1a7d0-da86-40f9-859d-8d16e0d919a5": "Schofield Steel",
+  "e6bfbfd8-7815-463e-9898-68733663b42d": "A.C Cornthwaite",
+  "c640c695-31c2-43d0-bd6b-2f031387dc73": "Bespoke Landscapes",
+  "0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915": "W.Robinson",
+  "3cd263eb-92c5-4b07-b820-e5d020987828": "Luscombe Plant Hire",
+  "6332fd43-eb7d-454e-9ca2-53658eafd94c": "Highgate Farm",
+  "066bd8e9-e35a-46e1-a1e5-b46eda26fcbf": "B & J Parkinson",
+  "5538fc6b-5d97-4668-8a77-d352451b8384": "Ribble Technology Ltd",
+  "000965e0-c271-47cb-a600-b59d78673aac": "A & P Hodgkinson",
+  "4943bb24-2ca5-4e2d-94af-516b1a8e9b14": "Hambleton Service Station",
+  "15f4cf37-08c7-4adf-a115-4ce84e84a9c5": "Affordable Windows",
+  "7857e9ac-01d0-4174-ad60-e8d1428efe89": "SR MOORE",
+  "2e0432ba-d77d-487b-bb52-2e85dc7f0c6f": "Fylde Autostyle",
+  "0f8cef89-e279-4ee8-a51d-6d14effffc33": "SEM Joinery",
+  "6504c7d1-2b26-4834-87f5-94f123de3cb7": "Heathland Beach",
+  "cd2efe95-3560-4c93-8317-9c7facdfae5a": "GUNSON AGRICULTURE",
+  "a3673f8e-05af-4360-8dde-9243cd877f1d": "TOTAL BUILDING NORTH WEST LTD",
+  "1956079c-6d5b-44d4-8c82-6884ad89672b": "IPH Bulk Haulage Limited",
+  "908f5eac-ab66-4ff1-9cc5-3522b312a463": "RAC CONSULTANTS LTD",
+  "4aab08a0-f009-45af-a4d4-dc2da534b0af": "ANDREWS BOWENS",
+  "f8d5976b-8173-45aa-b1a6-5528212b6aa6": "Chris Naylor CGF",
+  "c25d81bc-001f-4f09-91cc-dace9b54c609": "STONE UK LTD",
+  "f490a636-2b42-4767-9907-6af71fc64378": "ASHPHALT PAVING SERVICES LTD",
+  "1753d5fb-83de-4959-ae53-e5f4abf92aec": "ROWLAND HOMES LTD",
+  "4d452d95-c197-47f8-877e-a914a1801fec": "Swift Surfacing",
+  "a1d6a399-4dda-4205-9383-f459669c381c": "Resource Recycling Solutions",
+  "47d2acbd-a18d-477d-b096-578cf1127417": "BT Joinery",
+  "7eef4f4d-8298-40e6-bcae-26acc0bf919a": "Shard Surfacing",
+  "cc49174a-e533-49a1-9ed8-f0b24484f3bb": "Complete Concrete",
+  "9ae9573c-8f6d-4252-9309-c723bad6c745": "J JONES & CO BUILDING CONTRACTING LTD",
+};
 let refreshTimer = null;
 let currentScreen = 'login'; // login | jobs | detail | sign
 let activeJob = null; // job being viewed/signed
@@ -748,7 +931,12 @@ const $ = id => document.getElementById(id);
 // HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 
-function todayISO() { return new Date().toISOString().split('T')[0]; }
+function todayISO() {
+  const d = new Date();
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().split('T')[0];
+}
 
 function formatDate(iso) {
   const d = new Date(iso + 'T00:00:00');
@@ -797,6 +985,147 @@ function showError(msg) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// SYNC / RETRY QUEUE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function jobToLocal(j) {
+  return {
+    id: j.id || j.jobId,
+    driver: getJobDriver(j),
+    customer: getJobCustomer(j),
+    material: getJobMaterial(j),
+    from: getJobFrom(j),
+    to: getJobTo(j),
+    quantity: getJobWeight(j),
+    price: getJobPrice(j),
+    status: getJobStatus(j),
+    savedAt: j.savedAt || new Date().toISOString(),
+    ticketNo: j.ticketNo || j.jobNumber || j.id || j.jobId || '',
+    _driverAdded: !!(j._driverAdded || (j.id && String(j.id).startsWith('driver-'))),
+  };
+}
+
+function localSaveJobs(date, jobs) {
+  try {
+    localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(jobs.map(jobToLocal)));
+  } catch(e) { console.warn('localSaveJobs:', e); }
+}
+
+function localGetJobs(date) {
+  try { return JSON.parse(localStorage.getItem('pmg_local_jobs_' + date) || '[]'); }
+  catch { return []; }
+}
+
+async function cloudPutJobs(date, jobs) {
+  const resp = await fetch(WORKER_URL + '/haultech-jobs/' + date, {
+    method: 'PUT',
+    headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(jobs),
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+}
+
+function getRetryQueue() {
+  try { return JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]'); }
+  catch { return []; }
+}
+
+function setRetryQueue(q) {
+  localStorage.setItem('pmg_retry_queue', JSON.stringify(q));
+}
+
+function addToRetryQueue(date, jobs) {
+  const q = getRetryQueue();
+  const idx = q.findIndex(e => e.date === date);
+  const entry = { date, jobs, savedAt: new Date().toISOString() };
+  if (idx >= 0) q[idx] = entry; else q.push(entry);
+  setRetryQueue(q);
+  updateSyncUI();
+}
+
+async function flushRetryQueue() {
+  const q = getRetryQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const entry of q) {
+    try {
+      await cloudPutJobs(entry.date, entry.jobs);
+    } catch {
+      remaining.push(entry);
+    }
+  }
+  setRetryQueue(remaining);
+  if (remaining.length === 0 && q.length > 0) {
+    toast('✓ Jobs synced to cloud');
+  }
+  updateSyncUI();
+}
+
+function updateSyncUI() {
+  const pending = getRetryQueue().length > 0;
+  const banner = $('sync-banner');
+  if (pending) {
+    banner.classList.remove('hidden');
+    document.body.classList.add('has-sync-banner');
+  } else {
+    banner.classList.add('hidden');
+    document.body.classList.remove('has-sync-banner');
+  }
+  updateSyncDot(pending ? 'red' : 'green');
+}
+
+function updateSyncDot(state) {
+  document.querySelectorAll('.sync-dot').forEach(dot => {
+    const colors = { green: '#10b981', red: '#ef4444', grey: '#6b7280' };
+    dot.style.background = colors[state] || '#6b7280';
+    dot.title = { green: 'Synced', red: 'Pending sync', grey: 'Offline' }[state] || '';
+  });
+}
+
+async function saveJobsToCloud(date, jobs) {
+  const simplified = jobs.map(jobToLocal);
+  localSaveJobs(date, jobs);
+  try {
+    await cloudPutJobs(date, simplified);
+    updateSyncUI();
+  } catch {
+    addToRetryQueue(date, simplified);
+  }
+}
+
+function mergeWithLocal(date, cloudJobs) {
+  const localJobs = localGetJobs(date);
+  if (!localJobs.length) return cloudJobs;
+
+  const cloudKeys = new Set();
+  for (const j of cloudJobs) {
+    const k = j.ticketNo || j.jobNumber || j.id || j.jobId;
+    if (k) cloudKeys.add(String(k));
+  }
+
+  const toAdd = [];
+  const toRepush = [];
+  for (const lj of localJobs) {
+    const k = String(lj.ticketNo || lj.id || '');
+    if (!k || cloudKeys.has(k)) continue;
+    toAdd.push({
+      jobId: lj.id, _cached: true, _driverAdded: true,
+      _driver: lj.driver, _customer: lj.customer,
+      _material: lj.material, _from: lj.from, _to: lj.to,
+      _quantity: lj.quantity, _price: lj.price, _status: lj.status,
+      savedAt: lj.savedAt,
+    });
+    toRepush.push(lj);
+  }
+
+  if (toRepush.length) {
+    cloudPutJobs(date, localJobs).catch(() => addToRetryQueue(date, localJobs));
+  }
+
+  return [...cloudJobs, ...toAdd];
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // SCREEN NAVIGATION
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -809,11 +1138,13 @@ function setHeaderForList() {
       </div>
     </div>
     <div class="header-right">
+      <span class="sync-dot" id="sync-dot" title="Synced"></span>
       <button class="icon-btn" id="gear-btn" title="Manager view">⚙️</button>
       <button class="icon-btn" id="logout-btn" title="Log out">🚪</button>
     </div>`;
   $('gear-btn').addEventListener('click', handleGearClick);
   $('logout-btn').addEventListener('click', logout);
+  updateSyncUI();
 }
 
 function setHeaderForLogin() {
@@ -834,10 +1165,12 @@ function setHeaderForDetail(jobNum) {
     </div>
     <div class="header-center">Job: #${esc(String(jobNum))}</div>
     <div class="header-right">
+      <span class="sync-dot" id="sync-dot" title="Synced"></span>
       <button class="icon-btn" id="detail-header-gear">⚙️</button>
     </div>`;
   $('detail-header-back').addEventListener('click', showJobList);
   $('detail-header-gear').addEventListener('click', handleGearClick);
+  updateSyncUI();
 }
 
 function setHeaderForSign(jobNum) {
@@ -847,10 +1180,12 @@ function setHeaderForSign(jobNum) {
     </div>
     <div class="header-center">Job: #${esc(String(jobNum))}</div>
     <div class="header-right">
+      <span class="sync-dot" id="sync-dot" title="Synced"></span>
       <button class="icon-btn" id="sign-header-gear">⚙️</button>
     </div>`;
   $('sign-header-back').addEventListener('click', () => showJobDetail(activeJob));
   $('sign-header-gear').addEventListener('click', handleGearClick);
+  updateSyncUI();
 }
 
 function hideAllScreens() {
@@ -1029,8 +1364,13 @@ async function loadJobs() {
       throw new Error(err.error || `HTTP ${resp.status}`);
     }
     const data = await resp.json();
-    allJobs = Array.isArray(data) ? data : (data.items || data.data || []);
+    const now = new Date().toISOString();
+    let jobs = Array.isArray(data) ? data : (data.items || data.data || []);
+    jobs = jobs.map(j => ({ ...j, savedAt: j.savedAt || now }));
+    jobs = mergeWithLocal(date, jobs);
+    allJobs = jobs;
     renderJobs();
+    saveJobsToCloud(date, allJobs); // non-blocking backup
   } catch (e) {
     console.error('Load jobs error:', e);
     showError('Could not reach Haultech. Showing cached data.');
@@ -1042,14 +1382,25 @@ async function loadJobsFallback(date) {
   try {
     const resp = await api(`/haultech-jobs/${date}`);
     const cached = resp.ok ? await resp.json() : [];
-    allJobs = cached.map(j => ({
+    let jobs = cached.map(j => ({
       jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
       _material: j.material, _from: j.from, _to: j.to,
       _quantity: j.quantity, _price: j.price, _status: j.status,
+      savedAt: j.savedAt,
     }));
+    jobs = mergeWithLocal(date, jobs);
+    allJobs = jobs;
     renderJobs();
   } catch {
-    allJobs = [];
+    // Last resort — pure localStorage
+    const localJobs = localGetJobs(date);
+    allJobs = localJobs.map(lj => ({
+      jobId: lj.id, _cached: true, _driverAdded: true,
+      _driver: lj.driver, _customer: lj.customer,
+      _material: lj.material, _from: lj.from, _to: lj.to,
+      _quantity: lj.quantity, _price: lj.price, _status: lj.status,
+      savedAt: lj.savedAt,
+    }));
     renderJobs();
   }
 }
@@ -1101,7 +1452,8 @@ function getJobCustomer(job) {
     const found = customers.find(c => c.id === cid);
     if (found) return found.name || found.code;
   }
-  return job.customerName || job.customerId?.substring(0, 8) || 'Unknown';
+  if (cid && CUSTOMER_MAP[cid]) return CUSTOMER_MAP[cid];
+  return job.customerName || (cid ? cid.substring(0, 8) : 'Unknown');
 }
 
 function getJobMaterial(job) {
@@ -1216,12 +1568,15 @@ function renderJobs() {
 }
 
 function getDriverJobs(driverId, driverName) {
+  const lname = driverName.toLowerCase();
   return allJobs.filter(j => {
-    if (j._cached) return (j._driver || '').toLowerCase() === driverName.toLowerCase();
+    if (j._cached) return (j._driver || '').toLowerCase() === lname;
     const jDriverId = getJobDriverId(j);
     if (jDriverId) return jDriverId === driverId;
     const jDriverName = getJobDriver(j);
-    return jDriverName.toLowerCase() === driverName.toLowerCase();
+    if (jDriverName && jDriverName.toLowerCase() === lname) return true;
+    const tn = (j.trafficNotes || '').toLowerCase().trim();
+    return tn.startsWith(lname);
   });
 }
 
@@ -1244,6 +1599,19 @@ function renderManagerView(container) {
   let html = '';
   const driverList = Object.entries(INCAB_USERS);
 
+  // Unassigned (shown FIRST for visibility)
+  const assignedIds = new Set();
+  for (const [, user] of driverList) {
+    getDriverJobs(user.driverId, user.name).forEach(j => assignedIds.add(j.id || j.jobId || j._cached));
+  }
+  const unassigned = allJobs.filter(j => !assignedIds.has(j.id || j.jobId || j._cached));
+  if (unassigned.length) {
+    html += `<div class="driver-section unassigned">
+      <div class="driver-section-title">⚠️ UNASSIGNED / DRIVER-ADDED (${unassigned.length})</div>
+      ${unassigned.map(job => jobCardHTML(job, true)).join('')}
+    </div>`;
+  }
+
   for (const [username, user] of driverList) {
     const jobs = getDriverJobs(user.driverId, user.name);
     const cards = jobs.length
@@ -1252,19 +1620,6 @@ function renderManagerView(container) {
     html += `<div class="driver-section">
       <div class="driver-section-title">${esc(user.name)} (${jobs.length} jobs)</div>
       ${cards}
-    </div>`;
-  }
-
-  // Unassigned
-  const assignedIds = new Set();
-  for (const [, user] of driverList) {
-    getDriverJobs(user.driverId, user.name).forEach(j => assignedIds.add(j.id || j.jobId || j._cached));
-  }
-  const unassigned = allJobs.filter(j => !assignedIds.has(j.id || j.jobId || j._cached));
-  if (unassigned.length) {
-    html += `<div class="driver-section">
-      <div class="driver-section-title">UNASSIGNED (${unassigned.length})</div>
-      ${unassigned.map(job => jobCardHTML(job, true)).join('')}
     </div>`;
   }
 
@@ -1899,10 +2254,13 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const epoch = Math.floor(dt.getTime() / 1000) + 43200;
   const iso = `${date}T00:00:00.0000000`;
 
+  const driverTag = currentUser.name;
   const payload = {
     active: true, customerId, jobTypeId: JOB_TYPE_STD,
     serviceLevelId: SERVICE_LEVEL_STD, customerReference: ref,
-    trafficNotes: notes, accountNotes: '', specialInstructions: '',
+    trafficNotes: driverTag + (notes ? ': ' + notes : ''),
+    accountNotes: 'Added by ' + driverTag,
+    specialInstructions: '',
     quotedPrice: price, useQuotedPrice: true, collectionRequired: false,
     deliveryDateEpoch: epoch, collectionDateEpoch: epoch,
     deliveryDate: iso, collectionDate: iso,
@@ -1946,13 +2304,56 @@ $('add-job-form').addEventListener('submit', async (e) => {
       if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
       fPhotoFile = null;
       toast('✓ Job added to Haultech');
-      setTimeout(loadJobs, 500);
+      // Immediately inject the new job into the local list so it shows straight away
+      // (Haultech may take a few seconds to reflect it in the list endpoint)
+      const optimisticJob = {
+        id: newJobId,
+        jobId: newJobId,
+        driver: currentUser.name,
+        customer: $('f-customer').value,
+        goodsDescription: material,
+        material,
+        collectionAddressLine1: from || 'PM Groundworks Yard',
+        deliveryAddressLine1: to,
+        quantity: weight,
+        weight,
+        price,
+        status: 'scheduled',
+        consignmentReference: ref,
+        ticketNo: ref || newJobId,
+        date: date,
+        _driverAdded: true,
+      };
+      allJobs.push(optimisticJob);
+      renderJobs();
+      // Also reload from server after a delay to get the canonical version
+      setTimeout(loadJobs, 3000);
     } else {
       const err = await resp.json().catch(() => ({}));
       toast('Failed: ' + (err.error || err.message || 'Unknown error'));
     }
   } catch (e) {
-    toast('Network error: ' + e.message);
+    // Save job locally so it isn't lost
+    const localDate = date;
+    const localJob = {
+      id: 'driver-' + Date.now(),
+      driver: currentUser.name,
+      customer: $('f-customer').value,
+      material,
+      from,
+      to,
+      quantity: weight,
+      price,
+      status: 'scheduled',
+      savedAt: new Date().toISOString(),
+      ticketNo: ref || ('local-' + Date.now()),
+      _driverAdded: true,
+    };
+    const existingLocal = localGetJobs(localDate);
+    existingLocal.push(localJob);
+    localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
+    addToRetryQueue(localDate, existingLocal);
+    toast('⚠️ Network error — job saved locally, retrying…');
   } finally {
     btn.disabled = false; btn.textContent = 'Save Job to Haultech';
   }
@@ -1971,6 +2372,16 @@ $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing
 function init() {
   renderUserButtons();
   setHeaderForLogin();
+
+  // Sync retry button
+  $('sync-retry-btn').addEventListener('click', () => flushRetryQueue());
+
+  // Flush retry queue on load + every 30 seconds
+  flushRetryQueue();
+  setInterval(flushRetryQueue, 30000);
+
+  // Reflect initial sync state
+  updateSyncUI();
 
   const savedUser = localStorage.getItem('pmg-user');
   if (savedUser && INCAB_USERS[savedUser]) {
