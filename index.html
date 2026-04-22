@@ -626,6 +626,10 @@
         <span class="bb-icon">⏪</span>
         <span>Back</span>
       </button>
+      <button class="bottom-bar-btn" id="detail-delete-btn" style="color:#ef4444">
+        <span class="bb-icon">🗑</span>
+        <span>Delete</span>
+      </button>
       <button class="bottom-bar-btn" id="detail-sign-btn">
         <span class="bb-icon">📝</span>
         <span>Sign</span>
@@ -1850,6 +1854,40 @@ function renderStdTab(container, job) {
 $('detail-back-btn').addEventListener('click', showJobList);
 $('detail-sign-btn').addEventListener('click', () => {
   if (activeJob) showSignScreen(activeJob);
+});
+
+$('detail-delete-btn').addEventListener('click', async () => {
+  if (!activeJob) return;
+  const jobNum = getJobNumber(activeJob);
+  const customer = activeJob.customer || activeJob.deliveryAddressLine1 || 'this job';
+  if (!confirm(`Delete ticket ${jobNum} for ${customer}?\n\nThis cannot be undone.`)) return;
+
+  const jobId = activeJob.id || activeJob.jobId;
+  const btn = $('detail-delete-btn');
+  btn.disabled = true;
+  btn.querySelector('span:last-child').textContent = 'Deleting…';
+
+  try {
+    // Try Haultech API delete
+    if (jobId && !String(jobId).startsWith('driver-')) {
+      const resp = await api(`/ht/job/${jobId}`, { method: 'DELETE' });
+      if (!resp.ok && resp.status !== 404) {
+        toast('⚠️ Delete failed on server — removed locally only');
+      }
+    }
+    // Remove from local list
+    allJobs = allJobs.filter(j => (j.id || j.jobId || '') !== (activeJob.id || activeJob.jobId || ''));
+    // Remove from local storage
+    const date = todayISO();
+    const localJobs = localGetJobs(date).filter(j => j.id !== jobId);
+    localSaveJobs(date, localJobs);
+    toast('✅ Ticket deleted');
+    showJobList();
+  } catch(e) {
+    toast('❌ Delete failed: ' + e.message);
+    btn.disabled = false;
+    btn.querySelector('span:last-child').textContent = 'Delete';
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
