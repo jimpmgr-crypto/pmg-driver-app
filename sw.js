@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-driver-v12';
+const CACHE_NAME = 'pmg-driver-v13';
 
 // Install — skip waiting immediately so new SW activates right away
 self.addEventListener('install', e => {

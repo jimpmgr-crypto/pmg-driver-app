@@ -650,6 +650,16 @@
 <button class="fab hidden" id="add-job-btn">＋ Add Job</button>
 
 <!-- ══ ADD JOB MODAL ══ -->
+<!-- Job Saved Confirmation Modal -->
+<div class="modal-overlay hidden" id="job-confirm-modal" style="z-index:9999">
+  <div class="modal" style="text-align:center;max-width:340px">
+    <div style="font-size:64px;margin-bottom:8px">✅</div>
+    <div style="font-size:22px;font-weight:800;color:#10b981;margin-bottom:16px">Job Saved!</div>
+    <div id="job-confirm-details" style="background:#f3f4f6;border-radius:10px;padding:14px;text-align:left;font-size:14px;line-height:2;margin-bottom:20px"></div>
+    <button onclick="document.getElementById('job-confirm-modal').classList.add('hidden')" style="width:100%;padding:16px;background:#10b981;color:white;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer">✓ Got it</button>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="add-job-modal">
   <div class="modal">
     <div class="modal-title">
@@ -2303,7 +2313,15 @@ $('add-job-form').addEventListener('submit', async (e) => {
       $('f-customer-id').value = '';
       if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
       fPhotoFile = null;
-      toast('✓ Job added to Haultech');
+      // Show confirmation modal
+      showJobConfirmation({
+        customer: $('f-customer').value,
+        material,
+        from: from || 'PMG Yard',
+        to,
+        weight,
+        ref: ref || newJobId,
+      });
       // Immediately inject the new job into the local list so it shows straight away
       // (Haultech may take a few seconds to reflect it in the list endpoint)
       const optimisticJob = {
@@ -2368,6 +2386,19 @@ $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
+
+function showJobConfirmation(job) {
+  const details = [
+    `👤 Customer: <strong>${job.customer || '—'}</strong>`,
+    `🚚 Material: <strong>${job.material || '—'}</strong>`,
+    `📍 From: <strong>${job.from || '—'}</strong>`,
+    `🏠 To: <strong>${job.to || '—'}</strong>`,
+    `⚖️ Weight: <strong>${job.weight || '—'}t</strong>`,
+    `🏷️ Ref: <strong>${job.ref || '—'}</strong>`,
+  ].join('<br>');
+  $('job-confirm-details').innerHTML = details;
+  $('job-confirm-modal').classList.remove('hidden');
+}
 
 function init() {
   renderUserButtons();
