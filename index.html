@@ -407,11 +407,12 @@
     }
     .sign-weight-input:focus { outline: none; border-color: var(--primary); }
     .sign-save-btn {
-      width: 48px; height: 48px; background: var(--primary); color: white;
+      flex: 2; min-width: 118px; height: 48px; background: var(--green); color: white;
       border: none; border-radius: 10px; cursor: pointer; font-size: 22px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 14px; font-weight: 800; padding: 0 10px;
     }
-    .sign-save-btn:active { background: var(--primary-dark); }
+    .sign-save-btn:active { background: var(--green-dark); }
 
     /* ════════════════════════════════════════════════════════════════════════ */
     /* MODALS                                                                */
@@ -532,6 +533,97 @@
     .btn-depart:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-complete { background: var(--green); color: white; }
     .btn-complete:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-secondary { background: #e5e7eb; color: #111827; }
+    .btn-danger { background: #fee2e2; color: #991b1b; }
+    .btn-map { background: #2563eb; color: white; }
+
+    .trial-banner {
+      background: #111827; color: white; border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.4;
+      border: 2px solid #f97316;
+    }
+    .trial-banner strong { color: #fed7aa; }
+    .driver-summary {
+      background: white; border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px; margin-bottom: 12px;
+    }
+    .driver-summary h2 { font-size: 20px; line-height: 1.2; margin-bottom: 4px; color: var(--text); }
+    .driver-summary-meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .driver-summary-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .driver-summary-actions .btn { min-height: 44px; padding: 10px 12px; font-size: 14px; }
+    .day-review {
+      background: white; border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px; margin-bottom: 12px;
+    }
+    .day-review-head {
+      display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .day-review h3 { font-size: 17px; margin: 0 0 4px; }
+    .day-review-note { color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .day-review-job {
+      border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;
+    }
+    .day-review-title { font-weight: 800; margin-bottom: 4px; }
+    .day-review-meta { color: var(--muted); font-size: 13px; line-height: 1.35; margin-bottom: 10px; }
+    .day-review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .day-review-actions .btn { min-height: 46px; padding: 10px; font-size: 13px; }
+    .driver-update {
+      background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+      border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
+      font-size: 13px; font-weight: 700;
+    }
+    .job-card.next-job { border-color: var(--primary); box-shadow: 0 3px 16px rgba(249,115,22,0.18); }
+    .job-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
+    .job-card-actions .btn { min-height: 50px; padding: 12px; font-size: 14px; }
+    .queue-strip {
+      background: #f9fafb; border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 12px; margin: 10px 0 14px; font-size: 13px; color: var(--muted);
+    }
+    .queue-pill {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
+      border-radius: 999px; background: white; border: 1px solid var(--border);
+      margin: 4px 4px 0 0; font-weight: 700; color: #374151;
+    }
+    .map-panel {
+      display: block; text-decoration: none; color: inherit;
+      background: linear-gradient(135deg, #e0f2fe, #f0fdf4);
+      border: 2px solid #bfdbfe; border-radius: 14px;
+      padding: 16px; margin: 12px 0;
+    }
+    .map-panel-title { font-size: 13px; color: #1e40af; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; }
+    .map-panel-address { font-size: 17px; font-weight: 800; line-height: 1.35; color: #111827; }
+    .safe-strip {
+      background: #fffbeb; color: #92400e; border: 1px solid #fde68a;
+      border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 700; margin: 10px 0;
+    }
+    .proof-checklist {
+      display: grid; gap: 8px; margin: 12px 0;
+    }
+    .proof-check {
+      background: #f9fafb; border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .feedback-btn {
+      position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%);
+      width: calc(100% - 32px); max-width: calc(600px - 32px);
+      background: white; color: var(--primary); border: 1.5px solid var(--primary);
+      border-radius: 12px; min-height: 48px; font-family: 'Inter', sans-serif;
+      font-size: 15px; font-weight: 800; z-index: 49; cursor: pointer;
+    }
+    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .quick-grid button {
+      min-height: 54px; border-radius: 12px; border: 1.5px solid var(--border);
+      background: white; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 800;
+      color: var(--text); cursor: pointer;
+    }
+    .place-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .place-chip {
+      border: 1px solid var(--border); background: #fff7ed; color: var(--primary-dark);
+      border-radius: 999px; padding: 7px 10px; font-size: 12px; font-weight: 800;
+      cursor: pointer;
+    }
 
     /* ── Desktop layout ── */
     @media (min-width: 600px) {
@@ -645,13 +737,14 @@
       <input type="file" id="sign-photo-input" accept="image/*" capture="environment" style="display:none">
       <span class="sign-weight-label">Weight:</span>
       <input type="number" class="sign-weight-input" id="sign-weight" placeholder="0" step="0.1" min="0">
-      <button class="sign-save-btn" id="sign-save-btn">💾</button>
+      <button class="sign-save-btn" id="sign-save-btn">Complete job</button>
     </div>
   </div>
 </main>
 
 <!-- Add Job FAB -->
-<button class="fab hidden" id="add-job-btn">＋ Add Job</button>
+<button class="feedback-btn hidden" id="feedback-btn">Driver feedback</button>
+<button class="fab hidden" id="add-job-btn">＋ Add day-sheet row</button>
 
 <!-- ══ ADD JOB MODAL ══ -->
 <!-- Job Saved Confirmation Modal -->
@@ -667,7 +760,7 @@
 <div class="modal-overlay hidden" id="add-job-modal">
   <div class="modal">
     <div class="modal-title">
-      Add Job
+      Add day-sheet row
       <button class="modal-close" id="add-job-close">✕</button>
     </div>
     <form id="add-job-form">
@@ -679,27 +772,42 @@
       </div>
       <div class="form-group">
         <label>Material / Goods Description</label>
-        <input type="text" id="f-material" placeholder="e.g. MOT Type 1">
+        <input type="text" id="f-material" list="material-list" placeholder="Start typing material…" autocomplete="off">
+        <datalist id="material-list"></datalist>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Collected From</label>
           <input type="text" id="f-from" placeholder="e.g. Hanson">
+          <div class="place-chips" data-target="f-from"></div>
         </div>
         <div class="form-group">
           <label>Delivered To</label>
           <input type="text" id="f-to" placeholder="e.g. Site name">
+          <div class="place-chips" data-target="f-to"></div>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Quantity (t)</label>
+          <label>Quantity</label>
           <input type="number" id="f-qty" placeholder="0" step="0.1" min="0">
         </div>
         <div class="form-group">
-          <label>Price (£)</label>
-          <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0">
+          <label>Unit</label>
+          <select id="f-unit">
+            <option value="t">tonnes</option>
+            <option value="m3">m3</option>
+            <option value="bags">bags</option>
+            <option value="items">items</option>
+            <option value="job">job</option>
+            <option value="days">days</option>
+            <option value="hours">hours</option>
+          </select>
         </div>
+      </div>
+      <div class="form-group">
+          <label>Price (£)</label>
+          <input type="number" id="f-price" placeholder="" step="0.01" min="0" disabled>
       </div>
       <div class="form-group">
         <label>Reference</label>
@@ -724,8 +832,58 @@
           <img id="f-photo-preview" style="display:none;width:100%;border-radius:6px;margin-top:8px;">
         </div>
       </div>
-      <button type="submit" class="btn-submit" id="add-job-submit">Save Job to Haultech</button>
+      <button type="submit" class="btn-submit" id="add-job-submit">Save row for office</button>
     </form>
+  </div>
+</div>
+
+<!-- ══ PROBLEM / NOT DONE MODAL ══ -->
+<div class="modal-overlay hidden" id="problem-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Problem / not done
+      <button class="modal-close" id="problem-close">✕</button>
+    </div>
+    <div class="quick-grid" id="problem-reasons">
+      <button type="button" data-reason="No access">No access</button>
+      <button type="button" data-reason="Customer not there">Customer not there</button>
+      <button type="button" data-reason="Load rejected">Load rejected</button>
+      <button type="button" data-reason="Wrong material">Wrong material</button>
+      <button type="button" data-reason="Contaminated load">Contaminated load</button>
+      <button type="button" data-reason="Vehicle problem">Vehicle problem</button>
+    </div>
+    <div class="form-group">
+      <label>Note - optional unless needed</label>
+      <textarea id="problem-note" placeholder="Short note for Richard / office"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Photo - optional</label>
+      <input type="file" id="problem-photo" accept="image/*" capture="environment">
+    </div>
+    <button class="btn-submit" id="problem-submit">Send problem to office</button>
+  </div>
+</div>
+
+<!-- ══ FEEDBACK MODAL ══ -->
+<div class="modal-overlay hidden" id="feedback-modal">
+  <div class="modal">
+    <div class="modal-title">
+      John trial feedback
+      <button class="modal-close" id="feedback-close">✕</button>
+    </div>
+    <div class="quick-grid" id="feedback-tags">
+      <button type="button" data-tag="Too much typing">Too much typing</button>
+      <button type="button" data-tag="Could not find job">Could not find job</button>
+      <button type="button" data-tag="Map awkward">Map awkward</button>
+      <button type="button" data-tag="Proof awkward">Proof awkward</button>
+      <button type="button" data-tag="Missing option">Missing option</button>
+      <button type="button" data-tag="Worked well">Worked well</button>
+    </div>
+    <div class="form-group">
+      <label>What was awkward or missing?</label>
+      <textarea id="feedback-text" placeholder="Short note"></textarea>
+    </div>
+    <button class="btn-submit" id="feedback-submit">Save feedback</button>
   </div>
 </div>
 
@@ -758,8 +916,266 @@ const API_KEY = 'pmg2026driver';
 const TMS_ID = 'd80fd468-e802-492d-b73c-e09ab51bee88';
 const JIM_PASSWORD = 'jimpmg2026';
 const MANAGER_PASSWORD = '1409';
+const LIVE_WRITE = true;
+const TRIAL_DRIVER = 'john';
+const SAFE_WORKER_ENDPOINTS = ['/job-status/', '/ticket/', '/photos/', '/haultech-jobs/'];
 const JOB_TYPE_STD = '4cbd566c-7fd6-41e2-b11a-29a5116457e2';
 const SERVICE_LEVEL_STD = '6c19efc0-0664-41df-a2f3-ad2375659a66';
+
+// BEGIN GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
+const MATERIAL_PRICING = {
+  "Mixed Spoil Tip": { type: "flat", rate: 10, unit: "tonnes" },
+  "Clay Tip": { type: "flat", rate: 15, unit: "tonnes" },
+  "Topsoil Tip": { type: 'tiered', under10: 6, over10: 5, unit: "tonnes" },
+  "Clean Concrete/Brick": { type: "flat", rate: 0, unit: "tonnes" },
+  "Tree Stump Disposal": { type: "job", rate: 40, unit: "job" },
+  "6F2 Crushed Concrete": { type: 'tiered', under10: 11.5, over10: 10, unit: "tonnes" },
+  "40mm Recycled MOT": { type: 'tiered', under10: 16, over10: 15, unit: "tonnes" },
+  "Large Clean Crush": { type: 'tiered', under10: 19.5, over10: 17.5, unit: "tonnes" },
+  "Road Plainings": { type: 'tiered', under10: 18, over10: 18, unit: "tonnes" },
+  "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
+  "Type 3 MOT": { type: "flat", rate: 33, unit: "tonnes" },
+  "20mm Clean Washed": { type: 'tiered', under10: 26.5, over10: 23.5, unit: "tonnes" },
+  "10mm Clean Washed": { type: 'tiered', under10: 28.5, over10: 26.5, unit: "tonnes" },
+  "40mm Quarried MOT": { type: 'tiered', under10: 29.5, over10: 27.5, unit: "tonnes" },
+  "20mm Quarried MOT": { type: 'tiered', under10: 31.5, over10: 29.5, unit: "tonnes" },
+  "40mm Scalpings Blue": { type: 'tiered', under10: 26, over10: 26, unit: "tonnes" },
+  "20mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "6mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Grade 1 Topsoil": { type: 'tiered', under10: 22, over10: 20, unit: "tonnes" },
+  "Blended Topsoil/Compost": { type: 'tiered', under10: 32, over10: 30, unit: "tonnes" },
+  "Fill": { type: "flat", rate: 5, unit: "tonnes" },
+  "Recycled Grit Sand": { type: 'tiered', under10: 31, over10: 29, unit: "tonnes" },
+  "Quarried Grit Sand": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Building Sand loose": { type: "flat", rate: 37, unit: "tonnes" },
+  "Building Sand tonne bag": { type: "bag", rate: 54, unit: "bags" },
+  "Ballast": { type: 'tiered', under10: 39.5, over10: 39.5, unit: "tonnes" },
+  "Fill Sand": { type: 'tiered', under10: 15, over10: 14.5, unit: "tonnes" },
+  "Grano Dust": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Blended Sand": { type: "flat", rate: 37.5, unit: "tonnes" },
+  "Black Ice": { type: 'tiered', under10: 132, over10: 127, unit: "tonnes" },
+  "Purple Slate": { type: 'tiered', under10: 80, over10: 77, unit: "tonnes" },
+  "20mm Blue Slate": { type: 'tiered', under10: 71, over10: 69, unit: "tonnes" },
+  "Golden Gravel": { type: 'tiered', under10: 76, over10: 76, unit: "tonnes" },
+  "40mm Blue Slate": { type: 'tiered', under10: 77, over10: 68, unit: "tonnes" },
+  "Cotswold Buff": { type: 'tiered', under10: 71, over10: 69, unit: "tonnes" },
+  "Post Mix/Post Crete": { type: "bag", rate: 5.75, unit: "bags" },
+  "Plastic Cement Bags": { type: "bag", rate: 7.5, unit: "bags" },
+  "Paper Cement Bags": { type: "bag", rate: 7, unit: "bags" },
+  "Cold Lay Tar Bags": { type: "bag", rate: 9.75, unit: "bags" },
+  "Kiln Dried Sand": { type: "bag", rate: 5.36, unit: "bags" },
+  "Tonne Bags (empty)": { type: "bag", rate: 4.5, unit: "bags" },
+  "Path Edges 150mm": { type: "job", rate: 4.5, unit: "job" },
+  "Bullnose Kerb": { type: "job", rate: 8.05, unit: "job" },
+  "Bullnose Kerb External Radius": { type: "job", rate: 12.45, unit: "job" },
+  "Steel Shovel": { type: "job", rate: 20.25, unit: "job" },
+  "Micro Digger": { type: "day", rate: 50, unit: "days" },
+  "1.5t Digger": { type: "day", rate: 60, unit: "days" },
+  "3t Digger": { type: "day", rate: 65, unit: "days" },
+  "5t Digger": { type: "day", rate: 75, unit: "days" },
+  "Telehandler": { type: "day", rate: 80, unit: "days" },
+  "1t High Tip Dumper": { type: "day", rate: 50, unit: "days" },
+  "3t Dumper": { type: "day", rate: 60, unit: "days" },
+  "800 Roller": { type: "day", rate: 50, unit: "days" },
+  "1200 Roller": { type: "day", rate: 60, unit: "days" },
+  "Wacker (small)": { type: "day", rate: 30, unit: "days" },
+  "Wacker (medium)": { type: "day", rate: 35, unit: "days" },
+  "Wacker (forward/reverse)": { type: "day", rate: 45, unit: "days" },
+  "Hilti Breaker": { type: "day", rate: 25, unit: "days" },
+  "Bosch Hand Breaker": { type: "day", rate: 40, unit: "days" },
+  "Stihl Saw": { type: "day", rate: 20, unit: "days" },
+  "Ifor Tipper": { type: "day", rate: 45, unit: "days" },
+  "Ifor Plant Trailer": { type: "day", rate: 45, unit: "days" },
+  "Ifor Box": { type: "day", rate: 50, unit: "days" },
+  "Borer": { type: "day", rate: 45, unit: "days" },
+  "Pecker": { type: "day", rate: 70, unit: "days" },
+  "Truss Jib": { type: "day", rate: 65, unit: "days" },
+  "Muck Barrow": { type: "day", rate: 50, unit: "days" },
+  "110V Transformer": { type: "day", rate: 7, unit: "days" },
+  "Tip Skip": { type: "fixed", rate: 50, unit: "days" },
+  "Drainage pipe 6m": { type: "flat", rate: 40.3, unit: "job" },
+  "Drainage collar": { type: "flat", rate: 4.1, unit: "job" },
+  "Drainage s/s 15": { type: "flat", rate: 9.2, unit: "job" },
+  "Drainage s/s 30": { type: "flat", rate: 9.2, unit: "job" },
+  "Drainage s/s 45": { type: "flat", rate: 8.85, unit: "job" },
+  "Drainage d/s 15": { type: "flat", rate: 11.05, unit: "job" },
+  "Drainage d/s 30": { type: "flat", rate: 10.6, unit: "job" },
+  "Drainage d/s 45": { type: "flat", rate: 11.15, unit: "job" },
+  "Drainage d/s short 90": { type: "flat", rate: 11.1, unit: "job" },
+  "Drainage s/s rest bend": { type: "flat", rate: 14.5, unit: "job" },
+  "Drainage trap": { type: "flat", rate: 14.7, unit: "job" },
+  "Bottle gulley": { type: "flat", rate: 30.75, unit: "job" },
+  "Gulley squaring off kit": { type: "flat", rate: 6.3, unit: "job" },
+  "Slip collar": { type: "flat", rate: 5.2, unit: "job" },
+  "300 manhole base 3 inlet": { type: "flat", rate: 26.05, unit: "job" },
+  "300 manhole base 5 inlet": { type: "flat", rate: 42.5, unit: "job" },
+  "300 riser": { type: "flat", rate: 20.9, unit: "job" },
+  "300 lid": { type: "flat", rate: 47.2, unit: "job" },
+  "300 square lid": { type: "flat", rate: 43.8, unit: "job" },
+  "450 manhole base": { type: "flat", rate: 26.36, unit: "job" },
+  "450 riser": { type: "flat", rate: 31.4, unit: "job" },
+  "450 seal": { type: "flat", rate: 3.8, unit: "job" },
+  "450 lid": { type: "flat", rate: 50.85, unit: "job" },
+  "Recessed lid": { type: "flat", rate: 65, unit: "job" },
+  "4 inch clay to plastic band seal": { type: "flat", rate: 8, unit: "job" },
+  "6 inch clay to plastic band seal": { type: "flat", rate: 16, unit: "job" },
+  "80mm land drainage roll 100m": { type: "flat", rate: 104.82, unit: "job" },
+  "100mm land drainage roll 100m": { type: "flat", rate: 157.43, unit: "job" },
+  "Yard gulley": { type: "flat", rate: 34.75, unit: "job" },
+  "Yard gulley grate B125": { type: "flat", rate: 51.65, unit: "job" },
+  "Geotextile black": { type: "flat", rate: 125, unit: "job" },
+  "Non woven white": { type: "flat", rate: 195, unit: "job" },
+  "1200 gauge visqueen": { type: "flat", rate: 32, unit: "job" },
+  "500 gauge visqueen": { type: "flat", rate: 28, unit: "job" },
+  "8 edgings": { type: "flat", rate: 5.8, unit: "job" },
+  "6 edgings": { type: "flat", rate: 4.5, unit: "job" },
+  "6 inch bullnose kerb": { type: "flat", rate: 8.05, unit: "job" },
+  "ACO": { type: "flat", rate: 29.05, unit: "job" },
+  "A15 ACO": { type: "flat", rate: 12.5, unit: "job" },
+  "Duct tape": { type: "flat", rate: 5.2, unit: "job" },
+  "Gloves (per pair)": { type: "flat", rate: 2.2, unit: "job" },
+  "Goggles": { type: "flat", rate: 4.75, unit: "job" },
+  "225 ties": { type: "flat", rate: 3.8, unit: "job" },
+  "Linemarker": { type: "flat", rate: 3.8, unit: "job" },
+  "Warning tape": { type: "flat", rate: 12.5, unit: "job" },
+  "25mm pipe 100m": { type: "flat", rate: 98.8, unit: "job" },
+  "25mm pipe 50m": { type: "flat", rate: 49.4, unit: "job" },
+  "25mm pipe 25m": { type: "flat", rate: 24.7, unit: "job" },
+  "25mm straight connector": { type: "flat", rate: 5.27, unit: "job" },
+  "25mm insert": { type: "flat", rate: 0.48, unit: "job" },
+  "25mm end cap": { type: "flat", rate: 6.75, unit: "job" },
+  "Concrete": { type: "flat", rate: 0, unit: "job" },
+  "Road Plate": { type: "flat", rate: 0, unit: "job" },
+};
+// END GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
+
+// BEGIN GENERATED PMG_YARD_PRICES:MATERIALS
+const MATERIALS = [
+  {"group": "TIPPING","label": "Mixed Spoil Tip","value": "Mixed Spoil Tip"},
+  {"group": "TIPPING","label": "Clay Tip","value": "Clay Tip"},
+  {"group": "TIPPING","label": "Topsoil Tip","value": "Topsoil Tip"},
+  {"group": "TIPPING","label": "Clean Concrete/Brick (Free)","value": "Clean Concrete/Brick"},
+  {"group": "TIPPING","label": "Tree Stump Disposal","value": "Tree Stump Disposal"},
+  {"group": "RECYCLED AGGREGATES","label": "6F2 Crushed Concrete","value": "6F2 Crushed Concrete"},
+  {"group": "RECYCLED AGGREGATES","label": "40mm Recycled MOT","value": "40mm Recycled MOT"},
+  {"group": "RECYCLED AGGREGATES","label": "Large Clean Crush","value": "Large Clean Crush"},
+  {"group": "RECYCLED AGGREGATES","label": "Road Plainings","value": "Road Plainings"},
+  {"group": "RECYCLED AGGREGATES","label": "20-5mm Concrete Agg","value": "20-5mm Concrete Agg"},
+  {"group": "RECYCLED AGGREGATES","label": "Type 3 MOT","value": "Type 3 MOT"},
+  {"group": "WASHED RECYCLED","label": "20mm Clean Washed","value": "20mm Clean Washed"},
+  {"group": "WASHED RECYCLED","label": "10mm Clean Washed","value": "10mm Clean Washed"},
+  {"group": "QUARRIED AGGREGATES","label": "40mm Quarried MOT","value": "40mm Quarried MOT"},
+  {"group": "QUARRIED AGGREGATES","label": "20mm Quarried MOT","value": "20mm Quarried MOT"},
+  {"group": "QUARRIED AGGREGATES","label": "40mm Scalpings Blue","value": "40mm Scalpings Blue"},
+  {"group": "QUARRIED WASHED STONE","label": "20mm Clean Stone","value": "20mm Clean Stone"},
+  {"group": "QUARRIED WASHED STONE","label": "6mm Clean Stone","value": "6mm Clean Stone"},
+  {"group": "SOILS","label": "Grade 1 Topsoil","value": "Grade 1 Topsoil"},
+  {"group": "SOILS","label": "Blended Topsoil/Compost","value": "Blended Topsoil/Compost"},
+  {"group": "SOILS","label": "Fill (soil & stone mix)","value": "Fill"},
+  {"group": "SANDS","label": "Recycled Grit Sand","value": "Recycled Grit Sand"},
+  {"group": "SANDS","label": "Quarried Grit Sand","value": "Quarried Grit Sand"},
+  {"group": "SANDS","label": "Building Sand loose","value": "Building Sand loose"},
+  {"group": "SANDS","label": "Building Sand tonne bag","value": "Building Sand tonne bag"},
+  {"group": "SANDS","label": "Ballast","value": "Ballast"},
+  {"group": "SANDS","label": "Fill Sand","value": "Fill Sand"},
+  {"group": "SANDS","label": "Grano Dust","value": "Grano Dust"},
+  {"group": "SANDS","label": "Blended Sand","value": "Blended Sand"},
+  {"group": "DECORATIVE","label": "Black Ice","value": "Black Ice"},
+  {"group": "DECORATIVE","label": "Purple Slate","value": "Purple Slate"},
+  {"group": "DECORATIVE","label": "20mm Blue Slate","value": "20mm Blue Slate"},
+  {"group": "DECORATIVE","label": "Golden Gravel","value": "Golden Gravel"},
+  {"group": "DECORATIVE","label": "40mm Blue Slate","value": "40mm Blue Slate"},
+  {"group": "DECORATIVE","label": "Cotswold Buff","value": "Cotswold Buff"},
+  {"group": "BAGS & SMALL ITEMS","label": "Post Mix/Post Crete","value": "Post Mix/Post Crete"},
+  {"group": "BAGS & SMALL ITEMS","label": "Plastic Cement Bags","value": "Plastic Cement Bags"},
+  {"group": "BAGS & SMALL ITEMS","label": "Paper Cement Bags","value": "Paper Cement Bags"},
+  {"group": "BAGS & SMALL ITEMS","label": "Cold Lay Tar Bags","value": "Cold Lay Tar Bags"},
+  {"group": "BAGS & SMALL ITEMS","label": "Kiln Dried Sand","value": "Kiln Dried Sand"},
+  {"group": "BAGS & SMALL ITEMS","label": "Tonne Bags (empty)","value": "Tonne Bags (empty)"},
+  {"group": "BAGS & SMALL ITEMS","label": "Path Edges 150mm","value": "Path Edges 150mm"},
+  {"group": "BAGS & SMALL ITEMS","label": "Bullnose Kerb","value": "Bullnose Kerb"},
+  {"group": "BAGS & SMALL ITEMS","label": "Bullnose Kerb External Radius","value": "Bullnose Kerb External Radius"},
+  {"group": "BAGS & SMALL ITEMS","label": "Steel Shovel","value": "Steel Shovel"},
+  {"group": "PLANT HIRE (per day)","label": "Micro Digger","value": "Micro Digger"},
+  {"group": "PLANT HIRE (per day)","label": "1.5t Digger","value": "1.5t Digger"},
+  {"group": "PLANT HIRE (per day)","label": "3t Digger","value": "3t Digger"},
+  {"group": "PLANT HIRE (per day)","label": "5t Digger","value": "5t Digger"},
+  {"group": "PLANT HIRE (per day)","label": "Telehandler","value": "Telehandler"},
+  {"group": "PLANT HIRE (per day)","label": "1t High Tip Dumper","value": "1t High Tip Dumper"},
+  {"group": "PLANT HIRE (per day)","label": "3t Dumper","value": "3t Dumper"},
+  {"group": "PLANT HIRE (per day)","label": "800 Roller","value": "800 Roller"},
+  {"group": "PLANT HIRE (per day)","label": "1200 Roller","value": "1200 Roller"},
+  {"group": "PLANT HIRE (per day)","label": "Wacker (small)","value": "Wacker (small)"},
+  {"group": "PLANT HIRE (per day)","label": "Wacker (medium)","value": "Wacker (medium)"},
+  {"group": "PLANT HIRE (per day)","label": "Wacker (forward/reverse)","value": "Wacker (forward/reverse)"},
+  {"group": "PLANT HIRE (per day)","label": "Hilti Breaker","value": "Hilti Breaker"},
+  {"group": "PLANT HIRE (per day)","label": "Bosch Hand Breaker","value": "Bosch Hand Breaker"},
+  {"group": "PLANT HIRE (per day)","label": "Stihl Saw","value": "Stihl Saw"},
+  {"group": "PLANT HIRE (per day)","label": "Ifor Tipper","value": "Ifor Tipper"},
+  {"group": "PLANT HIRE (per day)","label": "Ifor Plant Trailer","value": "Ifor Plant Trailer"},
+  {"group": "PLANT HIRE (per day)","label": "Ifor Box","value": "Ifor Box"},
+  {"group": "PLANT HIRE (per day)","label": "Borer","value": "Borer"},
+  {"group": "PLANT HIRE (per day)","label": "Pecker","value": "Pecker"},
+  {"group": "PLANT HIRE (per day)","label": "Truss Jib","value": "Truss Jib"},
+  {"group": "PLANT HIRE (per day)","label": "Muck Barrow","value": "Muck Barrow"},
+  {"group": "SUNDRY","label": "110V Transformer","value": "110V Transformer"},
+  {"group": "SUNDRY","label": "Tip Skip (per week)","value": "Tip Skip"},
+  {"group": "DRAINAGE","label": "Drainage pipe 6m","value": "Drainage pipe 6m"},
+  {"group": "DRAINAGE","label": "Drainage collar","value": "Drainage collar"},
+  {"group": "DRAINAGE","label": "Drainage s/s 15","value": "Drainage s/s 15"},
+  {"group": "DRAINAGE","label": "Drainage s/s 30","value": "Drainage s/s 30"},
+  {"group": "DRAINAGE","label": "Drainage s/s 45","value": "Drainage s/s 45"},
+  {"group": "DRAINAGE","label": "Drainage d/s 15","value": "Drainage d/s 15"},
+  {"group": "DRAINAGE","label": "Drainage d/s 30","value": "Drainage d/s 30"},
+  {"group": "DRAINAGE","label": "Drainage d/s 45","value": "Drainage d/s 45"},
+  {"group": "DRAINAGE","label": "Drainage d/s short 90","value": "Drainage d/s short 90"},
+  {"group": "DRAINAGE","label": "Drainage s/s rest bend","value": "Drainage s/s rest bend"},
+  {"group": "DRAINAGE","label": "Drainage trap","value": "Drainage trap"},
+  {"group": "DRAINAGE","label": "Bottle gulley","value": "Bottle gulley"},
+  {"group": "DRAINAGE","label": "Gulley squaring off kit","value": "Gulley squaring off kit"},
+  {"group": "DRAINAGE","label": "Slip collar","value": "Slip collar"},
+  {"group": "DRAINAGE","label": "300 manhole base 3 inlet","value": "300 manhole base 3 inlet"},
+  {"group": "DRAINAGE","label": "300 manhole base 5 inlet","value": "300 manhole base 5 inlet"},
+  {"group": "DRAINAGE","label": "300 riser","value": "300 riser"},
+  {"group": "DRAINAGE","label": "300 plastic lid / round cover & frame","value": "300 lid"},
+  {"group": "DRAINAGE","label": "300 plastic square lid / square cover & frame","value": "300 square lid"},
+  {"group": "DRAINAGE","label": "450 plastic manhole base","value": "450 manhole base"},
+  {"group": "DRAINAGE","label": "450 riser","value": "450 riser"},
+  {"group": "DRAINAGE","label": "450 seal","value": "450 seal"},
+  {"group": "DRAINAGE","label": "450 lid","value": "450 lid"},
+  {"group": "DRAINAGE","label": "Recessed lid 675x900mm 75mm deep","value": "Recessed lid"},
+  {"group": "DRAINAGE","label": "4 inch clay to plastic band seal","value": "4 inch clay to plastic band seal"},
+  {"group": "DRAINAGE","label": "6 inch clay to plastic band seal","value": "6 inch clay to plastic band seal"},
+  {"group": "DRAINAGE","label": "80mm land drainage roll 100m","value": "80mm land drainage roll 100m"},
+  {"group": "DRAINAGE","label": "100mm land drainage roll 100m","value": "100mm land drainage roll 100m"},
+  {"group": "DRAINAGE","label": "Yard gulley 300x600mm","value": "Yard gulley"},
+  {"group": "DRAINAGE","label": "Metal B125 yard gulley grate","value": "Yard gulley grate B125"},
+  {"group": "MEMBRANES","label": "Geotextile black","value": "Geotextile black"},
+  {"group": "MEMBRANES","label": "Non woven white","value": "Non woven white"},
+  {"group": "MEMBRANES","label": "1200 gauge visqueen","value": "1200 gauge visqueen"},
+  {"group": "MEMBRANES","label": "500 gauge visqueen","value": "500 gauge visqueen"},
+  {"group": "HARD LANDSCAPING","label": "8 edgings","value": "8 edgings"},
+  {"group": "HARD LANDSCAPING","label": "6 edgings","value": "6 edgings"},
+  {"group": "HARD LANDSCAPING","label": "6 inch bullnose kerb","value": "6 inch bullnose kerb"},
+  {"group": "HARD LANDSCAPING","label": "B125 ACO channel","value": "ACO"},
+  {"group": "HARD LANDSCAPING","label": "A15 ACO channel","value": "A15 ACO"},
+  {"group": "MISC","label": "Duct tape","value": "Duct tape"},
+  {"group": "MISC","label": "Gloves (per pair)","value": "Gloves (per pair)"},
+  {"group": "MISC","label": "Goggles","value": "Goggles"},
+  {"group": "MISC","label": "225 ties","value": "225 ties"},
+  {"group": "MISC","label": "Linemarker","value": "Linemarker"},
+  {"group": "MISC","label": "Warning tape","value": "Warning tape"},
+  {"group": "WATER","label": "25mm MDPE water pipe 100m","value": "25mm pipe 100m"},
+  {"group": "WATER","label": "25mm MDPE water pipe 50m","value": "25mm pipe 50m"},
+  {"group": "WATER","label": "25mm MDPE water pipe 25m","value": "25mm pipe 25m"},
+  {"group": "WATER","label": "25mm straight connector","value": "25mm straight connector"},
+  {"group": "WATER","label": "25mm insert","value": "25mm insert"},
+  {"group": "WATER","label": "25mm end cap","value": "25mm end cap"},
+  {"group": "CONCRETE","label": "Concrete","value": "Concrete"},
+  {"group": "OTHER","label": "Road Plate","value": "Road Plate"},
+  {group: '__other__', label: 'Not on list / Other', value: '__other__'},
+];
+// END GENERATED PMG_YARD_PRICES:MATERIALS
 
 const INCAB_USERS = {
   john:    { pin: '1234', driverId: 'f5c31070-2945-408a-bc7a-0245159a191a', name: 'John Bowman' },
@@ -786,6 +1202,15 @@ const POD_CODES = {
   damaged: 'b357e342-790e-4143-a460-95845fdadad0',
 };
 
+const COMMON_PLACES = [
+  'Back Lane Quarry',
+  'PM Groundworks Yard, Sower Carr Lane, FY6 9DJ',
+  'Riverside Place, Carnforth',
+  'Roseacre, Lytham',
+  'Bispham Rowland site',
+  'Levens View, Ulverston'
+];
+
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -794,145 +1219,156 @@ let currentUser = null;
 let allJobs = [];
 let customers = [];
 let isManager = false;
+let trialMode = false;
+let selectedProblemReason = '';
+let selectedFeedbackTags = [];
+let dayReviewOpen = false;
 
 // Static customer map built from known Haultech customer IDs
 const CUSTOMER_MAP = {
+  "000965e0-c271-47cb-a600-b59d78673aac": "A & P Hodgkinson",
+  "1ea642ea-a21d-4251-8a16-aff629ca1b50": "A. Parkinson Groundworks",
+  "e6bfbfd8-7815-463e-9898-68733663b42d": "A.C Cornthwaite",
+  "abda59fe-70cb-4311-b5de-22f2a58d3002": "A.D Developments",
+  "f29b3b6a-4f3b-4c1a-812c-8ab08869d671": "A.G Precision engineering",
+  "05d38858-8dd4-4355-9c44-0e792ad308a6": "A.P and L.A Worledge",
+  "2dfea998-fbf3-4500-8023-f168a85f15c7": "A1",
+  "bc21814e-e933-415a-b0c0-d4539674dffc": "Adrian Lewis Builders",
+  "15f4cf37-08c7-4adf-a115-4ce84e84a9c5": "Affordable Windows",
+  "353bcd9d-0e98-4249-9c2c-9a9d15d10570": "Alex Degnen",
+  "e0a3556b-9471-4e00-83a4-9dc8cb1dc630": "Ameon",
+  "37091c3c-5dfd-4010-b873-4a8699e0b908": "Anderson & Sons. Contracting",
+  "e7e107bf-3f3a-4596-83a6-caf3ea9995ac": "Andrei",
+  "598c75a1-4f69-436b-bf85-942f9c66928c": "Andrew Scott",
+  "e76120de-2d25-466e-9139-12f7435b90d4": "Andrews Bowen",
+  "4aab08a0-f009-45af-a4d4-dc2da534b0af": "ANDREWS BOWENS",
+  "0f347fd7-38e0-4872-a678-78b9ecf3ff34": "Archway",
+  "6535e4c1-333d-427f-853f-457626db08d6": "Armer Landscapes and Groundworks",
+  "a490004c-8e57-4888-965e-7e3b1e6d2c01": "Arnfield Developments",
+  "f490a636-2b42-4767-9907-6af71fc64378": "ASHPHALT PAVING SERVICES LTD",
+  "0d8b9791-aebb-4622-a537-c785586d6c69": "AVPM LTD",
+  "066bd8e9-e35a-46e1-a1e5-b46eda26fcbf": "B & J Parkinson",
+  "c640c695-31c2-43d0-bd6b-2f031387dc73": "Bespoke Landscapes",
+  "0d8bab64-d0b7-4e0d-9a74-3b22d7d4e898": "BGS Projects",
+  "806203c0-9c49-4c65-a370-ace342f7d670": "Boothfield House Caravan Park",
+  "d73308d1-5a39-4b93-b404-61b0ddf0f987": "Brands",
+  "47d2acbd-a18d-477d-b096-578cf1127417": "BT Joinery",
+  "004d141c-f87c-457d-aa66-c9b233b75e9a": "Burlington Aggregates",
+  "65e56f9b-b4d1-4f7c-a09c-6c9b1a578349": "Cardwell Farms Ltd",
+  "c84fd6af-76ed-43e7-bb30-c5de301d54f4": "Cardwell Landscaspes and Groundworks",
+  "e6bb3952-62e0-422c-a7b2-7f6109ec51ed": "Carr Royd Leisure Ltd",
+  "0b7bcd1b-f90c-462d-b60b-d921f7cdd986": "Charlie Butler",
+  "f8d5976b-8173-45aa-b1a6-5528212b6aa6": "Chris Naylor CGF",
+  "6e15fbe5-8ef9-499f-a103-b0763f264682": "Chris Standeven",
+  "cc49174a-e533-49a1-9ed8-f0b24484f3bb": "Complete Concrete",
+  "3833fa0e-79b5-4ff8-96cf-30a9b57113e3": "Cowley Construction",
+  "d71da6d1-7bb1-46a6-91c1-def03f12f542": "DJC Groundworks",
+  "0264440a-cf53-4f96-9bf8-7a373a9e419c": "DN Isles Building Services",
+  "8742a619-0e19-4f1f-a5d0-fe4afe1cb4fa": "drainage experts",
+  "cb06aa78-92d0-4a61-98dc-c7a009b1ceac": "Driveways Northwest",
+  "1585b83f-adfa-4aec-ad6f-d59fb6bccf34": "E.S Williams Peter",
+  "18187c79-9a82-47d8-bd3d-2904266a6611": "Elite Build NW",
+  "50030abd-dc83-4fd5-9db7-855c2c2bda6c": "Enhance and Build Limited",
+  "b27067ac-8458-4361-9208-3e589c781851": "Frank Barrow",
+  "2e0432ba-d77d-487b-bb52-2e85dc7f0c6f": "Fylde Autostyle",
+  "3098f0a8-b633-4224-8deb-10dd6b65542f": "Fylde Drives and Patios",
+  "b4529f15-c075-4655-b25b-0543c8b78f24": "G Wilkinson Buildings ltd",
+  "3ba40e89-5ee0-4625-baae-c5c9d1c164e7": "G.M Groundworks Ltd",
+  "fd681bd1-94f7-4f9f-8afc-0f3eaf740a6e": "G.S.T building",
+  "6bb52a69-9a61-4e98-8282-02bbdbf09bdc": "Garry Claxton",
+  "5070edf0-9cac-4972-be98-323da364be35": "GL Huck and Son",
+  "1330690e-faad-426c-a1b7-4cce53b74296": "Glasdon UK",
+  "30ab86d6-6309-4aa1-886d-4a123a9d4ca3": "Grange Farm Caravan Park",
+  "4c478dd1-354a-44ac-bc0d-b2ea7c139b2f": "Grant Parker LTD",
+  "e2c035f7-a10d-4931-bf42-7d9d7194334e": "GT Fencing",
+  "cd2efe95-3560-4c93-8317-9c7facdfae5a": "GUNSON AGRICULTURE",
+  "5ca42691-faf0-4e48-a116-47bf30bcf6e9": "Hambleton Lakeside Lodges and Fisheries",
+  "4943bb24-2ca5-4e2d-94af-516b1a8e9b14": "Hambleton Service Station",
+  "6504c7d1-2b26-4834-87f5-94f123de3cb7": "Heathland Beach",
+  "40d9a07b-3459-4ee1-a219-39378c58909e": "Highfield fisheries",
+  "6332fd43-eb7d-454e-9ca2-53658eafd94c": "Highgate Farm",
+  "f1800e62-54c0-4ebc-a161-24833a483848": "Hoyles Contractors",
+  "b40433c9-4060-4435-a7eb-4b72cf37edb4": "Huck Construction Ltd",
+  "5d29a8a2-f4f8-4545-a429-05a23fd20c31": "Huck Properties Ltd",
+  "3bbce3fd-6d7a-4e5a-9ca5-4845e6b4aca9": "Hy Fly",
+  "39ba827d-b6da-4903-94c8-fdec4b76cced": "Ian Carter",
+  "1956079c-6d5b-44d4-8c82-6884ad89672b": "IPH Bulk Haulage Limited",
+  "43d9eba1-f572-4fe8-81fe-bc1d0467d30b": "J F J C Hewitt and Family",
+  "9ae9573c-8f6d-4252-9309-c723bad6c745": "J JONES & CO BUILDING CONTRACTING LTD",
+  "2cbbb83b-ab82-40b4-89cb-04125d69b4a7": "J. Adamson Outdoor Spaces",
+  "2e2e6f93-8446-4e52-938b-5a6f85ecb275": "J.R Singleton",
+  "995d9ff1-ec0e-4c5c-93fa-4ab970f006a2": "James Wiseman",
+  "df438516-dbbf-45a9-ab25-72af757e873a": "Jamie Humphrey",
+  "b8bcf111-6be9-4821-9f3a-041e9678b6db": "JC Groundworks Limited",
+  "ca615615-f931-435b-a5c4-553ef6414a1c": "Jeffries Contractors",
+  "ef872f6c-9d5b-4ed9-bbcc-448f60619818": "John Fausset",
+  "fc4c9346-7f3f-458a-bc4b-4d86fc920634": "Jos Jeffries Paving Design",
+  "1f93853b-2e2f-436d-bf6d-7119b719eeef": "KSG Groundworks and Landscapes",
+  "f266fdac-3c22-4579-8cb5-6f48b8a7bfd2": "Lancashire Building and Brickwork",
+  "37faa1d5-d282-436e-84be-56ad72643885": "Lawson",
+  "884096de-3fad-4516-9ae9-311e342b775e": "LG Property Development and Services Limited",
+  "3cd263eb-92c5-4b07-b820-e5d020987828": "Luscombe Plant Hire",
+  "df05b8e4-c377-492d-b349-8c9e65b69c72": "Lytham Edge Lodge Resorts",
+  "9b5ffa30-25c8-4ad4-98a0-7db918d73e14": "Mark Jackson Joinery Limited",
+  "da80921d-528d-4724-bec8-7457c685de18": "Mark Rhode RHD Construction",
+  "1e5b723c-3658-40f8-9bca-8a91fe867205": "Mark Thomas",
+  "ab4b65d7-a62f-4baf-a519-8db659a1c1c4": "Mark Wrathall",
+  "da7af814-94bd-4b3f-b7a5-bc81e3612458": "Mason Groundworks",
+  "429d9f20-6360-48ed-bf75-c28fa3d9d071": "Meanley Estate",
+  "93cd2173-5ff2-4684-b23e-6ac7fe60e3e8": "Mick Skelly",
+  "8032bf7a-c615-422d-8079-15bf53e953df": "MJ Teale",
+  "b2612f48-6d18-4e7c-a781-555bab4f9081": "MJS Groundworks",
+  "407a870c-7b7e-4a3f-a1df-2c878101f8d4": "Moore readymix",
+  "7b452c92-45da-4f09-bdd0-14ad00c5d629": "Mr A Makinson",
+  "0760ff46-8374-48d0-b973-4ff3617cc842": "MW Estates",
+  "302cb1e3-21bf-422c-acc4-c93aa3b22482": "Nick Fairhurst",
+  "1c66d0d0-9e7d-4e57-938a-8e11f808866e": "NJ Powell Groundworks Ltd",
+  "f3504eff-30f2-48f8-a10b-87ffc9923cea": "P. Baker Groundworks",
+  "c939427a-892a-41ab-8717-812cb347f824": "Park Farm",
+  "749487fe-a864-451b-8f47-2ea660c4ca9d": "Pete Nicholson",
+  "3dc00288-8c4e-4abb-8f8e-784f266a0362": "Pipescan Ltd",
+  "e5a6600a-36ee-4f82-a737-bdcdc319d0a1": "Plan It Developments",
+  "6861767c-4418-45ec-ac56-a0673ecce127": "PM Groundworks",
+  "18caa2fe-0318-420a-a502-eaf9fad63786": "Pondpride Landscapes",
+  "ff7968dd-1c56-4fb5-9276-e9f2c1cf31b2": "Quayside Construction",
+  "9fda2dcb-9801-47be-b8c3-26cef3dd83f9": "R Cowell Construction",
+  "8ad4becf-d51b-4af4-9246-ab297b45000d": "Raby Contract Services",
+  "908f5eac-ab66-4ff1-9cc5-3522b312a463": "RAC CONSULTANTS LTD",
+  "ef5e3853-20d7-437e-ab1c-ec4eca56b767": "Residential Parks",
+  "a1d6a399-4dda-4205-9383-f459669c381c": "Resource Recycling Solutions",
+  "5538fc6b-5d97-4668-8a77-d352451b8384": "Ribble Technology Ltd",
+  "1753d5fb-83de-4959-ae53-e5f4abf92aec": "ROWLAND HOMES LTD",
+  "601cbe9a-8c52-44e7-b81f-f0770ca4f9cb": "S and A Cookson",
+  "6f97b523-7538-4fb9-b140-de52cad31091": "Saltcoat Motors",
+  "0ea1a7d0-da86-40f9-859d-8d16e0d919a5": "Schofield Steel",
+  "da2d2a59-c536-4046-8120-6382c50b602d": "Sean Lynden",
+  "0f8cef89-e279-4ee8-a51d-6d14effffc33": "SEM Joinery",
+  "d0067ba7-0474-435e-a83b-2fb9b7cad8de": "Shard Developments",
+  "09eafd23-d13a-4754-9762-cc05def2869f": "Shard Riverside Lodge Park",
+  "7eef4f4d-8298-40e6-bcae-26acc0bf919a": "Shard Surfacing",
+  "b4482d71-a8ac-4648-8ae1-ced8074f0972": "Simon Ward Groundworks Limited",
+  "dd059b9a-426e-456e-8460-523fd2254a23": "SJH Plant Ltd",
+  "c40c8be1-76c4-4547-b09d-5c3554f71f8b": "SJM Builders",
+  "7857e9ac-01d0-4174-ad60-e8d1428efe89": "SR MOORE",
+  "8b28ba5d-ad9e-4055-b9c3-cdc17ceb4b47": "Stephen Rogerson Fencing",
+  "c25d81bc-001f-4f09-91cc-dace9b54c609": "STONE UK LTD",
+  "c8a9efc2-bb9f-4002-885e-4ac81eea2273": "Swarbrick Builders",
+  "4d452d95-c197-47f8-877e-a914a1801fec": "Swift Surfacing",
+  "4d3f6df5-d064-4277-8b94-9e9fcc55417a": "T and T Builders",
+  "dadfe3a8-5653-4a48-8363-e257a305b807": "T.S Groundworks",
+  "9a19e11a-52ab-400d-872d-4fb4df4dad7c": "Taymin Ltd",
   "8e8b6ba3-0ff6-4c42-8d97-4da565fd6746": "Test Customer 1",
   "8ad448ba-ad79-4bc5-9cb3-4c74c89d3fee": "Test Customer 2",
-  "b6edf99f-aeb1-46f7-8560-1623b8f4036f": "Wyre Drives",
-  "2cbbb83b-ab82-40b4-89cb-04125d69b4a7": "J. Adamson Outdoor Spaces",
-  "18caa2fe-0318-420a-a502-eaf9fad63786": "Pondpride Landscapes",
-  "cb06aa78-92d0-4a61-98dc-c7a009b1ceac": "Driveways Northwest",
-  "1f93853b-2e2f-436d-bf6d-7119b719eeef": "KSG Groundworks and Landscapes",
-  "df05b8e4-c377-492d-b349-8c9e65b69c72": "Lytham Edge Lodge Resorts",
-  "6535e4c1-333d-427f-853f-457626db08d6": "Armer Landscapes and Groundworks",
-  "fd681bd1-94f7-4f9f-8afc-0f3eaf740a6e": "G.S.T building",
-  "abda59fe-70cb-4311-b5de-22f2a58d3002": "A.D Developments",
-  "f3504eff-30f2-48f8-a10b-87ffc9923cea": "P. Baker Groundworks",
-  "ef5e3853-20d7-437e-ab1c-ec4eca56b767": "Residential Parks",
-  "c84fd6af-76ed-43e7-bb30-c5de301d54f4": "Cardwell Landscaspes and Groundworks",
-  "3ba40e89-5ee0-4625-baae-c5c9d1c164e7": "G.M Groundworks Ltd",
-  "e6bb3952-62e0-422c-a7b2-7f6109ec51ed": "Carr Royd Leisure Ltd",
-  "650fea1c-aa1d-47f5-891e-77300886eef4": "Wyre Building Supplies Limited",
-  "d0067ba7-0474-435e-a83b-2fb9b7cad8de": "Shard Developments",
-  "3dc00288-8c4e-4abb-8f8e-784f266a0362": "Pipescan Ltd",
-  "1c66d0d0-9e7d-4e57-938a-8e11f808866e": "NJ Powell Groundworks Ltd",
-  "20162a01-94ad-433a-b566-8bf0000cf047": "Wyre Landscapes",
-  "b40433c9-4060-4435-a7eb-4b72cf37edb4": "Huck Construction Ltd",
-  "fc4c9346-7f3f-458a-bc4b-4d86fc920634": "Jos Jeffries Paving Design",
-  "1ea642ea-a21d-4251-8a16-aff629ca1b50": "A. Parkinson Groundworks",
-  "b8bcf111-6be9-4821-9f3a-041e9678b6db": "JC Groundworks Limited",
-  "6f97b523-7538-4fb9-b140-de52cad31091": "Saltcoat Motors",
-  "ca615615-f931-435b-a5c4-553ef6414a1c": "Jeffries Contractors",
-  "9b5ffa30-25c8-4ad4-98a0-7db918d73e14": "Mark Jackson Joinery Limited",
-  "884096de-3fad-4516-9ae9-311e342b775e": "LG Property Development and Services Limited",
-  "b4482d71-a8ac-4648-8ae1-ced8074f0972": "Simon Ward Groundworks Limited",
-  "0264440a-cf53-4f96-9bf8-7a373a9e419c": "DN Isles Building Services",
-  "601cbe9a-8c52-44e7-b81f-f0770ca4f9cb": "S and A Cookson",
-  "4c478dd1-354a-44ac-bc0d-b2ea7c139b2f": "Grant Parker LTD",
-  "5ca42691-faf0-4e48-a116-47bf30bcf6e9": "Hambleton Lakeside Lodges and Fisheries",
-  "50030abd-dc83-4fd5-9db7-855c2c2bda6c": "Enhance and Build Limited",
-  "f266fdac-3c22-4579-8cb5-6f48b8a7bfd2": "Lancashire Building and Brickwork",
-  "8032bf7a-c615-422d-8079-15bf53e953df": "MJ Teale",
-  "2e2e6f93-8446-4e52-938b-5a6f85ecb275": "J.R Singleton",
-  "09eafd23-d13a-4754-9762-cc05def2869f": "Shard Riverside Lodge Park",
-  "bb2da142-5507-4e4d-a228-87a72a875db5": "White Feather Homes",
-  "3098f0a8-b633-4224-8deb-10dd6b65542f": "Fylde Drives and Patios",
-  "37faa1d5-d282-436e-84be-56ad72643885": "Lawson",
-  "3bbce3fd-6d7a-4e5a-9ca5-4845e6b4aca9": "Hy Fly",
   "bb2616de-eaf2-43ae-97fb-54d9cd4038b8": "Tom France",
-  "df438516-dbbf-45a9-ab25-72af757e873a": "Jamie Humphrey",
-  "2dfea998-fbf3-4500-8023-f168a85f15c7": "A1",
-  "6861767c-4418-45ec-ac56-a0673ecce127": "PM Groundworks",
-  "c939427a-892a-41ab-8717-812cb347f824": "Park Farm",
-  "e76120de-2d25-466e-9139-12f7435b90d4": "Andrews Bowen",
-  "1585b83f-adfa-4aec-ad6f-d59fb6bccf34": "E.S Williams Peter",
-  "43d9eba1-f572-4fe8-81fe-bc1d0467d30b": "J F J C Hewitt and Family",
-  "3833fa0e-79b5-4ff8-96cf-30a9b57113e3": "Cowley Construction",
-  "e0a3556b-9471-4e00-83a4-9dc8cb1dc630": "Ameon",
-  "d71da6d1-7bb1-46a6-91c1-def03f12f542": "DJC Groundworks",
-  "9fda2dcb-9801-47be-b8c3-26cef3dd83f9": "R Cowell Construction",
-  "ef872f6c-9d5b-4ed9-bbcc-448f60619818": "John Fausset",
-  "ab4b65d7-a62f-4baf-a519-8db659a1c1c4": "Mark Wrathall",
-  "c40c8be1-76c4-4547-b09d-5c3554f71f8b": "SJM Builders",
-  "5070edf0-9cac-4972-be98-323da364be35": "GL Huck and Son",
-  "bc21814e-e933-415a-b0c0-d4539674dffc": "Adrian Lewis Builders",
-  "995d9ff1-ec0e-4c5c-93fa-4ab970f006a2": "James Wiseman",
-  "6bb52a69-9a61-4e98-8282-02bbdbf09bdc": "Garry Claxton",
-  "0760ff46-8374-48d0-b973-4ff3617cc842": "MW Estates",
-  "37091c3c-5dfd-4010-b873-4a8699e0b908": "Anderson & Sons. Contracting",
-  "0b7bcd1b-f90c-462d-b60b-d921f7cdd986": "Charlie Butler",
-  "39ba827d-b6da-4903-94c8-fdec4b76cced": "Ian Carter",
-  "d73308d1-5a39-4b93-b404-61b0ddf0f987": "Brands",
-  "da2d2a59-c536-4046-8120-6382c50b602d": "Sean Lynden",
-  "05d38858-8dd4-4355-9c44-0e792ad308a6": "A.P and L.A Worledge",
-  "f1800e62-54c0-4ebc-a161-24833a483848": "Hoyles Contractors",
-  "429d9f20-6360-48ed-bf75-c28fa3d9d071": "Meanley Estate",
-  "a490004c-8e57-4888-965e-7e3b1e6d2c01": "Arnfield Developments",
-  "b4529f15-c075-4655-b25b-0543c8b78f24": "G Wilkinson Buildings ltd",
-  "e9d61d6f-a64e-4eaa-ad4e-0c5858b1ecde": "Vehicle inspection pits uk Ltd",
-  "c8a9efc2-bb9f-4002-885e-4ac81eea2273": "Swarbrick Builders",
-  "806203c0-9c49-4c65-a370-ace342f7d670": "Boothfield House Caravan Park",
-  "4d3f6df5-d064-4277-8b94-9e9fcc55417a": "T and T Builders",
-  "e2c035f7-a10d-4931-bf42-7d9d7194334e": "GT Fencing",
-  "dadfe3a8-5653-4a48-8363-e257a305b807": "T.S Groundworks",
-  "d443fd17-98a7-4e6b-b4cc-81f6ffb51e1e": "Tudor Farm and Equine",
-  "ff7968dd-1c56-4fb5-9276-e9f2c1cf31b2": "Quayside Construction",
-  "407a870c-7b7e-4a3f-a1df-2c878101f8d4": "Moore readymix",
-  "302cb1e3-21bf-422c-acc4-c93aa3b22482": "Nick Fairhurst",
-  "0f347fd7-38e0-4872-a678-78b9ecf3ff34": "Archway",
-  "1e5b723c-3658-40f8-9bca-8a91fe867205": "Mark Thomas",
-  "8742a619-0e19-4f1f-a5d0-fe4afe1cb4fa": "drainage experts",
-  "30ab86d6-6309-4aa1-886d-4a123a9d4ca3": "Grange Farm Caravan Park",
-  "1330690e-faad-426c-a1b7-4cce53b74296": "Glasdon UK",
-  "598c75a1-4f69-436b-bf85-942f9c66928c": "Andrew Scott",
-  "da7af814-94bd-4b3f-b7a5-bc81e3612458": "Mason Groundworks",
-  "e7e107bf-3f3a-4596-83a6-caf3ea9995ac": "Andrei",
-  "353bcd9d-0e98-4249-9c2c-9a9d15d10570": "Alex Degnen",
-  "40d9a07b-3459-4ee1-a219-39378c58909e": "Highfield fisheries",
-  "da80921d-528d-4724-bec8-7457c685de18": "Mark Rhode RHD Construction",
-  "93cd2173-5ff2-4684-b23e-6ac7fe60e3e8": "Mick Skelly",
-  "dd059b9a-426e-456e-8460-523fd2254a23": "SJH Plant Ltd",
-  "5ddeef1b-0ccd-4354-a810-9f95e96e45c7": "WJ Davidson",
-  "f29b3b6a-4f3b-4c1a-812c-8ab08869d671": "A.G Precision engineering",
-  "0d8b9791-aebb-4622-a537-c785586d6c69": "AVPM LTD",
-  "004d141c-f87c-457d-aa66-c9b233b75e9a": "Burlington Aggregates",
-  "e5a6600a-36ee-4f82-a737-bdcdc319d0a1": "Plan It Developments",
-  "9a19e11a-52ab-400d-872d-4fb4df4dad7c": "Taymin Ltd",
-  "7b452c92-45da-4f09-bdd0-14ad00c5d629": "Mr A Makinson",
-  "b2612f48-6d18-4e7c-a781-555bab4f9081": "MJS Groundworks",
-  "b27067ac-8458-4361-9208-3e589c781851": "Frank Barrow",
-  "8ad4becf-d51b-4af4-9246-ab297b45000d": "Raby Contract Services",
-  "0ea1a7d0-da86-40f9-859d-8d16e0d919a5": "Schofield Steel",
-  "e6bfbfd8-7815-463e-9898-68733663b42d": "A.C Cornthwaite",
-  "c640c695-31c2-43d0-bd6b-2f031387dc73": "Bespoke Landscapes",
-  "0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915": "W.Robinson",
-  "3cd263eb-92c5-4b07-b820-e5d020987828": "Luscombe Plant Hire",
-  "6332fd43-eb7d-454e-9ca2-53658eafd94c": "Highgate Farm",
-  "066bd8e9-e35a-46e1-a1e5-b46eda26fcbf": "B & J Parkinson",
-  "5538fc6b-5d97-4668-8a77-d352451b8384": "Ribble Technology Ltd",
-  "000965e0-c271-47cb-a600-b59d78673aac": "A & P Hodgkinson",
-  "4943bb24-2ca5-4e2d-94af-516b1a8e9b14": "Hambleton Service Station",
-  "15f4cf37-08c7-4adf-a115-4ce84e84a9c5": "Affordable Windows",
-  "7857e9ac-01d0-4174-ad60-e8d1428efe89": "SR MOORE",
-  "2e0432ba-d77d-487b-bb52-2e85dc7f0c6f": "Fylde Autostyle",
-  "0f8cef89-e279-4ee8-a51d-6d14effffc33": "SEM Joinery",
-  "6504c7d1-2b26-4834-87f5-94f123de3cb7": "Heathland Beach",
-  "cd2efe95-3560-4c93-8317-9c7facdfae5a": "GUNSON AGRICULTURE",
   "a3673f8e-05af-4360-8dde-9243cd877f1d": "TOTAL BUILDING NORTH WEST LTD",
-  "1956079c-6d5b-44d4-8c82-6884ad89672b": "IPH Bulk Haulage Limited",
-  "908f5eac-ab66-4ff1-9cc5-3522b312a463": "RAC CONSULTANTS LTD",
-  "4aab08a0-f009-45af-a4d4-dc2da534b0af": "ANDREWS BOWENS",
-  "f8d5976b-8173-45aa-b1a6-5528212b6aa6": "Chris Naylor CGF",
-  "c25d81bc-001f-4f09-91cc-dace9b54c609": "STONE UK LTD",
-  "f490a636-2b42-4767-9907-6af71fc64378": "ASHPHALT PAVING SERVICES LTD",
-  "1753d5fb-83de-4959-ae53-e5f4abf92aec": "ROWLAND HOMES LTD",
-  "4d452d95-c197-47f8-877e-a914a1801fec": "Swift Surfacing",
-  "a1d6a399-4dda-4205-9383-f459669c381c": "Resource Recycling Solutions",
-  "47d2acbd-a18d-477d-b096-578cf1127417": "BT Joinery",
-  "7eef4f4d-8298-40e6-bcae-26acc0bf919a": "Shard Surfacing",
-  "cc49174a-e533-49a1-9ed8-f0b24484f3bb": "Complete Concrete",
-  "9ae9573c-8f6d-4252-9309-c723bad6c745": "J JONES & CO BUILDING CONTRACTING LTD",
+  "d443fd17-98a7-4e6b-b4cc-81f6ffb51e1e": "Tudor Farm and Equine",
+  "e9d61d6f-a64e-4eaa-ad4e-0c5858b1ecde": "Vehicle inspection pits uk Ltd",
+  "0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915": "W.Robinson",
+  "bb2da142-5507-4e4d-a228-87a72a875db5": "White Feather Homes",
+  "5ddeef1b-0ccd-4354-a810-9f95e96e45c7": "WJ Davidson",
+  "650fea1c-aa1d-47f5-891e-77300886eef4": "Wyre Building Supplies Limited",
+  "b6edf99f-aeb1-46f7-8560-1623b8f4036f": "Wyre Drives",
+  "20162a01-94ad-433a-b566-8bf0000cf047": "Wyre Landscapes",
 };
 let refreshTimer = null;
 let currentScreen = 'login'; // login | jobs | detail | sign
@@ -958,6 +1394,15 @@ function formatDate(iso) {
 }
 
 function api(path, opts = {}) {
+  const method = String(opts.method || 'GET').toUpperCase();
+  const unsafeLiveWrite =
+    path.startsWith('/ht/complete') ||
+    path.startsWith('/ht/upsert') ||
+    path.startsWith('/ht/mpod') ||
+    (path.startsWith('/ht/job') && method !== 'GET');
+  if (!LIVE_WRITE && unsafeLiveWrite) {
+    return Promise.reject(new Error('Live Haultech writes disabled for John trial'));
+  }
   return fetch(WORKER_URL + path, {
     ...opts,
     headers: { 'X-PMG-Key': API_KEY, ...(opts.headers || {}) },
@@ -981,14 +1426,17 @@ function initials(name) {
 
 function mapStatus(deliveryStatus) {
   const s = (deliveryStatus || '').toLowerCase();
-  if (['delivered', 'completed', 'received'].includes(s)) return 'complete';
-  if (['departed', 'in progress', 'collected'].includes(s)) return 'departed';
+  if (['delivered', 'completed', 'complete', 'received', 'invoiced'].includes(s)) return 'complete';
+  if (['departed', 'in progress', 'intransit', 'in transit', 'collected'].includes(s)) return 'departed';
   return 'scheduled';
 }
 
 function statusBadge(status) {
   if (status === 'complete')  return `<span class="badge badge-complete"><span class="badge-dot"></span>COMPLETE</span>`;
-  if (status === 'departed')  return `<span class="badge badge-departed"><span class="badge-dot"></span>DEPARTED</span>`;
+  if (status === 'departed' || status === 'started' || status === 'in-transit')  return `<span class="badge badge-departed"><span class="badge-dot"></span>IN TRANSIT</span>`;
+  if (status === 'problem' || status === 'needs-office-review')  return `<span class="badge badge-departed"><span class="badge-dot"></span>OFFICE REVIEW</span>`;
+  if (status === 'not-done')  return `<span class="badge badge-departed"><span class="badge-dot"></span>NOT DONE</span>`;
+  if (status === 'carry-forward')  return `<span class="badge badge-departed"><span class="badge-dot"></span>CARRY FORWARD</span>`;
   return `<span class="badge badge-scheduled"><span class="badge-dot"></span>SCHEDULED</span>`;
 }
 
@@ -1048,6 +1496,147 @@ function setRetryQueue(q) {
   localStorage.setItem('pmg_retry_queue', JSON.stringify(q));
 }
 
+function pruneRetryQueue(q = getRetryQueue()) {
+  const today = todayISO();
+  const fresh = q.filter(entry => entry && entry.date === today && Array.isArray(entry.jobs) && entry.jobs.length);
+  if (fresh.length !== q.length) setRetryQueue(fresh);
+  return fresh;
+}
+
+function localEventKey() {
+  return 'pmg_trial_events_' + todayISO();
+}
+
+function localQueueKey() {
+  return 'pmg_writeback_queue_' + todayISO();
+}
+
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch { return fallback; }
+}
+
+function writeJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getWritebackQueue() {
+  return readJSON(localQueueKey(), []);
+}
+
+function setWritebackQueue(queue) {
+  writeJSON(localQueueKey(), queue);
+}
+
+function setQueueState(eventId, state, reason) {
+  const queue = getWritebackQueue();
+  const idx = queue.findIndex(item => item.eventId === eventId);
+  if (idx >= 0) {
+    queue[idx].state = state;
+    queue[idx].reason = reason || queue[idx].reason || '';
+    queue[idx].updatedAt = new Date().toISOString();
+    setWritebackQueue(queue);
+  }
+}
+
+function setQueueStateIfPending(eventId, state, reason) {
+  const queue = getWritebackQueue();
+  const idx = queue.findIndex(item => item.eventId === eventId);
+  if (idx >= 0 && queue[idx].state === 'pending Haultech') {
+    queue[idx].state = state;
+    queue[idx].reason = reason || queue[idx].reason || '';
+    queue[idx].updatedAt = new Date().toISOString();
+    setWritebackQueue(queue);
+  }
+}
+
+function queueTrialEvent(type, job, payload = {}) {
+  const now = new Date().toISOString();
+  const jobId = String(job?.id || job?.jobId || payload.jobId || ('driver-' + Date.now()));
+  const event = {
+    eventId: `${type}-${jobId}-${Date.now()}`,
+    type,
+    jobId,
+    jobNumber: job ? getJobNumber(job) : payload.ticketNo || '',
+    driver: currentUser?.name || '',
+    date: todayISO(),
+    liveWrite: LIVE_WRITE,
+    state: payload.state || 'pending Haultech',
+    haultechWriteState: payload.haultechWriteState || (LIVE_WRITE ? 'pending Haultech' : 'needs office review'),
+    missingPriceAllowed: true,
+    createdAt: now,
+    payload,
+  };
+
+  const events = readJSON(localEventKey(), []);
+  events.push(event);
+  writeJSON(localEventKey(), events);
+
+  const queue = getWritebackQueue();
+  queue.push({
+    eventId: event.eventId,
+    type,
+    jobId,
+    jobNumber: event.jobNumber,
+    driver: event.driver,
+    state: event.haultechWriteState,
+    reason: payload.reason || (LIVE_WRITE ? 'Ready for live write' : 'Trial mode - office review before Haultech'),
+    missingPrice: payload.price === '' || payload.price === null || payload.price === undefined,
+    updatedAt: now,
+  });
+  setWritebackQueue(queue);
+
+  persistTrialEventToWorker(event);
+  return event;
+}
+
+async function persistTrialEventToWorker(event) {
+  try {
+    await fetch(WORKER_URL + `/ticket/trial-${event.eventId}`, {
+      method: 'PUT',
+      headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    });
+    const alreadyWritten = event.haultechWriteState === 'written' || event.state === 'written';
+    setQueueStateIfPending(
+      event.eventId,
+      LIVE_WRITE && alreadyWritten ? 'written' : event.haultechWriteState,
+      LIVE_WRITE && alreadyWritten ? 'Worker accepted event' : 'Audit saved; waiting for live Haultech result'
+    );
+  } catch (e) {
+    setQueueState(event.eventId, 'failed', e.message || 'Worker KV failed');
+  }
+  updateSyncUI();
+}
+
+function updateJobStatusLocal(job, status) {
+  if (!job) return;
+  if (job._cached) job._status = status;
+  const deliveryStatusByLocal = {
+    complete: 'Completed',
+    problem: 'Problem',
+    'needs-office-review': 'Needs Office Review',
+    'not-done': 'Not Done',
+    'carry-forward': 'Carry Forward',
+  };
+  job.deliveryStatus = deliveryStatusByLocal[status] || 'Departed';
+  job.status = status;
+}
+
+function renderQueueSummary() {
+  const queue = getWritebackQueue();
+  const counts = queue.reduce((acc, item) => {
+    acc[item.state] = (acc[item.state] || 0) + 1;
+    return acc;
+  }, {});
+  const states = ['pending Haultech', 'written', 'failed', 'needs office review'];
+  const pills = states.map(s => `<span class="queue-pill">${esc(s)}: ${counts[s] || 0}</span>`).join('');
+  const note = LIVE_WRITE
+    ? 'Start is saved locally/PMG worker only. Haultech completion writes only after proof is protected.'
+    : 'Missing price is allowed in this trial. Office can review before any Haultech write.';
+  return `<div class="queue-strip"><strong>Writeback queue:</strong><br>${pills}<div style="margin-top:6px">${esc(note)}</div></div>`;
+}
+
 function addToRetryQueue(date, jobs) {
   const q = getRetryQueue();
   const idx = q.findIndex(e => e.date === date);
@@ -1058,7 +1647,7 @@ function addToRetryQueue(date, jobs) {
 }
 
 async function flushRetryQueue() {
-  const q = getRetryQueue();
+  const q = pruneRetryQueue();
   if (!q.length) return;
   const remaining = [];
   for (const entry of q) {
@@ -1076,23 +1665,29 @@ async function flushRetryQueue() {
 }
 
 function updateSyncUI() {
-  const pending = getRetryQueue().length > 0;
+  const backupPending = pruneRetryQueue().length > 0;
+  const writebackPending = getWritebackQueue().some(item => ['pending Haultech', 'failed'].includes(item.state));
+  const pending = writebackPending;
   const banner = $('sync-banner');
   if (pending) {
     banner.classList.remove('hidden');
     document.body.classList.add('has-sync-banner');
+    const label = banner.querySelector('span');
+    if (label) {
+      label.textContent = LIVE_WRITE ? '⚠️ Haultech writeback has pending items' : '⚠️ Trial queue saved - Haultech writes disabled';
+    }
   } else {
     banner.classList.add('hidden');
     document.body.classList.remove('has-sync-banner');
   }
-  updateSyncDot(pending ? 'red' : 'green');
+  updateSyncDot(writebackPending ? 'red' : (backupPending ? 'grey' : 'green'));
 }
 
 function updateSyncDot(state) {
   document.querySelectorAll('.sync-dot').forEach(dot => {
     const colors = { green: '#10b981', red: '#ef4444', grey: '#6b7280' };
     dot.style.background = colors[state] || '#6b7280';
-    dot.title = { green: 'Synced', red: 'Pending sync', grey: 'Offline' }[state] || '';
+    dot.title = { green: 'Synced', red: 'Haultech writeback pending', grey: 'Cloud backup retry pending' }[state] || '';
   });
 }
 
@@ -1112,10 +1707,24 @@ function mergeWithLocal(date, cloudJobs) {
   if (!localJobs.length) return cloudJobs;
 
   const cloudKeys = new Set();
+  const localByKey = new Map();
+  for (const lj of localJobs) {
+    const k = String(lj.ticketNo || lj.id || '');
+    if (k) localByKey.set(k, lj);
+  }
   for (const j of cloudJobs) {
     const k = j.ticketNo || j.jobNumber || j.id || j.jobId;
     if (k) cloudKeys.add(String(k));
   }
+
+  cloudJobs = cloudJobs.map(j => {
+    const k = String(j.ticketNo || j.jobNumber || j.id || j.jobId || '');
+    const local = localByKey.get(k);
+    if (!local || !local.status || local.status === 'scheduled') return j;
+    const liveStatus = getJobStatus(j);
+    if (liveStatus === 'complete') return j;
+    return { ...j, status: local.status };
+  });
 
   const toAdd = [];
   const toRepush = [];
@@ -1208,6 +1817,7 @@ function hideAllScreens() {
   $('job-detail-screen').classList.add('hidden');
   $('sign-screen').classList.add('hidden');
   $('add-job-btn').classList.add('hidden');
+  $('feedback-btn').classList.add('hidden');
   // Hide bottom bars
   const db = $('detail-bottom-bar'); if (db) db.style.display = 'none';
   const sb = $('sign-bottom-bar'); if (sb) sb.style.display = 'none';
@@ -1220,6 +1830,7 @@ function showJobList() {
   activeJob = null;
   $('jobs-screen').classList.remove('hidden');
   $('add-job-btn').classList.remove('hidden');
+  $('feedback-btn').classList.toggle('hidden', !trialMode);
   setHeaderForList();
 }
 
@@ -1266,10 +1877,11 @@ let pinBuffer = '';
 
 function renderUserButtons() {
   const grid = $('user-grid');
-  grid.innerHTML = Object.entries(INCAB_USERS).map(([username, user]) => `
+  const users = Object.entries(INCAB_USERS).sort(([a], [b]) => (a === TRIAL_DRIVER ? -1 : b === TRIAL_DRIVER ? 1 : 0));
+  grid.innerHTML = users.map(([username, user]) => `
     <button class="user-btn" data-user="${esc(username)}">
       <div class="user-avatar">${initials(user.name)}</div>
-      <span>${esc(user.name)}</span>
+      <span>${esc(user.name)}${username === TRIAL_DRIVER ? ' - trial' : ''}</span>
     </button>
   `).join('');
   grid.querySelectorAll('.user-btn').forEach(btn => {
@@ -1341,7 +1953,7 @@ $('pin-keypad').addEventListener('click', e => {
 function enterJobsScreen() {
   $('login-screen').classList.add('hidden');
   $('date-label').textContent = formatDate(todayISO());
-  isManager = false;
+  if (currentUser?.username !== 'richard') isManager = false;
   showJobList();
   loadJobs();
   refreshTimer = setInterval(loadJobs, 2 * 60 * 1000);
@@ -1451,8 +2063,16 @@ function getJobConsignment(job) {
   return (job.consignments || [])[0] || null;
 }
 
+function isGuidId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
 function getJobConsignmentId(job) {
-  return job.id || job._id || null;
+  const c = getJobConsignment(job);
+  // Haultech complete expects the job GUID, not the visible numeric
+  // job/consignment number returned as jobId/consignmentId.
+  const id = [job.id, job._id, c?.id].find(isGuidId);
+  return id || null;
 }
 
 function getJobNumber(job) {
@@ -1503,7 +2123,47 @@ function getJobPrice(job) {
 
 function getJobStatus(job) {
   if (job._cached) return job._status || 'scheduled';
-  return mapStatus(job.deliveryStatus);
+  const c = getJobConsignment(job);
+  const driverStatus = String(c?.deliveryDriverStatus || c?.collectionDriverStatus || '').toLowerCase();
+  if (c?.deliverySigned || c?.collectionSigned) return 'complete';
+  if (['signed', 'completed', 'complete', 'delivered'].includes(driverStatus)) return 'complete';
+  if (['departed', 'in progress', 'intransit', 'in transit', 'collected'].includes(driverStatus)) return 'departed';
+  const liveStatus = mapStatus(job.deliveryStatus || job.collectionStatus || job.status);
+  if (liveStatus !== 'scheduled') return liveStatus;
+  if (['problem', 'needs-office-review', 'not-done', 'carry-forward', 'started', 'departed', 'in-transit'].includes(job.status)) {
+    return job.status;
+  }
+  return liveStatus;
+}
+
+function rawHaultechJobLooksDone(job) {
+  const c = getJobConsignment(job);
+  const driverStatus = String(c?.deliveryDriverStatus || c?.collectionDriverStatus || '').toLowerCase();
+  if (c?.deliverySigned || c?.collectionSigned) return true;
+  if (['signed', 'completed', 'complete', 'delivered'].includes(driverStatus)) return true;
+  return mapStatus(job.deliveryStatus || job.collectionStatus || job.status) === 'complete';
+}
+
+function sameHaultechJob(a, b, consId) {
+  const aIds = [a?.id, a?._id, getJobConsignment(a)?.id, a?.jobId, a?.jobNumber].filter(Boolean).map(String);
+  const bIds = [b?.id, b?._id, getJobConsignment(b)?.id, b?.jobId, b?.jobNumber].filter(Boolean).map(String);
+  if (consId && aIds.includes(String(consId))) return true;
+  return aIds.some(id => bIds.includes(id));
+}
+
+async function verifyHaultechCompletion(job, consId) {
+  try {
+    const resp = await api(`/ht/jobs?date=${todayISO()}&raw=true`);
+    if (!resp.ok) throw new Error(await responseError(resp, 'Raw Haultech check failed'));
+    const payload = await resp.json();
+    const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || []);
+    const liveJob = jobs.find(j => sameHaultechJob(j, job, consId));
+    if (!liveJob) return { ok: false, reason: 'completed job not found in raw Haultech diary check' };
+    if (rawHaultechJobLooksDone(liveJob)) return { ok: true, reason: 'raw Haultech diary shows received/completed' };
+    return { ok: false, reason: 'raw Haultech diary still does not show received/completed' };
+  } catch (e) {
+    return { ok: false, reason: e.message || 'raw Haultech diary check failed' };
+  }
 }
 
 function getJobNotes(job) {
@@ -1568,6 +2228,20 @@ function getDeliveryWindow(job) {
   return `${fmt(start)} – ${fmt(end)}`.trim();
 }
 
+function jobMapQuery(job, mode = 'delivery') {
+  const addr = mode === 'collection' ? getCollectionAddress(job) : getDeliveryAddress(job);
+  const parts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+  if (parts.length) return parts.join(', ');
+  return mode === 'collection' ? getJobFrom(job) : getJobTo(job);
+}
+
+function openJobMap(job, mode = 'delivery') {
+  const query = jobMapQuery(job, mode);
+  if (!query) { toast('No address for map'); return; }
+  queueTrialEvent('map_route', job, { mode, address: query, state: 'written', haultechWriteState: 'written' });
+  window.open(`https://maps.apple.com/?q=${encodeURIComponent(query)}`, '_blank', 'noopener');
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // RENDER JOBS LIST
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1594,23 +2268,159 @@ function getDriverJobs(driverId, driverName) {
   });
 }
 
+function getOpenDayReviewJobs(jobs) {
+  const closed = new Set(['complete', 'needs-office-review', 'problem', 'not-done', 'carry-forward']);
+  return jobs.filter(job => !closed.has(getJobStatus(job)));
+}
+
+function renderDayReviewPanel(jobs) {
+  const openJobs = getOpenDayReviewJobs(jobs);
+  if (!dayReviewOpen) return '';
+  if (!openJobs.length) {
+    return `
+      <div class="day-review">
+        <div class="day-review-head">
+          <div>
+            <h3>Complete day</h3>
+            <div class="day-review-note">No scheduled or in-transit jobs left for this driver today.</div>
+          </div>
+          <button class="btn btn-secondary day-review-close" type="button">Close</button>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="day-review">
+      <div class="day-review-head">
+        <div>
+          <h3>Complete day</h3>
+          <div class="day-review-note">Review anything still scheduled or in transit. Completed jobs still need proof; anything not done is saved for office review instead of being silently completed.</div>
+        </div>
+        <button class="btn btn-secondary day-review-close" type="button">Close</button>
+      </div>
+      ${openJobs.map(job => {
+        const id = job.id || job.jobId || '';
+        return `
+          <div class="day-review-job">
+            <div class="day-review-title">#${esc(String(getJobNumber(job)))} ${esc(getJobCustomer(job))}</div>
+            <div class="day-review-meta">${esc(getJobMaterial(job) || 'No material')}<br>${esc(getJobFrom(job) || '—')} → ${esc(getJobTo(job) || '—')}</div>
+            <div class="day-review-actions">
+              <button class="btn btn-complete day-review-action" data-day-action="completed" data-job-id="${esc(id)}">Completed</button>
+              <button class="btn btn-secondary day-review-action" data-day-action="carry-forward" data-job-id="${esc(id)}">Carry forward</button>
+              <button class="btn btn-secondary day-review-action" data-day-action="not-done" data-job-id="${esc(id)}">Not done</button>
+              <button class="btn btn-danger day-review-action" data-day-action="problem" data-job-id="${esc(id)}">Problem</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
 function renderDriverView(container) {
   const jobs = getDriverJobs(currentUser.driverId, currentUser.name);
+  const queue = renderQueueSummary();
+  const openJobs = getOpenDayReviewJobs(jobs);
+  const trialBanner = trialMode ? `
+    <div class="trial-banner">
+      <strong>${esc(currentUser.name)} ${LIVE_WRITE ? 'live-write proof transfer' : 'driver mode'}</strong><br>
+      ${LIVE_WRITE
+        ? 'Live Haultech jobs complete to Haultech after proof is protected, then the app verifies the diary changed. Starts, driver-added rows, and problems stay in the PMG queue for review.'
+        : 'Live Haultech jobs are read-only. Starts, proof, day-sheet rows, problems and feedback are saved locally and to the safe worker queue only.'}
+    </div>` : '';
+  const summary = `
+    ${trialBanner}
+    <div class="driver-summary">
+      <h2>${esc(currentUser.name)}</h2>
+      <div class="driver-summary-meta">
+        <span>${jobs.length} jobs today</span>
+        <span>${openJobs.length} still to review</span>
+        <span>Live from Haultech</span>
+        <span>${LIVE_WRITE ? 'Live write enabled' : 'Trial shadow mode'}</span>
+      </div>
+      <div class="driver-summary-actions">
+        <button class="btn btn-secondary" id="complete-day-btn" type="button">Complete day</button>
+      </div>
+    </div>
+    <div class="driver-update">Richard changes will appear here when the Haultech feed refreshes. The app refreshes every 2 minutes.</div>
+    ${renderDayReviewPanel(jobs)}
+    ${queue}`;
   if (jobs.length === 0) {
     container.innerHTML = `
+      ${summary}
       <div class="empty-state">
         <div class="icon">🚛</div>
         <h3>No jobs today</h3>
-        <p>Your jobs from Haultech will appear here.<br>Tap "Add Job" to create one.</p>
+        <p>Your jobs from Haultech will appear here.<br>Tap "Add day-sheet row" to add work done.</p>
       </div>`;
+    attachDayReviewListeners(container, jobs);
     return;
   }
-  container.innerHTML = jobs.map(job => jobCardHTML(job, false)).join('');
+  container.innerHTML = summary + jobs.map((job, i) => jobCardHTML(job, false, i === 0)).join('');
+  attachDayReviewListeners(container, jobs);
   attachCardListeners(container, jobs);
+  attachQuickActionListeners(container, jobs);
 }
 
+function attachDayReviewListeners(container, jobs) {
+  const findJob = id => jobs.find(j => String(j.id || j.jobId || '') === String(id));
+  container.querySelector('#complete-day-btn')?.addEventListener('click', () => {
+    dayReviewOpen = !dayReviewOpen;
+    renderJobs();
+  });
+  container.querySelectorAll('.day-review-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dayReviewOpen = false;
+      renderJobs();
+    });
+  });
+  container.querySelectorAll('.day-review-action').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const job = findJob(btn.dataset.jobId);
+      if (!job) return;
+      await handleDayReviewAction(job, btn.dataset.dayAction);
+    });
+  });
+}
+
+async function handleDayReviewAction(job, action) {
+  if (action === 'completed') {
+    showSignScreen(job);
+    return;
+  }
+  if (action === 'problem') {
+    showProblemModal(job);
+    return;
+  }
+
+  const status = action === 'carry-forward' ? 'carry-forward' : 'not-done';
+  const reason = action === 'carry-forward' ? 'Carry forward to another day' : 'Not done today';
+  const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
+  const event = queueTrialEvent('day_review_' + status, job, {
+    status,
+    reason,
+    state: 'needs office review',
+    haultechWriteState: 'needs office review',
+  });
+
+  updateJobStatusLocal(job, status);
+  localSaveJobs(todayISO(), allJobs);
+  try {
+    await api(`/job-status/${storageKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, reason, driver: currentUser.name, date: todayISO() }),
+    });
+    setQueueState(event.eventId, 'needs office review', `${reason}; not completed in Haultech`);
+  } catch (e) {
+    setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local day review still saved on this phone');
+  }
+  await saveJobsToCloud(todayISO(), allJobs);
+  toast(status === 'carry-forward' ? 'Carry forward saved for office' : 'Not done saved for office');
+  renderJobs();
+}
+
+
 function renderManagerView(container) {
-  let html = '';
+  let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops, safe queue state, and office review items.</div>${renderQueueSummary()}`;
   const driverList = Object.entries(INCAB_USERS);
 
   // Unassigned (shown FIRST for visibility)
@@ -1650,7 +2460,7 @@ function renderManagerView(container) {
   });
 }
 
-function jobCardHTML(job, showDriver) {
+function jobCardHTML(job, showDriver, isNext = false) {
   const status = getJobStatus(job);
   const driver = getJobDriver(job);
   const vehicle = getJobVehicle(job);
@@ -1662,8 +2472,11 @@ function jobCardHTML(job, showDriver) {
   const jobNum = getJobNumber(job);
   const jobId = job.id || job.jobId || '';
 
+  const actionLabel = status === 'complete' ? 'Complete' : (status === 'scheduled' ? 'Start' : 'Complete');
+  const actionClass = status === 'scheduled' ? 'btn-depart' : 'btn-complete';
+
   return `
-    <div class="job-card" data-job-id="${esc(jobId)}">
+    <div class="job-card ${isNext ? 'next-job' : ''}" data-job-id="${esc(jobId)}">
       <div class="job-card-header">
         <div class="job-card-main">
           <div class="job-number">#${esc(String(jobNum))}</div>
@@ -1680,6 +2493,13 @@ function jobCardHTML(job, showDriver) {
         </div>
         <div>${statusBadge(status)}</div>
       </div>
+      ${!showDriver ? `
+        <div class="job-card-actions">
+          <button class="btn btn-map quick-map" data-job-id="${esc(jobId)}">Map route</button>
+          <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}" ${status === 'complete' ? 'disabled' : ''}>${esc(actionLabel)}</button>
+          <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
+          <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Problem</button>
+        </div>` : ''}
     </div>`;
 }
 
@@ -1690,6 +2510,40 @@ function attachCardListeners(container, jobs) {
     if (job) {
       card.addEventListener('click', () => showJobDetail(job));
     }
+  });
+}
+
+function attachQuickActionListeners(container, jobs) {
+  const findJob = id => jobs.find(j => String(j.id || j.jobId || '') === String(id));
+  container.querySelectorAll('.quick-map').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const job = findJob(btn.dataset.jobId);
+      if (job) openJobMap(job);
+    });
+  });
+  container.querySelectorAll('.quick-next').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const job = findJob(btn.dataset.jobId);
+      if (!job) return;
+      if (getJobStatus(job) === 'scheduled') await departJob(job, btn);
+      else showSignScreen(job);
+    });
+  });
+  container.querySelectorAll('.quick-proof').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const job = findJob(btn.dataset.jobId);
+      if (job) showSignScreen(job);
+    });
+  });
+  container.querySelectorAll('.quick-problem').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const job = findJob(btn.dataset.jobId);
+      if (job) showProblemModal(job);
+    });
   });
 }
 
@@ -1723,6 +2577,12 @@ function renderDeliveryTab(container, job) {
   const mapUrl = mapQuery ? `https://maps.apple.com/?q=${encodeURIComponent(mapQuery)}` : '';
 
   container.innerHTML = `
+    <div class="safe-strip">Use the app only when parked or safe when stationary.</div>
+    ${mapQuery ? `
+      <a class="map-panel" href="${mapUrl}" target="_blank" rel="noopener" id="delivery-map-panel">
+        <div class="map-panel-title">Map route</div>
+        <div class="map-panel-address">${addrParts.map(p => esc(p)).join('<br>')}</div>
+      </a>` : ''}
     <div class="detail-row">
       <div class="detail-left">
         <div class="detail-label">Customer</div>
@@ -1774,6 +2634,21 @@ function renderDeliveryTab(container, job) {
 
     <div class="instructions-heading">Special Instructions</div>
     <div class="instructions-text">${esc(notes) || '<span style="color:var(--muted)">None</span>'}</div>
+
+    <div class="proof-checklist">
+      <div class="proof-check"><span>Status</span><span>${statusBadge(getJobStatus(job))}</span></div>
+      <div class="proof-check"><span>Proof</span><span>Photo / signature / notes</span></div>
+      <div class="proof-check"><span>Haultech writeback</span><span>${LIVE_WRITE ? 'Live enabled' : 'Queued for office'}</span></div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-map" id="detail-map-btn">Map route</button>
+      <button class="btn btn-depart" id="detail-start-btn" ${getJobStatus(job) !== 'scheduled' ? 'disabled' : ''}>Start / In Transit</button>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-complete" id="detail-complete-btn">Photo / sign / complete</button>
+      <button class="btn btn-danger" id="detail-problem-btn">Problem / not done</button>
+    </div>
   `;
 
   // Weight save handler
@@ -1782,7 +2657,13 @@ function renderDeliveryTab(container, job) {
     const c = getJobConsignment(job);
     if (c) { c.weight = parseFloat(w) || 0; c.quantity = c.weight; }
     toast('Weight saved: ' + w + 't');
+    queueTrialEvent('weight_changed', job, { weight: w, state: 'needs office review', haultechWriteState: 'needs office review' });
   });
+  $('delivery-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'delivery', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
+  $('detail-map-btn')?.addEventListener('click', () => openJobMap(job, 'delivery'));
+  $('detail-start-btn')?.addEventListener('click', e => departJob(job, e.target));
+  $('detail-complete-btn')?.addEventListener('click', () => showSignScreen(job));
+  $('detail-problem-btn')?.addEventListener('click', () => showProblemModal(job));
 }
 
 function renderCollectionTab(container, job) {
@@ -1792,8 +2673,16 @@ function renderCollectionTab(container, job) {
   const weight = getJobWeight(job);
 
   const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+  const mapQuery = addrParts.join(', ');
+  const mapUrl = mapQuery ? `https://maps.apple.com/?q=${encodeURIComponent(mapQuery)}` : '';
 
   container.innerHTML = `
+    <div class="safe-strip">Use the app only when parked or safe when stationary.</div>
+    ${mapQuery ? `
+      <a class="map-panel" href="${mapUrl}" target="_blank" rel="noopener" id="collection-map-panel">
+        <div class="map-panel-title">Collection map</div>
+        <div class="map-panel-address">${addrParts.map(p => esc(p)).join('<br>')}</div>
+      </a>` : ''}
     <div class="detail-label">Customer</div>
     <div class="detail-value" style="font-size:16px;">${esc(customer)}</div>
 
@@ -1812,7 +2701,20 @@ function renderCollectionTab(container, job) {
         <div class="detail-value">${weight ? esc(String(weight)) + 't' : 'N/A'}</div>
       </div>
     </div>
+    <div class="action-row">
+      <button class="btn btn-map" id="collection-map-btn">Open collection map</button>
+      <button class="btn btn-depart" id="collection-arrived-btn">I'm here / started</button>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-secondary" id="collection-proof-btn">Take proof</button>
+      <button class="btn btn-danger" id="collection-problem-btn">Problem / not done</button>
+    </div>
   `;
+  $('collection-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'collection', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
+  $('collection-map-btn')?.addEventListener('click', () => openJobMap(job, 'collection'));
+  $('collection-arrived-btn')?.addEventListener('click', e => departJob(job, e.target));
+  $('collection-proof-btn')?.addEventListener('click', () => showSignScreen(job));
+  $('collection-problem-btn')?.addEventListener('click', () => showProblemModal(job));
 }
 
 function renderStdTab(container, job) {
@@ -1835,19 +2737,23 @@ function renderStdTab(container, job) {
     <div class="detail-label">Reference</div>
     <div class="detail-value">${esc(ref || 'N/A')}</div>
 
-    <div class="detail-label">Price</div>
-    <div class="detail-value">${price ? '£' + Number(price).toFixed(2) : 'N/A'}</div>
+    ${isManager ? `
+      <div class="detail-label">Price</div>
+      <div class="detail-value">${price ? '£' + Number(price).toFixed(2) : 'Missing price allowed'}</div>
+    ` : ''}
 
     <div class="action-row" style="margin-top:24px;">
       <button class="btn btn-depart" id="std-depart-btn" ${status !== 'scheduled' ? 'disabled' : ''}>
-        🚛 DEPART
+        Start / In Transit
       </button>
+      <button class="btn btn-danger" id="std-problem-btn">Problem / not done</button>
     </div>
   `;
 
   $('std-depart-btn')?.addEventListener('click', async (e) => {
     await departJob(job, e.target);
   });
+  $('std-problem-btn')?.addEventListener('click', () => showProblemModal(job));
 }
 
 // Detail bottom bar listeners
@@ -1862,19 +2768,14 @@ $('detail-delete-btn').addEventListener('click', async () => {
   const customer = activeJob.customer || activeJob.deliveryAddressLine1 || 'this job';
   if (!confirm(`Delete ticket ${jobNum} for ${customer}?\n\nThis cannot be undone.`)) return;
 
-  const jobId = activeJob.id || activeJob.jobId;
+  const jobId = getJobConsignmentId(activeJob) || activeJob.id || activeJob.jobId;
   const btn = $('detail-delete-btn');
   btn.disabled = true;
   btn.querySelector('span:last-child').textContent = 'Deleting…';
 
   try {
-    // Try Haultech API delete
-    if (jobId && !String(jobId).startsWith('driver-')) {
-      const resp = await api(`/ht/job/${jobId}`, { method: 'DELETE' });
-      if (!resp.ok && resp.status !== 404) {
-        toast('⚠️ Delete failed on server — removed locally only');
-      }
-    }
+    // Driver app deletes are local-only. Live Haultech deletions stay an office
+    // action so a driver cannot remove a real job by mistake.
     // Remove from local list
     allJobs = allJobs.filter(j => (j.id || j.jobId || '') !== (activeJob.id || activeJob.jobId || ''));
     // Remove from local storage
@@ -1900,6 +2801,12 @@ function renderSignScreen(job) {
   const weight = getJobWeight(job);
 
   $('sign-content').innerHTML = `
+    <div class="trial-banner">
+      <strong>Proof and complete</strong><br>
+      ${LIVE_WRITE
+        ? 'For live Haultech jobs this will complete the consignment and attempt photo/signature upload to Haultech. Any proof fallback will be shown clearly.'
+        : 'Take a photo if needed, get a signature if available, add a short note only if useful, then tap Complete job.'}
+    </div>
     <div class="sign-delivery-info">
       <div class="sign-del-icon">
         <span style="font-size:28px;">↓</span>
@@ -1995,6 +2902,62 @@ function getSignSigData() {
   return $('sign-sig-canvas')?.toDataURL('image/png') || null;
 }
 
+async function responseError(resp, fallback) {
+  const text = await resp.text().catch(() => '');
+  if (!text) return fallback || `HTTP ${resp.status}`;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.error || parsed.message || text.slice(0, 160);
+  } catch {
+    return text.slice(0, 160);
+  }
+}
+
+async function uploadProofAsset(consId, storageKey, kind, contentType, body) {
+  const result = {
+    kind,
+    attemptedHaultech: true,
+    haultechUploaded: false,
+    fallbackSaved: false,
+    error: '',
+  };
+  try {
+    const resp = await api(`/ht/mpod/${consId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': contentType },
+      body,
+    });
+    if (!resp.ok) throw new Error(await responseError(resp, `${kind} upload HTTP ${resp.status}`));
+    result.haultechUploaded = true;
+    return result;
+  } catch (e) {
+    result.error = e.message || `${kind} upload failed`;
+  }
+
+  try {
+    const prefix = kind === 'signature' ? 'sig' : 'pod';
+    const fallbackResp = await fetch(WORKER_URL + `/photos/${prefix}-${storageKey}-${Date.now()}`, {
+      method: 'PUT',
+      headers: { 'X-PMG-Key': API_KEY },
+      body,
+    });
+    if (!fallbackResp.ok) throw new Error(await responseError(fallbackResp, `${kind} fallback HTTP ${fallbackResp.status}`));
+    result.fallbackSaved = true;
+  } catch (fallbackError) {
+    result.error = `${result.error}; fallback failed: ${fallbackError.message || fallbackError}`;
+  }
+  return result;
+}
+
+function summarizeProofResults(results) {
+  if (!results.length) return 'No photo/signature supplied; Haultech complete only';
+  return results.map(r => {
+    if (r.haultechUploaded) return `${r.kind}: uploaded to Haultech`;
+    if (r.fallbackSaved) return `${r.kind}: Haultech upload failed, saved to office queue (${r.error})`;
+    return `${r.kind}: Haultech upload failed and fallback failed (${r.error})`;
+  }).join('; ');
+}
+
 // Camera button
 $('sign-camera-btn').addEventListener('click', () => $('sign-photo-input').click());
 $('sign-photo-input').addEventListener('change', (e) => {
@@ -2017,54 +2980,59 @@ $('sign-save-btn').addEventListener('click', async () => {
   const notes = $('sign-notes')?.value?.trim() || '';
   const weight = $('sign-weight')?.value || '0';
   const sigData = getSignSigData();
+  let proofEvent = null;
 
   try {
-    if (!job._cached && !isDriverAdded) {
-      // Complete in Haultech
+    proofEvent = queueTrialEvent('proof_complete', job, {
+      consigneeName: consignee,
+      notes,
+      weight: parseFloat(weight) || 0,
+      hasSignature: !!sigData,
+      hasPhoto: !!signPhotoFile,
+      state: LIVE_WRITE ? 'pending Haultech' : 'needs office review',
+      haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'needs office review',
+    });
+
+    if (LIVE_WRITE && !job._cached && !isDriverAdded) {
+      const proofResults = [];
+      if (!signPhotoFile && !sigData) {
+        setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
+        toast('⚠️ Add photo or signature first');
+        return;
+      }
+
+      // Save proof before completing. Haultech's MPOD endpoint is not reliable
+      // for this tenant, so worker KV fallback is treated as protected proof.
+      if (signPhotoFile) {
+        const photoData = await signPhotoFile.arrayBuffer();
+        proofResults.push(await uploadProofAsset(consId, storageKey, 'photo', signPhotoFile.type || 'image/jpeg', photoData));
+      }
+
+      if (sigData) {
+        const sigBlob = await (await fetch(sigData)).arrayBuffer();
+        proofResults.push(await uploadProofAsset(consId, storageKey, 'signature', 'image/png', sigBlob));
+      }
+
+      const proofSummary = summarizeProofResults(proofResults);
+      const missingHaultechProof = proofResults.filter(r => !r.haultechUploaded);
+      const failedFallbacks = proofResults.filter(r => !r.haultechUploaded && !r.fallbackSaved);
+      if (failedFallbacks.length) {
+        setQueueState(
+          proofEvent.eventId,
+          'failed',
+          `Not completed in Haultech; proof did not upload cleanly: ${proofSummary}`
+        );
+        toast('⚠️ Proof upload failed — not completed');
+        return;
+      }
+
+      // Complete in Haultech only after supplied proof has been protected either
+      // in Haultech or in the PMG worker fallback store.
       const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
       if (!completeResp.ok) {
-        const err = await completeResp.json().catch(() => ({}));
-        throw new Error(err.error || err.message || 'Complete failed');
+        throw new Error(await responseError(completeResp, 'Complete failed'));
       }
-
-      // Upload photo
-      if (signPhotoFile) {
-        try {
-          const photoData = await signPhotoFile.arrayBuffer();
-          await api(`/ht/mpod/${consId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': signPhotoFile.type || 'image/jpeg' },
-            body: photoData,
-          });
-        } catch (pe) {
-          console.warn('Photo upload failed:', pe);
-          try {
-            const photoData = await signPhotoFile.arrayBuffer();
-            await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
-              method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: photoData,
-            });
-          } catch {}
-        }
-      }
-
-      // Upload signature
-      if (sigData) {
-        try {
-          const sigBlob = await (await fetch(sigData)).arrayBuffer();
-          await api(`/ht/mpod/${consId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'image/png' },
-            body: sigBlob,
-          });
-        } catch (se) {
-          try {
-            const sigBlob2 = await (await fetch(sigData)).arrayBuffer();
-            await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
-              method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: sigBlob2,
-            });
-          } catch {}
-        }
-      }
+      const completionCheck = await verifyHaultechCompletion(job, consId);
 
       // Save POD metadata
       try {
@@ -2080,10 +3048,17 @@ $('sign-save-btn').addEventListener('click', async () => {
         });
       } catch {}
 
-      job.deliveryStatus = 'Completed';
-      toast('✓ Completed — Haultech updated');
+      updateJobStatusLocal(job, completionCheck.ok ? 'complete' : 'needs-office-review');
+      const proofState = completionCheck.ok && !missingHaultechProof.length ? 'written' : 'needs office review';
+      const proofMessage = completionCheck.ok
+        ? (missingHaultechProof.length
+            ? `Haultech complete verified; proof saved in PMG fallback for office review: ${proofSummary}`
+            : `Haultech complete verified; ${proofSummary}`)
+        : `Haultech complete call returned OK but raw diary check did not verify received/completed: ${completionCheck.reason}. ${proofSummary}`;
+      setQueueState(proofEvent.eventId, proofState, proofMessage);
+      toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved for office' : '✓ Completed — Haultech verified') : '⚠️ Complete needs office review');
     } else {
-      // Driver-added or cached job
+      // Trial mode, driver-added, or cached job: safe local + worker KV only.
       if (sigData) {
         try {
           const sigBlob = await (await fetch(sigData)).arrayBuffer();
@@ -2113,13 +3088,25 @@ $('sign-save-btn').addEventListener('click', async () => {
         });
       } catch {}
 
-      job.deliveryStatus = 'Completed';
-      toast('✓ Job completed (saved locally)');
+      try {
+        await api(`/job-status/${storageKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'complete', driver: currentUser.name, date: todayISO() }),
+        });
+      } catch {}
+
+      updateJobStatusLocal(job, 'complete');
+      setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'needs office review', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved; office review before Haultech write');
+      toast('✓ Complete saved for office');
     }
 
     showJobList();
     renderJobs();
   } catch (e) {
+    if (proofEvent) {
+      setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed');
+    }
     toast('Error: ' + e.message);
   } finally {
     btn.disabled = false;
@@ -2131,33 +3118,38 @@ $('sign-save-btn').addEventListener('click', async () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function departJob(job, btn) {
-  if (job._cached) { toast('Live Haultech connection needed to depart'); return; }
   const consId = getJobConsignmentId(job);
   const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
-
-  if (isDriverAdded) {
-    job.deliveryStatus = 'Departed';
-    if (currentScreen === 'jobs') renderJobs();
-    toast('🚛 Departed (saved locally)');
-    return;
-  }
+  const storageKey = consId || job.id || job.jobId;
 
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   try {
-    const resp = await api(`/ht/receive/${consId}`, { method: 'PATCH' });
-    if (resp.ok) {
-      job.deliveryStatus = 'Departed';
-      if (currentScreen === 'jobs') renderJobs();
-      toast('🚛 Departed — Haultech updated');
-    } else {
-      const err = await resp.json().catch(() => ({}));
-      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
-      if (btn) { btn.disabled = false; btn.textContent = '🚛 DEPART'; }
+    updateJobStatusLocal(job, 'started');
+    localSaveJobs(todayISO(), allJobs);
+    const event = queueTrialEvent('started', job, {
+      status: 'started',
+      state: 'written',
+      haultechWriteState: 'written',
+      localOnly: true,
+      haultechWrite: false,
+    });
+    try {
+      await api(`/job-status/${storageKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'started', driver: currentUser.name, date: todayISO() }),
+      });
+      setQueueState(event.eventId, 'written', 'Started status saved locally and in PMG worker; no Haultech write');
+    } catch (e) {
+      setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local status is still saved on this phone');
     }
+    if (currentScreen === 'jobs') renderJobs();
+    toast('In Transit saved');
   } catch (e) {
-    toast('Network error — try again');
-    if (btn) { btn.disabled = false; btn.textContent = '🚛 DEPART'; }
+    toast('Error: ' + (e.message || 'Start failed'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Start / In Transit'; }
   }
 }
 
@@ -2204,6 +3196,42 @@ $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManag
 // ══════════════════════════════════════════════════════════════════════════════
 
 let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
+let fPriceWasAuto = false;
+
+function unitForMaterial(material) {
+  const pricing = MATERIAL_PRICING[material];
+  if (!pricing) return '';
+  if (pricing.unit === 'tonnes') return 't';
+  if (pricing.unit === 'bags') return 'bags';
+  if (pricing.unit === 'days') return 'days';
+  if (pricing.unit === 'job') return 'items';
+  return pricing.unit || '';
+}
+
+function rateForMaterial(material, qty) {
+  const pricing = MATERIAL_PRICING[material];
+  if (!pricing) return null;
+  if (pricing.type === 'tiered') return (parseFloat(qty) || 0) >= 10 ? pricing.over10 : pricing.under10;
+  return pricing.rate;
+}
+
+function populateMaterialList() {
+  const dl = $('material-list');
+  if (!dl || dl.dataset.loaded) return;
+  dl.innerHTML = MATERIALS
+    .filter(m => m.value && m.value !== '__other__')
+    .map(m => `<option value="${esc(m.value)}" label="${esc(m.group)} - ${esc(m.label)}"></option>`)
+    .join('');
+  dl.dataset.loaded = '1';
+}
+
+function maybeAutoPriceMaterial() {
+  const material = $('f-material').value.trim();
+  const unit = unitForMaterial(material);
+  if (unit) $('f-unit').value = unit;
+  $('f-price').value = '';
+  fPriceWasAuto = false;
+}
 
 function initAddJobSig() {
   fSigCanvas = $('f-sig-canvas');
@@ -2230,8 +3258,10 @@ function isBlankCanvas(canvas) {
 $('add-job-btn').addEventListener('click', () => {
   $('add-job-modal').classList.remove('hidden');
   loadCustomers();
+  populateMaterialList();
   if (!fSigCtx) initAddJobSig();
   fPhotoFile = null;
+  fPriceWasAuto = false;
   $('f-photo-preview').style.display = 'none';
   $('f-photo-btn').textContent = '📷 Take Photo';
 });
@@ -2273,6 +3303,13 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.autocomplete-wrap')) $('customer-dropdown').classList.add('hidden');
 });
 
+$('f-material').addEventListener('input', () => {
+  fPriceWasAuto = false;
+  maybeAutoPriceMaterial();
+});
+$('f-qty').addEventListener('input', maybeAutoPriceMaterial);
+$('f-price').addEventListener('input', () => { fPriceWasAuto = false; });
+
 async function loadCustomers() {
   if (customers.length) return;
   try {
@@ -2284,14 +3321,15 @@ async function loadCustomers() {
 $('add-job-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const customerId = $('f-customer-id').value;
-  if (!customerId) { toast('Select a customer from the list'); return; }
+  if (LIVE_WRITE && !customerId) { toast('Select a customer from the list'); return; }
 
   const btn = $('add-job-submit');
   btn.disabled = true; btn.textContent = 'Saving…';
 
   const date = todayISO();
   const weight = parseFloat($('f-qty').value) || 0;
-  const price = parseFloat($('f-price').value) || 0;
+  const unit = $('f-unit').value || 't';
+  const price = 0;
   const material = $('f-material').value.trim();
   const ref = $('f-ref').value.trim();
   const notes = $('f-notes').value.trim();
@@ -2309,7 +3347,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     trafficNotes: driverTag + (notes ? ': ' + notes : ''),
     accountNotes: 'Added by ' + driverTag,
     specialInstructions: '',
-    quotedPrice: price, useQuotedPrice: true, collectionRequired: false,
+    quotedPrice: price, useQuotedPrice: false, collectionRequired: false,
     deliveryDateEpoch: epoch, collectionDateEpoch: epoch,
     deliveryDate: iso, collectionDate: iso,
     weight, quantity: weight, onOrBy: 'B',
@@ -2329,6 +3367,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
   };
 
   try {
+    if (!LIVE_WRITE) {
+      throw new Error('trial_shadow_add');
+    }
     const resp = await api('/ht/upsert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2357,7 +3398,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
         material,
         from: from || 'PMG Yard',
         to,
-        weight,
+        weight, unit,
         ref: ref || newJobId,
       });
       // Immediately inject the new job into the local list so it shows straight away
@@ -2373,7 +3414,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
         deliveryAddressLine1: to,
         quantity: weight,
         weight,
-        price,
+        price: 0,
         status: 'scheduled',
         consignmentReference: ref,
         ticketNo: ref || newJobId,
@@ -2389,7 +3430,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       toast('Failed: ' + (err.error || err.message || 'Unknown error'));
     }
   } catch (e) {
-    // Save job locally so it isn't lost
+    // Save job locally so it isn't lost. In trial mode this is the intended path.
     const localDate = date;
     const localJob = {
       id: 'driver-' + Date.now(),
@@ -2399,7 +3440,8 @@ $('add-job-form').addEventListener('submit', async (e) => {
       from,
       to,
       quantity: weight,
-      price,
+      unit,
+      price: '',
       status: 'scheduled',
       savedAt: new Date().toISOString(),
       ticketNo: ref || ('local-' + Date.now()),
@@ -2408,11 +3450,153 @@ $('add-job-form').addEventListener('submit', async (e) => {
     const existingLocal = localGetJobs(localDate);
     existingLocal.push(localJob);
     localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
-    addToRetryQueue(localDate, existingLocal);
-    toast('⚠️ Network error — job saved locally, retrying…');
+    if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
+    queueTrialEvent('day_sheet_row_added', localJob, {
+      customer: localJob.customer,
+      material,
+      from,
+      to,
+      quantity: weight,
+      unit,
+      price: '',
+      reference: ref,
+      notes,
+      hasSignature: fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas),
+      hasPhoto: !!fPhotoFile,
+      state: 'needs office review',
+      haultechWriteState: 'needs office review',
+      reason: LIVE_WRITE ? e.message : 'Driver-added row saved in trial mode',
+    });
+    allJobs.push({
+      jobId: localJob.id, _cached: true, _driverAdded: true,
+      _driver: localJob.driver, _customer: localJob.customer,
+      _material: localJob.material, _from: localJob.from, _to: localJob.to,
+      _quantity: localJob.quantity, _price: localJob.price, _status: localJob.status,
+      savedAt: localJob.savedAt,
+    });
+    $('add-job-modal').classList.add('hidden');
+    $('add-job-form').reset();
+    $('f-customer-id').value = '';
+    if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
+    fPhotoFile = null;
+    showJobConfirmation({
+      customer: localJob.customer,
+      material,
+      from: from || 'PMG Yard',
+      to,
+      weight: `${weight}${unit}`,
+      ref: ref || localJob.id,
+    });
+    renderJobs();
+    toast(LIVE_WRITE ? 'Network error - row saved locally' : 'Row saved for office review');
   } finally {
-    btn.disabled = false; btn.textContent = 'Save Job to Haultech';
+    btn.disabled = false; btn.textContent = 'Save row for office';
   }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROBLEM / FEEDBACK TRIAL CAPTURE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function showProblemModal(job) {
+  activeJob = job;
+  selectedProblemReason = '';
+  $('problem-note').value = '';
+  $('problem-photo').value = '';
+  $('problem-reasons').querySelectorAll('button').forEach(btn => btn.style.borderColor = 'var(--border)');
+  $('problem-modal').classList.remove('hidden');
+}
+
+$('problem-close').addEventListener('click', () => $('problem-modal').classList.add('hidden'));
+$('problem-modal').addEventListener('click', e => {
+  if (e.target === $('problem-modal')) $('problem-modal').classList.add('hidden');
+});
+$('problem-reasons').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-reason]');
+  if (!btn) return;
+  selectedProblemReason = btn.dataset.reason;
+  $('problem-reasons').querySelectorAll('button').forEach(b => b.style.borderColor = 'var(--border)');
+  btn.style.borderColor = 'var(--primary)';
+});
+$('problem-submit').addEventListener('click', async () => {
+  if (!activeJob) return;
+  const reason = selectedProblemReason || 'Other';
+  const note = $('problem-note').value.trim();
+  const photo = $('problem-photo').files[0] || null;
+  const event = queueTrialEvent('problem_not_done', activeJob, {
+    reason,
+    note,
+    hasPhoto: !!photo,
+    state: 'needs office review',
+    haultechWriteState: 'needs office review',
+  });
+  if (photo) {
+    try {
+      const body = await photo.arrayBuffer();
+      await fetch(WORKER_URL + `/photos/problem-${event.eventId}`, {
+        method: 'PUT',
+        headers: { 'X-PMG-Key': API_KEY },
+        body,
+      });
+    } catch {}
+  }
+  updateJobStatusLocal(activeJob, 'problem');
+  try {
+    await api(`/job-status/${activeJob.id || activeJob.jobId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'needs-office-review', driver: currentUser.name, date: todayISO() }),
+    });
+  } catch {}
+  $('problem-modal').classList.add('hidden');
+  toast('Problem sent to office queue');
+  showJobList();
+  renderJobs();
+});
+
+function initPlaceChips() {
+  document.querySelectorAll('.place-chips').forEach(wrap => {
+    const target = wrap.dataset.target;
+    wrap.innerHTML = COMMON_PLACES.slice(0, 4).map(place => `<button type="button" class="place-chip" data-place="${esc(place)}">${esc(place.split(',')[0])}</button>`).join('');
+    wrap.querySelectorAll('.place-chip').forEach(chip => {
+      chip.addEventListener('click', () => { $(target).value = chip.dataset.place; });
+    });
+  });
+}
+
+$('feedback-btn').addEventListener('click', () => {
+  selectedFeedbackTags = [];
+  $('feedback-text').value = '';
+  $('feedback-tags').querySelectorAll('button').forEach(btn => btn.style.borderColor = 'var(--border)');
+  $('feedback-modal').classList.remove('hidden');
+});
+$('feedback-close').addEventListener('click', () => $('feedback-modal').classList.add('hidden'));
+$('feedback-modal').addEventListener('click', e => {
+  if (e.target === $('feedback-modal')) $('feedback-modal').classList.add('hidden');
+});
+$('feedback-tags').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tag]');
+  if (!btn) return;
+  const tag = btn.dataset.tag;
+  if (selectedFeedbackTags.includes(tag)) {
+    selectedFeedbackTags = selectedFeedbackTags.filter(t => t !== tag);
+    btn.style.borderColor = 'var(--border)';
+  } else {
+    selectedFeedbackTags.push(tag);
+    btn.style.borderColor = 'var(--primary)';
+  }
+});
+$('feedback-submit').addEventListener('click', () => {
+  const text = $('feedback-text').value.trim();
+  if (!text && selectedFeedbackTags.length === 0) { toast('Add a note or tap a tag'); return; }
+  queueTrialEvent(`${currentUser.username}_feedback`, { id: 'feedback', jobId: 'feedback' }, {
+    tags: selectedFeedbackTags,
+    text,
+    state: 'written',
+    haultechWriteState: 'written',
+  });
+  $('feedback-modal').classList.add('hidden');
+  toast('Feedback saved');
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2440,6 +3624,7 @@ function showJobConfirmation(job) {
 
 function init() {
   renderUserButtons();
+  initPlaceChips();
   setHeaderForLogin();
 
   // Sync retry button
@@ -2452,6 +3637,19 @@ function init() {
   // Reflect initial sync state
   updateSyncUI();
 
+  const params = new URLSearchParams(window.location.search);
+  const pathParts = window.location.pathname.toLowerCase().split('/').filter(Boolean);
+  const pathDriver = pathParts.find((part) => INCAB_USERS[part]) || '';
+  const requestedDriver = (params.get('driver') || pathDriver || '').toLowerCase();
+  if (requestedDriver && INCAB_USERS[requestedDriver]) {
+    trialMode = true;
+    currentUser = { username: requestedDriver, ...INCAB_USERS[requestedDriver] };
+    localStorage.setItem('pmg-user', requestedDriver);
+    enterJobsScreen();
+    toast(`${INCAB_USERS[requestedDriver].name} driver mode`);
+    return;
+  }
+
   const savedUser = localStorage.getItem('pmg-user');
   if (savedUser && INCAB_USERS[savedUser]) {
     showPinScreen(savedUser);
@@ -2461,7 +3659,19 @@ function init() {
 init();
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let refreshingForUpdate = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshingForUpdate) return;
+    refreshingForUpdate = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.update().catch(() => {});
+    setInterval(() => reg.update().catch(() => {}), 10 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
 </script>
 </body>

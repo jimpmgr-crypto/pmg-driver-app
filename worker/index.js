@@ -97,6 +97,23 @@ async function htFetch(env, apiPath, opts = {}) {
   return corsResponse(data, resp.status);
 }
 
+async function mergeJobStatusOverrides(env, date, jobs) {
+  return Promise.all(jobs.map(async (job) => {
+    const c = (job.consignments || [])[0] || null;
+    const ids = [job.id, job._id, c?.id, job.jobId, c?.consignmentId]
+      .filter(Boolean)
+      .map(String);
+    for (const id of ids) {
+      const statusVal = await env.PMG_DATA.get(`job-status:${date}:${id}`);
+      if (statusVal) {
+        const statusData = JSON.parse(statusVal);
+        return { ...job, status: statusData.status };
+      }
+    }
+    return job;
+  }));
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -107,20 +124,12 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // ── Public endpoints (no API key needed) ─────────────────────────────────
-
-    // GET /haultech-token — return cached Haultech auth for direct API calls
-    if (path === '/haultech-token' && request.method === 'GET') {
-      const val = await env.PMG_DATA.get('haultech-auth');
-      if (!val) return corsResponse(JSON.stringify({ error: 'no_auth_token' }), 401);
-      return corsResponse(val);
-    }
-
     // Auth check for everything else
     const key = request.headers.get('X-PMG-Key');
     if (key !== API_KEY) {
       return unauthorized();
     }
+    const isAuth = true;
 
     // ══════════════════════════════════════════════════════════════════════════
     // HAULTECH PROXY ENDPOINTS — /ht/*
@@ -135,16 +144,33 @@ export default {
     }
 
     // GET /ht/jobs?date=YYYY-MM-DD — fetch live jobs from Haultech
+    // Add raw=true to bypass local status overlays for diary writeback checks.
     if (path === '/ht/jobs' && request.method === 'GET') {
       const date = url.searchParams.get('date');
       if (!date) return corsResponse(JSON.stringify({ error: 'date required' }), 400);
-      return htFetch(env, `/api/Display/GetJobsByDatePaginated?selectFromDate=${date}&selectToDate=${date}&take=200`);
+      const raw = url.searchParams.get('raw') === 'true' || url.searchParams.get('merge') === 'false';
+      const resp = await htFetch(env, `/api/Display/GetJobsByDatePaginated?selectFromDate=${date}&selectToDate=${date}&take=200`);
+      if (!resp.ok) return resp;
+      const text = await resp.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        return corsResponse(text, resp.status);
+      }
+      if (raw) return corsResponse(JSON.stringify(payload), resp.status);
+      const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || []);
+      const merged = await mergeJobStatusOverrides(env, date, jobs);
+      if (Array.isArray(payload)) return corsResponse(JSON.stringify(merged), resp.status);
+      if (Array.isArray(payload.items)) return corsResponse(JSON.stringify({ ...payload, items: merged }), resp.status);
+      if (Array.isArray(payload.data)) return corsResponse(JSON.stringify({ ...payload, data: merged }), resp.status);
+      return corsResponse(JSON.stringify(payload), resp.status);
     }
 
-    // PATCH /ht/receive/{consignmentId} — QuickReceiveJob (Depart)
+    // PATCH /ht/receive/{consignmentId} — disabled: Start/In Transit is local only.
     const receiveMatch = path.match(/^\/ht\/receive\/([^/]+)$/);
     if (receiveMatch && request.method === 'PATCH') {
-      return htFetch(env, `/api/Job/QuickReceiveJob?id=${receiveMatch[1]}`, { method: 'PATCH' });
+      return corsResponse(JSON.stringify({ error: 'start_is_local_only' }), 410);
     }
 
     // PATCH /ht/complete/{consignmentId} — QuickCompleteJob (Complete)
@@ -168,15 +194,27 @@ export default {
       // Forward raw body (image data) to Haultech
       const body = await request.arrayBuffer();
       const ct = request.headers.get('Content-Type') || 'image/jpeg';
-      const resp = await fetch(`${HT_BASE}/api/Job/MakeImageMpod?trackerId=${mpodMatch[1]}`, {
+      const mpodUrl = `${HT_BASE}/api/Job/MakeImageMpod?trackerId=${mpodMatch[1]}`;
+      const mpodHeaders = {
+        'Authorization': `Bearer ${auth.token}`,
+        'oauthTmsId': auth.tmsId || DEFAULT_TMS,
+        'Content-Type': ct,
+      };
+      let resp = await fetch(mpodUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'oauthTmsId': auth.tmsId || DEFAULT_TMS,
-          'Content-Type': ct,
-        },
+        headers: mpodHeaders,
         body,
       });
+      if (resp.status === 401 && auth.refreshToken) {
+        const newToken = await refreshHaultechToken(env);
+        if (newToken) {
+          resp = await fetch(mpodUrl, {
+            method: 'POST',
+            headers: { ...mpodHeaders, 'Authorization': `Bearer ${newToken}` },
+            body,
+          });
+        }
+      }
       const data = await resp.text();
       return corsResponse(data, resp.status);
     }
@@ -313,14 +351,7 @@ export default {
       const val = await env.PMG_DATA.get(`haultech-diary:${date}`);
       if (!val) return corsResponse('[]');
       const jobs = JSON.parse(val);
-      const merged = await Promise.all(jobs.map(async (job) => {
-        const statusVal = await env.PMG_DATA.get(`job-status:${date}:${job.id}`);
-        if (statusVal) {
-          const statusData = JSON.parse(statusVal);
-          return { ...job, status: statusData.status };
-        }
-        return job;
-      }));
+      const merged = await mergeJobStatusOverrides(env, date, jobs);
       return corsResponse(JSON.stringify(merged));
     }
 
