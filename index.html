@@ -1463,6 +1463,8 @@ function jobToLocal(j) {
     status: getJobStatus(j),
     savedAt: j.savedAt || new Date().toISOString(),
     ticketNo: j.ticketNo || j.jobNumber || j.id || j.jobId || '',
+    routeOrder: getJobRouteOrder(j),
+    loadNumber: getJobLoadNumber(j),
     _driverAdded: !!(j._driverAdded || (j.id && String(j.id).startsWith('driver-'))),
   };
 }
@@ -1736,6 +1738,7 @@ function mergeWithLocal(date, cloudJobs) {
       _driver: lj.driver, _customer: lj.customer,
       _material: lj.material, _from: lj.from, _to: lj.to,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
+      _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
       savedAt: lj.savedAt,
     });
     toRepush.push(lj);
@@ -2116,6 +2119,58 @@ function getJobWeight(job) {
   return c?.weight || c?.quantity || '';
 }
 
+function numberOrInfinity(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : Number.POSITIVE_INFINITY;
+}
+
+function getJobRouteOrder(job) {
+  if (job._cached) return numberOrInfinity(job._routeOrder);
+  const c = getJobConsignment(job);
+  return Math.min(
+    numberOrInfinity(c?.deliveryDropNumber),
+    numberOrInfinity(c?.collectionDropNumber)
+  );
+}
+
+function getJobLoadNumber(job) {
+  if (job._cached) return job._loadNumber || '';
+  return job.deliveryLoadNumber || job.collectionLoadNumber || job.loadId || '';
+}
+
+function getJobSortTime(job) {
+  const raw = job.deliveryStartTime || job.collectionStartTime || job.savedAt || '';
+  const t = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+}
+
+function getJobStableNumber(job) {
+  const n = Number(job.jobId || job.jobNumber || '');
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+function sortJobsForDriver(jobs) {
+  return [...jobs].sort((a, b) => {
+    const aAdded = !!(a._driverAdded || (a.id && String(a.id).startsWith('driver-')));
+    const bAdded = !!(b._driverAdded || (b.id && String(b.id).startsWith('driver-')));
+    if (aAdded !== bAdded) return aAdded ? 1 : -1;
+
+    const aLoad = numberOrInfinity(getJobLoadNumber(a));
+    const bLoad = numberOrInfinity(getJobLoadNumber(b));
+    if (aLoad !== bLoad) return aLoad - bLoad;
+
+    const aRoute = getJobRouteOrder(a);
+    const bRoute = getJobRouteOrder(b);
+    if (aRoute !== bRoute) return aRoute - bRoute;
+
+    const aTime = getJobSortTime(a);
+    const bTime = getJobSortTime(b);
+    if (aTime !== bTime) return aTime - bTime;
+
+    return getJobStableNumber(a) - getJobStableNumber(b);
+  });
+}
+
 function getJobPrice(job) {
   if (job._cached) return job._price || '';
   return job.quotedPrice || '';
@@ -2315,7 +2370,7 @@ function renderDayReviewPanel(jobs) {
 }
 
 function renderDriverView(container) {
-  const jobs = getDriverJobs(currentUser.driverId, currentUser.name);
+  const jobs = sortJobsForDriver(getDriverJobs(currentUser.driverId, currentUser.name));
   const queue = renderQueueSummary();
   const openJobs = getOpenDayReviewJobs(jobs);
   const trialBanner = trialMode ? `
@@ -2437,7 +2492,7 @@ function renderManagerView(container) {
   }
 
   for (const [username, user] of driverList) {
-    const jobs = getDriverJobs(user.driverId, user.name);
+    const jobs = sortJobsForDriver(getDriverJobs(user.driverId, user.name));
     const cards = jobs.length
       ? jobs.map(job => jobCardHTML(job, true)).join('')
       : `<div style="padding:12px 4px;color:var(--muted);font-size:13px;">No jobs today</div>`;
@@ -2471,9 +2526,10 @@ function jobCardHTML(job, showDriver, isNext = false) {
   const weight = getJobWeight(job);
   const jobNum = getJobNumber(job);
   const jobId = job.id || job.jobId || '';
+  const isDriverAdded = !!(job._driverAdded || (job.id && String(job.id).startsWith('driver-')) || (job.jobId && String(job.jobId).startsWith('driver-')));
 
-  const actionLabel = status === 'complete' ? 'Complete' : (status === 'scheduled' ? 'Start' : 'Complete');
-  const actionClass = status === 'scheduled' ? 'btn-depart' : 'btn-complete';
+  const actionLabel = status === 'complete' ? 'Complete' : ((status === 'scheduled' && !isDriverAdded) ? 'Start' : 'Complete');
+  const actionClass = (status === 'scheduled' && !isDriverAdded) ? 'btn-depart' : 'btn-complete';
 
   return `
     <div class="job-card ${isNext ? 'next-job' : ''}" data-job-id="${esc(jobId)}">
@@ -2527,7 +2583,8 @@ function attachQuickActionListeners(container, jobs) {
       e.stopPropagation();
       const job = findJob(btn.dataset.jobId);
       if (!job) return;
-      if (getJobStatus(job) === 'scheduled') await departJob(job, btn);
+      const isDriverAdded = !!(job._driverAdded || (job.id && String(job.id).startsWith('driver-')) || (job.jobId && String(job.jobId).startsWith('driver-')));
+      if (getJobStatus(job) === 'scheduled' && !isDriverAdded) await departJob(job, btn);
       else showSignScreen(job);
     });
   });
@@ -3335,6 +3392,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const notes = $('f-notes').value.trim();
   const from = $('f-from').value.trim();
   const to = $('f-to').value.trim();
+  const customerName = $('f-customer').value.trim();
 
   const dt = new Date(date + 'T00:00:00Z');
   const epoch = Math.floor(dt.getTime() / 1000) + 43200;
@@ -3394,7 +3452,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       fPhotoFile = null;
       // Show confirmation modal
       showJobConfirmation({
-        customer: $('f-customer').value,
+        customer: customerName,
         material,
         from: from || 'PMG Yard',
         to,
@@ -3407,7 +3465,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
         id: newJobId,
         jobId: newJobId,
         driver: currentUser.name,
-        customer: $('f-customer').value,
+        customer: customerName,
         goodsDescription: material,
         material,
         collectionAddressLine1: from || 'PM Groundworks Yard',
