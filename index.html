@@ -858,16 +858,16 @@
           <img id="f-photo-preview" style="display:none;width:100%;border-radius:6px;margin-top:8px;">
         </div>
       </div>
-      <button type="submit" class="btn-submit" id="add-job-submit">Save row for office</button>
+      <button type="submit" class="btn-submit" id="add-job-submit">Save row</button>
     </form>
   </div>
 </div>
 
-<!-- ══ PROBLEM / NOT DONE MODAL ══ -->
+<!-- ══ CANCEL MODAL ══ -->
 <div class="modal-overlay hidden" id="problem-modal">
   <div class="modal">
     <div class="modal-title">
-      Problem / not done
+      Cancel job
       <button class="modal-close" id="problem-close">✕</button>
     </div>
     <div class="quick-grid" id="problem-reasons">
@@ -880,13 +880,13 @@
     </div>
     <div class="form-group">
       <label>Note - optional unless needed</label>
-      <textarea id="problem-note" placeholder="Short note for Richard / office"></textarea>
+      <textarea id="problem-note" placeholder="Short note for Richard"></textarea>
     </div>
     <div class="form-group">
       <label>Photo - optional</label>
       <input type="file" id="problem-photo" accept="image/*" capture="environment">
     </div>
-    <button class="btn-submit" id="problem-submit">Send problem to office</button>
+    <button class="btn-submit" id="problem-submit">Cancel job</button>
   </div>
 </div>
 
@@ -1496,9 +1496,8 @@ function mapStatus(deliveryStatus) {
 function statusBadge(status) {
   if (status === 'complete')  return `<span class="badge badge-complete"><span class="badge-dot"></span>COMPLETE</span>`;
   if (status === 'departed' || status === 'started' || status === 'in-transit')  return `<span class="badge badge-departed"><span class="badge-dot"></span>IN TRANSIT</span>`;
-  if (status === 'problem' || status === 'needs-office-review')  return `<span class="badge badge-departed"><span class="badge-dot"></span>OFFICE REVIEW</span>`;
-  if (status === 'not-done')  return `<span class="badge badge-departed"><span class="badge-dot"></span>NOT DONE</span>`;
-  if (status === 'carry-forward')  return `<span class="badge badge-departed"><span class="badge-dot"></span>CARRY FORWARD</span>`;
+  if (status === 'cancelled' || status === 'not-done' || status === 'carry-forward')  return `<span class="badge badge-departed"><span class="badge-dot"></span>CANCELLED</span>`;
+  if (status === 'problem' || status === 'needs-office-review')  return `<span class="badge badge-departed"><span class="badge-dot"></span>SAVED</span>`;
   return `<span class="badge badge-scheduled"><span class="badge-dot"></span>SCHEDULED</span>`;
 }
 
@@ -1606,20 +1605,20 @@ function setWritebackQueue(queue) {
   writeJSON(localQueueKey(), queue);
 }
 
-function moveDriverFailedWritebacksToOfficeReview() {
+function markDriverFailedWritebacksSavedLocally() {
   const driver = currentUser?.name || '';
   if (!driver) return false;
   const queue = getWritebackQueue();
   let changed = false;
   const updated = queue.map(item => {
-    if (item && item.driver === driver && item.state === 'failed') {
+    if (item && item.driver === driver && (item.state === 'failed' || item.state === 'needs office review')) {
       changed = true;
       return {
         ...item,
-        state: 'needs office review',
+        state: 'saved locally',
         reason: item.reason
-          ? `${item.reason}; moved to office review so driver can finish day`
-          : 'Moved to office review so driver can finish day',
+          ? `${item.reason}; saved locally and not blocking finished day`
+          : 'Saved locally and not blocking finished day',
         updatedAt: new Date().toISOString(),
       };
     }
@@ -1663,7 +1662,7 @@ function queueTrialEvent(type, job, payload = {}) {
     date: todayISO(),
     liveWrite: LIVE_WRITE,
     state: payload.state || 'pending Haultech',
-    haultechWriteState: payload.haultechWriteState || (LIVE_WRITE ? 'pending Haultech' : 'needs office review'),
+    haultechWriteState: payload.haultechWriteState || (LIVE_WRITE ? 'pending Haultech' : 'saved locally'),
     missingPriceAllowed: true,
     createdAt: now,
     payload,
@@ -1681,7 +1680,7 @@ function queueTrialEvent(type, job, payload = {}) {
     jobNumber: event.jobNumber,
     driver: event.driver,
     state: event.haultechWriteState,
-    reason: payload.reason || (LIVE_WRITE ? 'Ready for live write' : 'Trial mode - office review before Haultech'),
+    reason: payload.reason || (LIVE_WRITE ? 'Ready for live write' : 'Saved locally'),
     missingPrice: payload.price === '' || payload.price === null || payload.price === undefined,
     updatedAt: now,
   });
@@ -1716,26 +1715,27 @@ function updateJobStatusLocal(job, status) {
   const deliveryStatusByLocal = {
     complete: 'Completed',
     problem: 'Problem',
-    'needs-office-review': 'Needs Office Review',
-    'not-done': 'Not Done',
-    'carry-forward': 'Carry Forward',
+    cancelled: 'Cancelled',
+    'needs-office-review': 'Saved Locally',
+    'not-done': 'Cancelled',
+    'carry-forward': 'Cancelled',
   };
   job.deliveryStatus = deliveryStatusByLocal[status] || 'Departed';
   job.status = status;
 }
 
 function renderQueueSummary() {
-  moveDriverFailedWritebacksToOfficeReview();
+  markDriverFailedWritebacksSavedLocally();
   const queue = getWritebackQueue();
   const counts = queue.reduce((acc, item) => {
     acc[item.state] = (acc[item.state] || 0) + 1;
     return acc;
   }, {});
-  const states = ['pending Haultech', 'written', 'failed', 'needs office review'];
+  const states = ['pending Haultech', 'written', 'saved locally', 'failed'];
   const pills = states.map(s => `<span class="queue-pill">${esc(s)}: ${counts[s] || 0}</span>`).join('');
   const note = LIVE_WRITE
-    ? 'Start is saved locally/PMG worker only. Office review items do not stop the driver finishing the day.'
-    : 'Missing price is allowed in this trial. Office can review before any Haultech write.';
+    ? 'Completed jobs go to Haultech. Blank pricing is allowed. Saved-local items do not stop the driver finishing the day.'
+    : 'Missing price is allowed in this trial. Events are saved locally and to the PMG worker.';
   return `<div class="queue-strip"><strong>Writeback queue:</strong><br>${pills}<div style="margin-top:6px">${esc(note)}</div></div>`;
 }
 
@@ -1767,7 +1767,7 @@ async function flushRetryQueue() {
 }
 
 function updateSyncUI() {
-  moveDriverFailedWritebacksToOfficeReview();
+  markDriverFailedWritebacksSavedLocally();
   const backupPending = pruneRetryQueue().length > 0;
   const writebackPending = getWritebackQueue().some(item => item.state === 'pending Haultech');
   const pending = writebackPending;
@@ -2296,7 +2296,7 @@ function getJobStatus(job) {
   if (['departed', 'in progress', 'intransit', 'in transit', 'collected'].includes(driverStatus)) return 'departed';
   const liveStatus = mapStatus(job.deliveryStatus || job.collectionStatus || job.status);
   if (liveStatus !== 'scheduled') return liveStatus;
-  if (['problem', 'needs-office-review', 'not-done', 'carry-forward', 'started', 'departed', 'in-transit'].includes(job.status)) {
+  if (['problem', 'needs-office-review', 'cancelled', 'not-done', 'carry-forward', 'started', 'departed', 'in-transit'].includes(job.status)) {
     return job.status;
   }
   return liveStatus;
@@ -2435,7 +2435,7 @@ function getDriverJobs(driverId, driverName) {
 }
 
 function getOpenDayReviewJobs(jobs) {
-  const closed = new Set(['complete', 'needs-office-review', 'problem', 'not-done', 'carry-forward']);
+  const closed = new Set(['complete', 'cancelled', 'needs-office-review', 'problem', 'not-done', 'carry-forward']);
   return jobs.filter(job => !closed.has(getJobStatus(job)));
 }
 
@@ -2447,7 +2447,7 @@ function renderDayReviewPanel(jobs) {
       <div class="day-review">
         <div class="day-review-head">
           <div>
-            <h3>Complete day</h3>
+            <h3>Finished for the day</h3>
             <div class="day-review-note">No scheduled or in-transit jobs left for this driver today.</div>
           </div>
           <button class="btn btn-secondary day-review-close" type="button">Close</button>
@@ -2458,8 +2458,8 @@ function renderDayReviewPanel(jobs) {
     <div class="day-review">
       <div class="day-review-head">
         <div>
-          <h3>Complete day</h3>
-          <div class="day-review-note">Review anything still scheduled or in transit. Completed jobs still need proof; anything not done is saved for office review instead of being silently completed.</div>
+          <h3>Finish day</h3>
+          <div class="day-review-note">Complete jobs that were done. Cancel jobs that were not done. Blank pricing is allowed and will not stop upload.</div>
         </div>
         <button class="btn btn-secondary day-review-close" type="button">Close</button>
       </div>
@@ -2471,9 +2471,7 @@ function renderDayReviewPanel(jobs) {
             <div class="day-review-meta">${esc(getJobMaterial(job) || 'No material')}<br>${esc(getJobFrom(job) || '—')} → ${esc(getJobTo(job) || '—')}</div>
             <div class="day-review-actions">
               <button class="btn btn-complete day-review-action" data-day-action="completed" data-job-id="${esc(id)}">Completed</button>
-              <button class="btn btn-secondary day-review-action" data-day-action="carry-forward" data-job-id="${esc(id)}">Carry forward</button>
-              <button class="btn btn-secondary day-review-action" data-day-action="not-done" data-job-id="${esc(id)}">Not done</button>
-              <button class="btn btn-danger day-review-action" data-day-action="problem" data-job-id="${esc(id)}">Problem</button>
+              <button class="btn btn-danger day-review-action" data-day-action="cancelled" data-job-id="${esc(id)}">Cancel</button>
             </div>
           </div>`;
       }).join('')}
@@ -2494,8 +2492,8 @@ function renderDriverView(container) {
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} ${LIVE_WRITE ? 'live-write proof transfer' : 'driver mode'}</strong><br>
       ${LIVE_WRITE
-        ? 'Live Haultech jobs complete to Haultech after proof is protected, then the app verifies the diary changed. Starts, driver-added rows, and problems stay in the PMG queue for review.'
-        : 'Live Haultech jobs are read-only. Starts, proof, day-sheet rows, problems and feedback are saved locally and to the safe worker queue only.'}
+        ? 'Live Haultech jobs complete to Haultech after proof is protected. Blank pricing is allowed.'
+        : 'Live Haultech jobs are read-only. Starts, proof, day-sheet rows and feedback are saved locally and to the safe worker queue only.'}
     </div>` : '';
   const summary = `
     ${trialBanner}
@@ -2516,7 +2514,7 @@ function renderDriverView(container) {
       <div class="driver-summary-actions">
         <button class="btn ${canFinishDay ? 'btn-complete' : 'btn-secondary'}" id="complete-day-btn" type="button">${canFinishDay ? 'Finished for the day' : 'Complete day'}</button>
       </div>
-      ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Office-review items are saved separately and do not stop this day being finished.</div>` : ''}
+      ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Saved-local items do not stop this day being finished.</div>` : ''}
     </div>
     <div class="driver-update">Office changes will appear here when the Haultech feed refreshes. The app refreshes every 2 minutes.</div>
     ${renderDayReviewPanel(jobs)}
@@ -2580,19 +2578,18 @@ async function handleDayReviewAction(job, action) {
     showSignScreen(job);
     return;
   }
-  if (action === 'problem') {
-    showProblemModal(job);
-    return;
-  }
+  if (action !== 'cancelled') return;
+  const ok = window.confirm('Cancel this job? Only press Yes if it was not done today.');
+  if (!ok) return;
 
-  const status = action === 'carry-forward' ? 'carry-forward' : 'not-done';
-  const reason = action === 'carry-forward' ? 'Carry forward to another day' : 'Not done today';
+  const status = 'cancelled';
+  const reason = 'Cancelled by driver - not done today';
   const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
-  const event = queueTrialEvent('day_review_' + status, job, {
+  const event = queueTrialEvent('day_review_cancelled', job, {
     status,
     reason,
-    state: 'needs office review',
-    haultechWriteState: 'needs office review',
+    state: 'saved locally',
+    haultechWriteState: 'saved locally',
   });
 
   updateJobStatusLocal(job, status);
@@ -2603,19 +2600,19 @@ async function handleDayReviewAction(job, action) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, reason, driver: currentUser.name, date: todayISO() }),
     });
-    setQueueState(event.eventId, 'needs office review', `${reason}; not completed in Haultech`);
+    setQueueState(event.eventId, 'saved locally', `${reason}; not completed in Haultech`);
   } catch (e) {
     setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local day review still saved on this phone');
   }
   await saveJobsToCloud(todayISO(), allJobs);
-  toast(status === 'carry-forward' ? 'Carry forward saved for office' : 'Not done saved for office');
+  toast('Job cancelled');
   renderJobs();
 }
 
 function saveFinishedForDay(jobs, options = {}) {
   const openJobs = getOpenDayReviewJobs(jobs);
   if (openJobs.length) return false;
-  moveDriverFailedWritebacksToOfficeReview();
+  markDriverFailedWritebacksSavedLocally();
   const existing = getDayFinished();
   if (existing) {
     if (!options.automatic) toast('✓ Already marked finished for the day');
@@ -2646,7 +2643,7 @@ function saveFinishedForDay(jobs, options = {}) {
 
 
 function renderManagerView(container) {
-  let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops, safe queue state, and office review items.</div>${renderQueueSummary()}`;
+  let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops and safe queue state.</div>${renderQueueSummary()}`;
   const driverList = Object.entries(INCAB_USERS);
 
   // Unassigned (shown FIRST for visibility)
@@ -2725,7 +2722,7 @@ function jobCardHTML(job, showDriver, isNext = false) {
           <button class="btn btn-map quick-map" data-job-id="${esc(jobId)}">Map route</button>
           <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}" ${status === 'complete' ? 'disabled' : ''}>${esc(actionLabel)}</button>
           <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
-          <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Problem</button>
+          <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Cancel</button>
         </div>` : ''}
     </div>`;
 }
@@ -2875,7 +2872,7 @@ function renderDeliveryTab(container, job) {
     </div>
     <div class="action-row">
       <button class="btn btn-complete" id="detail-complete-btn">Photo / sign / complete</button>
-      <button class="btn btn-danger" id="detail-problem-btn">Problem / not done</button>
+      <button class="btn btn-danger" id="detail-problem-btn">Cancel</button>
     </div>
   `;
 
@@ -2885,7 +2882,7 @@ function renderDeliveryTab(container, job) {
     const c = getJobConsignment(job);
     if (c) { c.weight = parseFloat(w) || 0; c.quantity = c.weight; }
     toast('Weight saved: ' + w + 't');
-    queueTrialEvent('weight_changed', job, { weight: w, state: 'needs office review', haultechWriteState: 'needs office review' });
+    queueTrialEvent('weight_changed', job, { weight: w, state: 'saved locally', haultechWriteState: 'saved locally' });
   });
   $('delivery-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'delivery', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
   $('detail-map-btn')?.addEventListener('click', () => openJobMap(job, 'delivery'));
@@ -2935,7 +2932,7 @@ function renderCollectionTab(container, job) {
     </div>
     <div class="action-row">
       <button class="btn btn-secondary" id="collection-proof-btn">Take proof</button>
-      <button class="btn btn-danger" id="collection-problem-btn">Problem / not done</button>
+      <button class="btn btn-danger" id="collection-problem-btn">Cancel</button>
     </div>
   `;
   $('collection-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'collection', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
@@ -2974,7 +2971,7 @@ function renderStdTab(container, job) {
       <button class="btn btn-depart" id="std-depart-btn" ${status !== 'scheduled' ? 'disabled' : ''}>
         Start / In Transit
       </button>
-      <button class="btn btn-danger" id="std-problem-btn">Problem / not done</button>
+      <button class="btn btn-danger" id="std-problem-btn">Cancel</button>
     </div>
   `;
 
@@ -3262,8 +3259,8 @@ async function handleSignComplete() {
       weight: parseFloat(weight) || 0,
       hasSignature: !!sigData,
       hasPhoto: !!signPhotoFile,
-      state: LIVE_WRITE ? 'pending Haultech' : 'needs office review',
-      haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'needs office review',
+      state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
+      haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
     });
 
     if (LIVE_WRITE && !job._cached && !isDriverAdded) {
@@ -3321,15 +3318,15 @@ async function handleSignComplete() {
         });
       } catch {}
 
-      updateJobStatusLocal(job, completionCheck.ok ? 'complete' : 'needs-office-review');
-      const proofState = completionCheck.ok && !missingHaultechProof.length ? 'written' : 'needs office review';
+      updateJobStatusLocal(job, 'complete');
+      const proofState = completionCheck.ok && !missingHaultechProof.length ? 'written' : 'saved locally';
       const proofMessage = completionCheck.ok
         ? (missingHaultechProof.length
-            ? `Haultech complete verified; proof saved in PMG fallback for office review: ${proofSummary}`
+            ? `Haultech complete verified; proof saved in PMG fallback: ${proofSummary}`
             : `Haultech complete verified; ${proofSummary}`)
         : `Haultech complete call returned OK but raw diary check did not verify received/completed: ${completionCheck.reason}. ${proofSummary}`;
       setQueueState(proofEvent.eventId, proofState, proofMessage);
-      toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved for office' : '✓ Completed — Haultech verified') : '⚠️ Complete needs office review');
+      toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved' : '✓ Completed — Haultech verified') : '✓ Completed — sync check pending');
     } else {
       // Trial mode, driver-added, or cached job: safe local + worker KV only.
       if (sigData) {
@@ -3370,8 +3367,8 @@ async function handleSignComplete() {
       } catch {}
 
       updateJobStatusLocal(job, 'complete');
-      setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'needs office review', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved; office review before Haultech write');
-      toast('✓ Complete saved for office');
+      setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
+      toast('✓ Complete saved');
     }
 
     showJobList();
@@ -3753,8 +3750,8 @@ $('add-job-form').addEventListener('submit', async (e) => {
       notes,
       hasSignature: fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas),
       hasPhoto: !!fPhotoFile,
-      state: 'needs office review',
-      haultechWriteState: 'needs office review',
+      state: 'saved locally',
+      haultechWriteState: 'saved locally',
       reason: LIVE_WRITE ? e.message : 'Driver-added row saved in trial mode',
     });
     allJobs.push({
@@ -3780,9 +3777,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
       ref: ref || localJob.id,
     });
     renderJobs();
-    toast(LIVE_WRITE ? 'Network error - row saved locally' : 'Row saved for office review');
+    toast('Row saved locally');
   } finally {
-    btn.disabled = false; btn.textContent = 'Save row for office';
+    btn.disabled = false; btn.textContent = 'Save row';
   }
 });
 
@@ -3812,15 +3809,17 @@ $('problem-reasons').addEventListener('click', e => {
 });
 $('problem-submit').addEventListener('click', async () => {
   if (!activeJob) return;
+  const ok = window.confirm('Cancel this job? Only press Yes if it was not done today.');
+  if (!ok) return;
   const reason = selectedProblemReason || 'Other';
   const note = $('problem-note').value.trim();
   const photo = $('problem-photo').files[0] || null;
-  const event = queueTrialEvent('problem_not_done', activeJob, {
+  const event = queueTrialEvent('job_cancelled', activeJob, {
     reason,
     note,
     hasPhoto: !!photo,
-    state: 'needs office review',
-    haultechWriteState: 'needs office review',
+    state: 'saved locally',
+    haultechWriteState: 'saved locally',
   });
   if (photo) {
     try {
@@ -3832,16 +3831,16 @@ $('problem-submit').addEventListener('click', async () => {
       });
     } catch {}
   }
-  updateJobStatusLocal(activeJob, 'problem');
+  updateJobStatusLocal(activeJob, 'cancelled');
   try {
     await api(`/job-status/${activeJob.id || activeJob.jobId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'needs-office-review', driver: currentUser.name, date: todayISO() }),
+      body: JSON.stringify({ status: 'cancelled', reason, note, driver: currentUser.name, date: todayISO() }),
     });
   } catch {}
   $('problem-modal').classList.add('hidden');
-  toast('Problem sent to office queue');
+  toast('Job cancelled');
   showJobList();
   renderJobs();
 });
@@ -3928,10 +3927,10 @@ function init() {
 
   // Sync retry button
   $('sync-retry-btn').addEventListener('click', () => {
-    const moved = moveDriverFailedWritebacksToOfficeReview();
+    const moved = markDriverFailedWritebacksSavedLocally();
     flushRetryQueue();
     updateSyncUI();
-    toast(moved ? 'Failed writebacks moved to office review' : 'Retrying sync');
+    toast(moved ? 'Saved-local queue tidied' : 'Retrying sync');
   });
 
   // Flush retry queue on load + every 30 seconds
