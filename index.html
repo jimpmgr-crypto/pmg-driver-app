@@ -386,12 +386,28 @@
       padding: 4px 10px; font-size: 12px; font-weight: 600;
       color: var(--muted); cursor: pointer; font-family: 'Inter', sans-serif;
     }
+    .sign-primary-actions {
+      display: grid; gap: 8px; margin: 18px 0 12px;
+    }
+    .sign-primary-complete {
+      width: 100%; min-height: 58px; border: none; border-radius: 12px;
+      background: var(--green); color: white; font-family: 'Inter', sans-serif;
+      font-size: 18px; font-weight: 900; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(16,185,129,0.24);
+    }
+    .sign-primary-complete:active { background: var(--green-dark); }
+    .sign-primary-complete:disabled { opacity: 0.65; cursor: wait; }
+    .sign-complete-help {
+      color: var(--muted); font-size: 13px; line-height: 1.35;
+      text-align: center; padding: 0 8px;
+    }
 
     .sign-bottom-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: white; border-top: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 16px; z-index: 50;
+      display: grid; grid-template-columns: 48px auto minmax(70px, 1fr) minmax(112px, 1.4fr);
+      align-items: center; gap: 8px;
+      padding: 10px 12px; z-index: 50;
       max-width: 600px; margin: 0 auto;
     }
     .sign-camera-btn {
@@ -407,12 +423,13 @@
     }
     .sign-weight-input:focus { outline: none; border-color: var(--primary); }
     .sign-save-btn {
-      flex: 2; min-width: 118px; height: 48px; background: var(--green); color: white;
+      min-width: 0; height: 48px; background: var(--green); color: white;
       border: none; border-radius: 10px; cursor: pointer; font-size: 22px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      font-size: 14px; font-weight: 800; padding: 0 10px;
+      font-size: 14px; font-weight: 800; padding: 0 8px;
     }
     .sign-save-btn:active { background: var(--green-dark); }
+    .sign-save-btn:disabled { opacity: 0.65; cursor: wait; }
 
     /* ════════════════════════════════════════════════════════════════════════ */
     /* MODALS                                                                */
@@ -551,6 +568,11 @@
     .driver-summary-meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; }
     .driver-summary-actions { display: flex; gap: 8px; margin-top: 12px; }
     .driver-summary-actions .btn { min-height: 44px; padding: 10px 12px; font-size: 14px; }
+    .driver-day-finished {
+      background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46;
+      border-radius: 12px; padding: 10px 12px; margin-top: 12px;
+      font-size: 13px; font-weight: 800; line-height: 1.35;
+    }
     .day-review {
       background: white; border: 1.5px solid var(--border); border-radius: 14px;
       padding: 14px; margin-bottom: 12px;
@@ -736,7 +758,7 @@
       <button class="sign-camera-btn" id="sign-camera-btn">📷</button>
       <input type="file" id="sign-photo-input" accept="image/*" capture="environment" style="display:none">
       <span class="sign-weight-label">Weight:</span>
-      <input type="number" class="sign-weight-input" id="sign-weight" placeholder="0" step="0.1" min="0">
+      <input type="number" class="sign-weight-input" id="sign-weight" placeholder="0" step="0.01" min="0" inputmode="decimal">
       <button class="sign-save-btn" id="sign-save-btn">Complete job</button>
     </div>
   </div>
@@ -764,6 +786,10 @@
       <button class="modal-close" id="add-job-close">✕</button>
     </div>
     <form id="add-job-form">
+      <div class="form-group">
+        <label>Truck / Wagon</label>
+        <select id="f-vehicle" required></select>
+      </div>
       <div class="form-group autocomplete-wrap">
         <label>Customer</label>
         <input type="text" id="f-customer" placeholder="Start typing customer name…" autocomplete="off" required>
@@ -790,7 +816,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Quantity</label>
-          <input type="number" id="f-qty" placeholder="0" step="0.1" min="0">
+          <input type="number" id="f-qty" placeholder="0" step="0.01" min="0" inputmode="decimal">
         </div>
         <div class="form-group">
           <label>Unit</label>
@@ -1194,6 +1220,17 @@ const VEHICLES = {
   '112689c0-e2f4-4e32-9bfb-8e4fa24bb422': 'LL21HJJ',
 };
 
+const DRIVER_VEHICLE_OPTIONS = [
+  'YX02DVT',
+  'DX12RFN',
+  'YJ13GRS',
+  'PN25AMU',
+  'BT66ZJU',
+  'LL21HJJ',
+  'PN25FLF',
+  'EY15BOV',
+];
+
 const DRIVER_IDS = {};
 for (const [k, v] of Object.entries(INCAB_USERS)) DRIVER_IDS[v.driverId] = v.name;
 
@@ -1223,6 +1260,30 @@ let trialMode = false;
 let selectedProblemReason = '';
 let selectedFeedbackTags = [];
 let dayReviewOpen = false;
+
+function driverVehicleStorageKey() {
+  return currentUser ? `pmg_driver_vehicle_${currentUser.driverId || currentUser.name}` : 'pmg_driver_vehicle';
+}
+
+function getSelectedDriverVehicle() {
+  try {
+    return localStorage.getItem(driverVehicleStorageKey()) || '';
+  } catch {
+    return '';
+  }
+}
+
+function setSelectedDriverVehicle(vehicle) {
+  try {
+    localStorage.setItem(driverVehicleStorageKey(), vehicle || '');
+  } catch {}
+}
+
+function vehicleOptionsHTML(selected = '') {
+  return `<option value="">Select truck / wagon</option>` + DRIVER_VEHICLE_OPTIONS
+    .map(v => `<option value="${esc(v)}"${v === selected ? ' selected' : ''}>${esc(v)}</option>`)
+    .join('');
+}
 
 // Static customer map built from known Haultech customer IDs
 const CUSTOMER_MAP = {
@@ -1374,6 +1435,7 @@ let refreshTimer = null;
 let currentScreen = 'login'; // login | jobs | detail | sign
 let activeJob = null; // job being viewed/signed
 let signPhotoFile = null;
+let pendingServiceWorkerReload = false;
 
 const $ = id => document.getElementById(id);
 
@@ -1454,6 +1516,7 @@ function jobToLocal(j) {
   return {
     id: j.id || j.jobId,
     driver: getJobDriver(j),
+    vehicle: getJobVehicle(j),
     customer: getJobCustomer(j),
     material: getJobMaterial(j),
     from: getJobFrom(j),
@@ -1513,6 +1576,19 @@ function localQueueKey() {
   return 'pmg_writeback_queue_' + todayISO();
 }
 
+function dayFinishedKey(date = todayISO()) {
+  const id = currentUser?.driverId || currentUser?.name || 'unknown';
+  return `pmg_day_finished_${date}_${id}`;
+}
+
+function getDayFinished(date = todayISO()) {
+  return readJSON(dayFinishedKey(date), null);
+}
+
+function setDayFinished(payload, date = todayISO()) {
+  writeJSON(dayFinishedKey(date), payload);
+}
+
 function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
   catch { return fallback; }
@@ -1528,6 +1604,29 @@ function getWritebackQueue() {
 
 function setWritebackQueue(queue) {
   writeJSON(localQueueKey(), queue);
+}
+
+function moveDriverFailedWritebacksToOfficeReview() {
+  const driver = currentUser?.name || '';
+  if (!driver) return false;
+  const queue = getWritebackQueue();
+  let changed = false;
+  const updated = queue.map(item => {
+    if (item && item.driver === driver && item.state === 'failed') {
+      changed = true;
+      return {
+        ...item,
+        state: 'needs office review',
+        reason: item.reason
+          ? `${item.reason}; moved to office review so driver can finish day`
+          : 'Moved to office review so driver can finish day',
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return item;
+  });
+  if (changed) setWritebackQueue(updated);
+  return changed;
 }
 
 function setQueueState(eventId, state, reason) {
@@ -1626,6 +1725,7 @@ function updateJobStatusLocal(job, status) {
 }
 
 function renderQueueSummary() {
+  moveDriverFailedWritebacksToOfficeReview();
   const queue = getWritebackQueue();
   const counts = queue.reduce((acc, item) => {
     acc[item.state] = (acc[item.state] || 0) + 1;
@@ -1634,7 +1734,7 @@ function renderQueueSummary() {
   const states = ['pending Haultech', 'written', 'failed', 'needs office review'];
   const pills = states.map(s => `<span class="queue-pill">${esc(s)}: ${counts[s] || 0}</span>`).join('');
   const note = LIVE_WRITE
-    ? 'Start is saved locally/PMG worker only. Haultech completion writes only after proof is protected.'
+    ? 'Start is saved locally/PMG worker only. Office review items do not stop the driver finishing the day.'
     : 'Missing price is allowed in this trial. Office can review before any Haultech write.';
   return `<div class="queue-strip"><strong>Writeback queue:</strong><br>${pills}<div style="margin-top:6px">${esc(note)}</div></div>`;
 }
@@ -1667,8 +1767,9 @@ async function flushRetryQueue() {
 }
 
 function updateSyncUI() {
+  moveDriverFailedWritebacksToOfficeReview();
   const backupPending = pruneRetryQueue().length > 0;
-  const writebackPending = getWritebackQueue().some(item => ['pending Haultech', 'failed'].includes(item.state));
+  const writebackPending = getWritebackQueue().some(item => item.state === 'pending Haultech');
   const pending = writebackPending;
   const banner = $('sync-banner');
   if (pending) {
@@ -1737,6 +1838,7 @@ function mergeWithLocal(date, cloudJobs) {
       jobId: lj.id, _cached: true, _driverAdded: true,
       _driver: lj.driver, _customer: lj.customer,
       _material: lj.material, _from: lj.from, _to: lj.to,
+      _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
       savedAt: lj.savedAt,
@@ -2014,6 +2116,7 @@ async function loadJobsFallback(date) {
     let jobs = cached.map(j => ({
       jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
       _material: j.material, _from: j.from, _to: j.to,
+      _vehicle: j.vehicle,
       _quantity: j.quantity, _price: j.price, _status: j.status,
       savedAt: j.savedAt,
     }));
@@ -2027,6 +2130,7 @@ async function loadJobsFallback(date) {
       jobId: lj.id, _cached: true, _driverAdded: true,
       _driver: lj.driver, _customer: lj.customer,
       _material: lj.material, _from: lj.from, _to: lj.to,
+      _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       savedAt: lj.savedAt,
     }));
@@ -2052,7 +2156,8 @@ function getJobDriverId(job) {
 }
 
 function getJobVehicle(job) {
-  if (job._cached) return '';
+  if (job._cached) return job._vehicle || '';
+  if (job._vehicle || job.vehicle) return job._vehicle || job.vehicle;
   const vid = job.deliveryVehicleId || job.collectionVehicleId;
   if (vid && VEHICLES[vid]) return VEHICLES[vid];
   const alloc = (job.allocations || [])[0];
@@ -2071,6 +2176,12 @@ function isGuidId(value) {
 }
 
 function getJobConsignmentId(job) {
+  const c = getJobConsignment(job);
+  const id = [c?.id].find(isGuidId);
+  return id || null;
+}
+
+function getHaultechJobId(job) {
   const c = getJobConsignment(job);
   // Haultech complete expects the job GUID, not the visible numeric
   // job/consignment number returned as jobId/consignmentId.
@@ -2371,8 +2482,14 @@ function renderDayReviewPanel(jobs) {
 
 function renderDriverView(container) {
   const jobs = sortJobsForDriver(getDriverJobs(currentUser.driverId, currentUser.name));
-  const queue = renderQueueSummary();
   const openJobs = getOpenDayReviewJobs(jobs);
+  if (jobs.length && !openJobs.length && !getDayFinished()) {
+    saveFinishedForDay(jobs, { automatic: true });
+  }
+  const queue = renderQueueSummary();
+  const selectedVehicle = getSelectedDriverVehicle();
+  const finished = getDayFinished();
+  const canFinishDay = jobs.length && !openJobs.length;
   const trialBanner = trialMode ? `
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} ${LIVE_WRITE ? 'live-write proof transfer' : 'driver mode'}</strong><br>
@@ -2387,14 +2504,21 @@ function renderDriverView(container) {
       <div class="driver-summary-meta">
         <span>${jobs.length} jobs today</span>
         <span>${openJobs.length} still to review</span>
+        <span>${selectedVehicle ? `Truck / wagon ${esc(selectedVehicle)}` : 'Truck / wagon not selected'}</span>
         <span>Live from Haultech</span>
         <span>${LIVE_WRITE ? 'Live write enabled' : 'Trial shadow mode'}</span>
+        <span>${finished ? 'Finished for the day' : (canFinishDay ? 'Ready to finish day' : 'Day still open')}</span>
+      </div>
+      <div class="form-group" style="margin:12px 0 0">
+        <label for="driver-vehicle-select">Truck / Wagon today</label>
+        <select id="driver-vehicle-select">${vehicleOptionsHTML(selectedVehicle)}</select>
       </div>
       <div class="driver-summary-actions">
-        <button class="btn btn-secondary" id="complete-day-btn" type="button">Complete day</button>
+        <button class="btn ${canFinishDay ? 'btn-complete' : 'btn-secondary'}" id="complete-day-btn" type="button">${canFinishDay ? 'Finished for the day' : 'Complete day'}</button>
       </div>
+      ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Office-review items are saved separately and do not stop this day being finished.</div>` : ''}
     </div>
-    <div class="driver-update">Richard changes will appear here when the Haultech feed refreshes. The app refreshes every 2 minutes.</div>
+    <div class="driver-update">Office changes will appear here when the Haultech feed refreshes. The app refreshes every 2 minutes.</div>
     ${renderDayReviewPanel(jobs)}
     ${queue}`;
   if (jobs.length === 0) {
@@ -2406,17 +2530,32 @@ function renderDriverView(container) {
         <p>Your jobs from Haultech will appear here.<br>Tap "Add day-sheet row" to add work done.</p>
       </div>`;
     attachDayReviewListeners(container, jobs);
+    attachDriverVehicleSelector(container);
     return;
   }
   container.innerHTML = summary + jobs.map((job, i) => jobCardHTML(job, false, i === 0)).join('');
   attachDayReviewListeners(container, jobs);
+  attachDriverVehicleSelector(container);
   attachCardListeners(container, jobs);
   attachQuickActionListeners(container, jobs);
+}
+
+function attachDriverVehicleSelector(container) {
+  container.querySelector('#driver-vehicle-select')?.addEventListener('change', e => {
+    setSelectedDriverVehicle(e.target.value);
+    toast(e.target.value ? `Truck / wagon set to ${e.target.value}` : 'Truck / wagon cleared');
+    renderJobs();
+  });
 }
 
 function attachDayReviewListeners(container, jobs) {
   const findJob = id => jobs.find(j => String(j.id || j.jobId || '') === String(id));
   container.querySelector('#complete-day-btn')?.addEventListener('click', () => {
+    if (getOpenDayReviewJobs(jobs).length === 0 && jobs.length) {
+      saveFinishedForDay(jobs);
+      renderJobs();
+      return;
+    }
     dayReviewOpen = !dayReviewOpen;
     renderJobs();
   });
@@ -2471,6 +2610,38 @@ async function handleDayReviewAction(job, action) {
   await saveJobsToCloud(todayISO(), allJobs);
   toast(status === 'carry-forward' ? 'Carry forward saved for office' : 'Not done saved for office');
   renderJobs();
+}
+
+function saveFinishedForDay(jobs, options = {}) {
+  const openJobs = getOpenDayReviewJobs(jobs);
+  if (openJobs.length) return false;
+  moveDriverFailedWritebacksToOfficeReview();
+  const existing = getDayFinished();
+  if (existing) {
+    if (!options.automatic) toast('✓ Already marked finished for the day');
+    return true;
+  }
+  const payload = {
+    driver: currentUser.name,
+    driverId: currentUser.driverId,
+    date: todayISO(),
+    finishedAt: new Date().toISOString(),
+    jobCount: jobs.length,
+    vehicle: getSelectedDriverVehicle(),
+  };
+  setDayFinished(payload);
+  const fakeJob = { id: `day-${currentUser.driverId || currentUser.name}`, jobId: `day-${currentUser.driverId || currentUser.name}` };
+  const event = queueTrialEvent('day_finished', fakeJob, {
+    ...payload,
+    state: 'written',
+    haultechWriteState: 'written',
+    reason: 'Driver finished for the day; all jobs reviewed',
+  });
+  setQueueState(event.eventId, 'written', 'Driver finished for the day; all jobs reviewed');
+  dayReviewOpen = false;
+  updateSyncUI();
+  if (!options.automatic) toast('✓ Finished for the day saved');
+  return true;
 }
 
 
@@ -2685,7 +2856,7 @@ function renderDeliveryTab(container, job) {
     <div class="freight-heading">Freight Breakdown</div>
     <div class="weight-row">
       <label>Weight:</label>
-      <input type="number" id="detail-weight" value="${esc(String(weight || 0))}" step="0.1" min="0">
+      <input type="number" id="detail-weight" value="${esc(String(weight || 0))}" step="0.01" min="0" inputmode="decimal">
       <button class="weight-save-btn" id="detail-weight-save">💾</button>
     </div>
 
@@ -2899,9 +3070,15 @@ function renderSignScreen(job) {
         <button class="sign-sig-clear" id="sign-sig-clear">Clear</button>
       </div>
     </div>
+
+    <div class="sign-primary-actions">
+      <button class="sign-primary-complete" id="sign-save-main-btn">Complete job</button>
+      <div class="sign-complete-help">Photo or signature required for live Haultech completion. Weight can be checked below before completing.</div>
+    </div>
   `;
 
   $('sign-weight').value = weight || 0;
+  $('sign-save-main-btn')?.addEventListener('click', handleSignComplete);
 }
 
 // Sign canvas
@@ -3015,6 +3192,35 @@ function summarizeProofResults(results) {
   }).join('; ');
 }
 
+function hasUnsavedSignProof() {
+  if (currentScreen !== 'sign') return false;
+  // Do not interrupt the proof screen; even an empty signature/photo form may
+  // be mid-capture on a driver's phone.
+  return true;
+}
+
+function modalOpen(id) {
+  const el = $(id);
+  return !!el && !el.classList.contains('hidden');
+}
+
+function hasUnsavedModalWork() {
+  if (modalOpen('add-job-modal')) return true;
+  if (modalOpen('problem-modal')) return true;
+  if (modalOpen('feedback-modal')) return true;
+  return false;
+}
+
+function hasUnsafeUpdateReloadState() {
+  return hasUnsavedSignProof() || hasUnsavedModalWork();
+}
+
+function reloadForPendingServiceWorkerUpdate() {
+  if (!pendingServiceWorkerReload || hasUnsafeUpdateReloadState()) return;
+  pendingServiceWorkerReload = false;
+  window.location.reload();
+}
+
 // Camera button
 $('sign-camera-btn').addEventListener('click', () => $('sign-photo-input').click());
 $('sign-photo-input').addEventListener('change', (e) => {
@@ -3022,16 +3228,26 @@ $('sign-photo-input').addEventListener('change', (e) => {
   if (signPhotoFile) toast('📷 Photo captured');
 });
 
+function setSignCompleteBusy(isBusy) {
+  ['sign-save-btn', 'sign-save-main-btn'].forEach(id => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.disabled = isBusy;
+    if (id === 'sign-save-btn') btn.textContent = isBusy ? 'Completing...' : 'Complete job';
+    if (id === 'sign-save-main-btn') btn.textContent = isBusy ? 'Completing job...' : 'Complete job';
+  });
+}
+
 // Save/submit button
-$('sign-save-btn').addEventListener('click', async () => {
+async function handleSignComplete() {
   if (!activeJob) return;
   const job = activeJob;
   const consId = getJobConsignmentId(job);
-  const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
-  const storageKey = consId || job.id;
+  const haultechJobId = getHaultechJobId(job);
+  const isDriverAdded = !haultechJobId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
+  const storageKey = consId || haultechJobId || job.id;
 
-  const btn = $('sign-save-btn');
-  btn.disabled = true;
+  setSignCompleteBusy(true);
 
   const consignee = $('sign-consignee')?.value?.trim() || '';
   const notes = $('sign-notes')?.value?.trim() || '';
@@ -3054,7 +3270,7 @@ $('sign-save-btn').addEventListener('click', async () => {
       const proofResults = [];
       if (!signPhotoFile && !sigData) {
         setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
-        toast('⚠️ Add photo or signature first');
+        toast('⚠️ Add a photo or signature, then tap Complete job');
         return;
       }
 
@@ -3085,11 +3301,11 @@ $('sign-save-btn').addEventListener('click', async () => {
 
       // Complete in Haultech only after supplied proof has been protected either
       // in Haultech or in the PMG worker fallback store.
-      const completeResp = await api(`/ht/complete/${consId}`, { method: 'PATCH' });
+      const completeResp = await api(`/ht/complete/${haultechJobId}`, { method: 'PATCH' });
       if (!completeResp.ok) {
         throw new Error(await responseError(completeResp, 'Complete failed'));
       }
-      const completionCheck = await verifyHaultechCompletion(job, consId);
+      const completionCheck = await verifyHaultechCompletion(job, haultechJobId);
 
       // Save POD metadata
       try {
@@ -3160,15 +3376,18 @@ $('sign-save-btn').addEventListener('click', async () => {
 
     showJobList();
     renderJobs();
+    reloadForPendingServiceWorkerUpdate();
   } catch (e) {
     if (proofEvent) {
       setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed');
     }
     toast('Error: ' + e.message);
   } finally {
-    btn.disabled = false;
+    setSignCompleteBusy(false);
   }
-});
+}
+
+$('sign-save-btn').addEventListener('click', handleSignComplete);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DEPART ACTION
@@ -3316,6 +3535,7 @@ $('add-job-btn').addEventListener('click', () => {
   $('add-job-modal').classList.remove('hidden');
   loadCustomers();
   populateMaterialList();
+  $('f-vehicle').innerHTML = vehicleOptionsHTML(getSelectedDriverVehicle());
   if (!fSigCtx) initAddJobSig();
   fPhotoFile = null;
   fPriceWasAuto = false;
@@ -3393,12 +3613,20 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const from = $('f-from').value.trim();
   const to = $('f-to').value.trim();
   const customerName = $('f-customer').value.trim();
+  const vehicle = $('f-vehicle').value;
+  if (!vehicle) {
+    toast('Select truck / wagon');
+    btn.disabled = false;
+    btn.textContent = 'Save row for office';
+    return;
+  }
+  setSelectedDriverVehicle(vehicle);
 
   const dt = new Date(date + 'T00:00:00Z');
   const epoch = Math.floor(dt.getTime() / 1000) + 43200;
   const iso = `${date}T00:00:00.0000000`;
 
-  const driverTag = currentUser.name;
+  const driverTag = `${currentUser.name} / ${vehicle}`;
   const payload = {
     active: true, customerId, jobTypeId: JOB_TYPE_STD,
     serviceLevelId: SERVICE_LEVEL_STD, customerReference: ref,
@@ -3453,6 +3681,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       // Show confirmation modal
       showJobConfirmation({
         customer: customerName,
+        vehicle,
         material,
         from: from || 'PMG Yard',
         to,
@@ -3465,6 +3694,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
         id: newJobId,
         jobId: newJobId,
         driver: currentUser.name,
+        vehicle,
         customer: customerName,
         goodsDescription: material,
         material,
@@ -3493,6 +3723,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     const localJob = {
       id: 'driver-' + Date.now(),
       driver: currentUser.name,
+      vehicle,
       customer: $('f-customer').value,
       material,
       from,
@@ -3511,6 +3742,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
     queueTrialEvent('day_sheet_row_added', localJob, {
       customer: localJob.customer,
+      vehicle: localJob.vehicle,
       material,
       from,
       to,
@@ -3529,6 +3761,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       jobId: localJob.id, _cached: true, _driverAdded: true,
       _driver: localJob.driver, _customer: localJob.customer,
       _material: localJob.material, _from: localJob.from, _to: localJob.to,
+      _vehicle: localJob.vehicle,
       _quantity: localJob.quantity, _price: localJob.price, _status: localJob.status,
       savedAt: localJob.savedAt,
     });
@@ -3539,6 +3772,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     fPhotoFile = null;
     showJobConfirmation({
       customer: localJob.customer,
+      vehicle: localJob.vehicle,
       material,
       from: from || 'PMG Yard',
       to,
@@ -3668,13 +3902,20 @@ $('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing
 // ══════════════════════════════════════════════════════════════════════════════
 
 function showJobConfirmation(job) {
+  const displayWeight = (() => {
+    const value = String(job.weight || '').trim();
+    if (!value) return '—';
+    if (/[a-z]$/i.test(value)) return value;
+    return `${value}${job.unit || 't'}`;
+  })();
   const details = [
-    `👤 Customer: <strong>${job.customer || '—'}</strong>`,
-    `🚚 Material: <strong>${job.material || '—'}</strong>`,
-    `📍 From: <strong>${job.from || '—'}</strong>`,
-    `🏠 To: <strong>${job.to || '—'}</strong>`,
-    `⚖️ Weight: <strong>${job.weight || '—'}t</strong>`,
-    `🏷️ Ref: <strong>${job.ref || '—'}</strong>`,
+    `👤 Customer: <strong>${esc(job.customer || '—')}</strong>`,
+    `🚛 Truck / wagon: <strong>${esc(job.vehicle || '—')}</strong>`,
+    `🚚 Material: <strong>${esc(job.material || '—')}</strong>`,
+    `📍 From: <strong>${esc(job.from || '—')}</strong>`,
+    `🏠 To: <strong>${esc(job.to || '—')}</strong>`,
+    `⚖️ Weight: <strong>${esc(displayWeight)}</strong>`,
+    `🏷️ Ref: <strong>${esc(job.ref || '—')}</strong>`,
   ].join('<br>');
   $('job-confirm-details').innerHTML = details;
   $('job-confirm-modal').classList.remove('hidden');
@@ -3686,7 +3927,12 @@ function init() {
   setHeaderForLogin();
 
   // Sync retry button
-  $('sync-retry-btn').addEventListener('click', () => flushRetryQueue());
+  $('sync-retry-btn').addEventListener('click', () => {
+    const moved = moveDriverFailedWritebacksToOfficeReview();
+    flushRetryQueue();
+    updateSyncUI();
+    toast(moved ? 'Failed writebacks moved to office review' : 'Retrying sync');
+  });
 
   // Flush retry queue on load + every 30 seconds
   flushRetryQueue();
@@ -3718,10 +3964,21 @@ init();
 
 if ('serviceWorker' in navigator) {
   let refreshingForUpdate = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
+  const handleServiceWorkerUpdate = () => {
     if (refreshingForUpdate) return;
+    if (hasUnsafeUpdateReloadState()) {
+      pendingServiceWorkerReload = true;
+      toast('Update ready - finish the open job/form first');
+      return;
+    }
     refreshingForUpdate = true;
     window.location.reload();
+  };
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'PMG_SW_UPDATED') handleServiceWorkerUpdate();
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    handleServiceWorkerUpdate();
   });
   navigator.serviceWorker.register('sw.js').then(reg => {
     reg.update().catch(() => {});
