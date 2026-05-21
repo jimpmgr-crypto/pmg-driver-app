@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-driver-live-v20260520-cancel-finished-day';
+const CACHE_NAME = 'pmg-driver-live-v20260520-map-choice';
 const APP_SHELL = [
   './',
   'index.html',

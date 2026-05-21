@@ -262,13 +262,6 @@
     .detail-value.address { font-size: 14px; font-weight: 700; line-height: 1.5; }
     .detail-value a { color: #2563eb; text-decoration: none; }
 
-    .map-embed {
-      width: 160px; height: 160px; border-radius: 10px; overflow: hidden;
-      border: 1px solid var(--border); background: #e5e7eb;
-    }
-    .map-embed iframe { width: 100%; height: 100%; border: none; }
-    .map-embed img { width: 100%; height: 100%; object-fit: cover; }
-
     .freight-heading {
       text-align: center; font-size: 15px; font-weight: 700; color: var(--text);
       margin: 16px 0 12px; padding-top: 8px; border-top: 1px solid var(--border);
@@ -553,6 +546,7 @@
     .btn-secondary { background: #e5e7eb; color: #111827; }
     .btn-danger { background: #fee2e2; color: #991b1b; }
     .btn-map { background: #2563eb; color: white; }
+    .btn-google-map { background: #16a34a; color: white; }
 
     .trial-banner {
       background: #111827; color: white; border-radius: 12px;
@@ -615,6 +609,12 @@
     }
     .map-panel-title { font-size: 13px; color: #1e40af; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; }
     .map-panel-address { font-size: 17px; font-weight: 800; line-height: 1.35; color: #111827; }
+    .map-panel-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+    }
+    .map-panel-actions .btn {
+      min-height: 46px; padding: 10px 12px; font-size: 14px; text-decoration: none;
+    }
     .safe-strip {
       background: #fffbeb; color: #92400e; border: 1px solid #fde68a;
       border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 700; margin: 10px 0;
@@ -2401,11 +2401,38 @@ function jobMapQuery(job, mode = 'delivery') {
   return mode === 'collection' ? getJobFrom(job) : getJobTo(job);
 }
 
-function openJobMap(job, mode = 'delivery') {
+function mapUrlForQuery(query, provider = 'apple') {
+  const encoded = encodeURIComponent(query);
+  if (provider === 'google') return `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
+  return `https://maps.apple.com/?daddr=${encoded}&dirflg=d`;
+}
+
+function mapChoiceLinks(query, mode = 'delivery') {
+  if (!query) return '';
+  return `
+    <div class="map-panel-actions">
+      <a class="btn btn-map map-link" href="${mapUrlForQuery(query, 'apple')}" target="_blank" rel="noopener" data-map-provider="apple" data-map-mode="${esc(mode)}">Apple Maps</a>
+      <a class="btn btn-google-map map-link" href="${mapUrlForQuery(query, 'google')}" target="_blank" rel="noopener" data-map-provider="google" data-map-mode="${esc(mode)}">Google Maps</a>
+    </div>`;
+}
+
+function trackMapRoute(job, mode, query, provider = 'apple') {
+  queueTrialEvent('map_route', job, { mode, provider, address: query, state: 'written', haultechWriteState: 'written' });
+}
+
+function attachMapChoiceListeners(container, job, mode, query) {
+  container.querySelectorAll('.map-link').forEach(link => {
+    link.addEventListener('click', () => {
+      trackMapRoute(job, link.dataset.mapMode || mode, query, link.dataset.mapProvider || 'apple');
+    });
+  });
+}
+
+function openJobMap(job, mode = 'delivery', provider = 'apple') {
   const query = jobMapQuery(job, mode);
   if (!query) { toast('No address for map'); return; }
-  queueTrialEvent('map_route', job, { mode, address: query, state: 'written', haultechWriteState: 'written' });
-  window.open(`https://maps.apple.com/?q=${encodeURIComponent(query)}`, '_blank', 'noopener');
+  trackMapRoute(job, mode, query, provider);
+  window.open(mapUrlForQuery(query, provider), '_blank', 'noopener');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2719,7 +2746,8 @@ function jobCardHTML(job, showDriver, isNext = false) {
       </div>
       ${!showDriver ? `
         <div class="job-card-actions">
-          <button class="btn btn-map quick-map" data-job-id="${esc(jobId)}">Map route</button>
+          <button class="btn btn-map quick-map" data-map-provider="apple" data-job-id="${esc(jobId)}">Apple</button>
+          <button class="btn btn-google-map quick-map" data-map-provider="google" data-job-id="${esc(jobId)}">Google</button>
           <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}" ${status === 'complete' ? 'disabled' : ''}>${esc(actionLabel)}</button>
           <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
           <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Cancel</button>
@@ -2743,7 +2771,7 @@ function attachQuickActionListeners(container, jobs) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const job = findJob(btn.dataset.jobId);
-      if (job) openJobMap(job);
+      if (job) openJobMap(job, 'delivery', btn.dataset.mapProvider || 'apple');
     });
   });
   container.querySelectorAll('.quick-next').forEach(btn => {
@@ -2799,15 +2827,15 @@ function renderDeliveryTab(container, job) {
 
   const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
   const mapQuery = addrParts.join(', ');
-  const mapUrl = mapQuery ? `https://maps.apple.com/?q=${encodeURIComponent(mapQuery)}` : '';
 
   container.innerHTML = `
     <div class="safe-strip">Use the app only when parked or safe when stationary.</div>
     ${mapQuery ? `
-      <a class="map-panel" href="${mapUrl}" target="_blank" rel="noopener" id="delivery-map-panel">
+      <div class="map-panel" id="delivery-map-panel">
         <div class="map-panel-title">Map route</div>
         <div class="map-panel-address">${addrParts.map(p => esc(p)).join('<br>')}</div>
-      </a>` : ''}
+        ${mapChoiceLinks(mapQuery, 'delivery')}
+      </div>` : ''}
     <div class="detail-row">
       <div class="detail-left">
         <div class="detail-label">Customer</div>
@@ -2827,15 +2855,6 @@ function renderDeliveryTab(container, job) {
 
         <div class="detail-label">Site Contact</div>
         <div class="detail-value">${esc(siteContact || 'N/A')}</div>
-      </div>
-      <div class="detail-right">
-        ${mapQuery
-          ? `<div class="map-embed">
-              <a href="${mapUrl}" target="_blank" rel="noopener">
-                <img src="https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(mapQuery)}&zoom=14&size=320x320&markers=${encodeURIComponent(mapQuery)}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8" alt="Map" onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--muted);font-size:12px\\'>📍 Map</div>'">
-              </a>
-            </div>`
-          : ''}
       </div>
     </div>
 
@@ -2867,7 +2886,6 @@ function renderDeliveryTab(container, job) {
     </div>
 
     <div class="action-row">
-      <button class="btn btn-map" id="detail-map-btn">Map route</button>
       <button class="btn btn-depart" id="detail-start-btn" ${getJobStatus(job) !== 'scheduled' ? 'disabled' : ''}>Start / In Transit</button>
     </div>
     <div class="action-row">
@@ -2884,8 +2902,7 @@ function renderDeliveryTab(container, job) {
     toast('Weight saved: ' + w + 't');
     queueTrialEvent('weight_changed', job, { weight: w, state: 'saved locally', haultechWriteState: 'saved locally' });
   });
-  $('delivery-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'delivery', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
-  $('detail-map-btn')?.addEventListener('click', () => openJobMap(job, 'delivery'));
+  attachMapChoiceListeners(container, job, 'delivery', mapQuery);
   $('detail-start-btn')?.addEventListener('click', e => departJob(job, e.target));
   $('detail-complete-btn')?.addEventListener('click', () => showSignScreen(job));
   $('detail-problem-btn')?.addEventListener('click', () => showProblemModal(job));
@@ -2899,15 +2916,15 @@ function renderCollectionTab(container, job) {
 
   const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
   const mapQuery = addrParts.join(', ');
-  const mapUrl = mapQuery ? `https://maps.apple.com/?q=${encodeURIComponent(mapQuery)}` : '';
 
   container.innerHTML = `
     <div class="safe-strip">Use the app only when parked or safe when stationary.</div>
     ${mapQuery ? `
-      <a class="map-panel" href="${mapUrl}" target="_blank" rel="noopener" id="collection-map-panel">
+      <div class="map-panel" id="collection-map-panel">
         <div class="map-panel-title">Collection map</div>
         <div class="map-panel-address">${addrParts.map(p => esc(p)).join('<br>')}</div>
-      </a>` : ''}
+        ${mapChoiceLinks(mapQuery, 'collection')}
+      </div>` : ''}
     <div class="detail-label">Customer</div>
     <div class="detail-value" style="font-size:16px;">${esc(customer)}</div>
 
@@ -2927,7 +2944,6 @@ function renderCollectionTab(container, job) {
       </div>
     </div>
     <div class="action-row">
-      <button class="btn btn-map" id="collection-map-btn">Open collection map</button>
       <button class="btn btn-depart" id="collection-arrived-btn">I'm here / started</button>
     </div>
     <div class="action-row">
@@ -2935,8 +2951,7 @@ function renderCollectionTab(container, job) {
       <button class="btn btn-danger" id="collection-problem-btn">Cancel</button>
     </div>
   `;
-  $('collection-map-panel')?.addEventListener('click', () => queueTrialEvent('map_route', job, { mode: 'collection', address: mapQuery, state: 'written', haultechWriteState: 'written' }));
-  $('collection-map-btn')?.addEventListener('click', () => openJobMap(job, 'collection'));
+  attachMapChoiceListeners(container, job, 'collection', mapQuery);
   $('collection-arrived-btn')?.addEventListener('click', e => departJob(job, e.target));
   $('collection-proof-btn')?.addEventListener('click', () => showSignScreen(job));
   $('collection-problem-btn')?.addEventListener('click', () => showProblemModal(job));
