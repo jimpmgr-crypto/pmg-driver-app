@@ -2746,8 +2746,8 @@ function jobCardHTML(job, showDriver, isNext = false) {
       </div>
       ${!showDriver ? `
         <div class="job-card-actions">
-          <button class="btn btn-map quick-map" data-map-provider="apple" data-job-id="${esc(jobId)}">Apple</button>
-          <button class="btn btn-google-map quick-map" data-map-provider="google" data-job-id="${esc(jobId)}">Google</button>
+          <button class="btn btn-map quick-map" data-map-provider="apple" data-job-id="${esc(jobId)}">Apple Maps</button>
+          <button class="btn btn-google-map quick-map" data-map-provider="google" data-job-id="${esc(jobId)}">Google Maps</button>
           <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}" ${status === 'complete' ? 'disabled' : ''}>${esc(actionLabel)}</button>
           <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
           <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Cancel</button>

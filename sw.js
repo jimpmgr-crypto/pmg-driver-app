@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-driver-live-v20260520-map-choice';
+const CACHE_NAME = 'pmg-driver-live-v20260521-map-labels';
 const APP_SHELL = [
   './',
   'index.html',
