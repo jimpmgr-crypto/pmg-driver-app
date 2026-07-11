@@ -151,7 +151,11 @@ def verify_live(version: dict, hashes: dict[str, str]) -> None:
             require(worker_health.get("workerBuildId") == expected_worker, "live worker build mismatch")
             require(worker_health.get("driverApiContract") == version.get("driverApiContract"), "live API contract mismatch")
             for relative in ("index.html", "sw.js"):
-                live_bytes, _ = fetch(f"{LIVE_URL}/{relative}?release_check={attempt}")
+                # Cloudflare Pages canonicalises /index.html to / with a 308.
+                # Hash the canonical root response instead of treating that
+                # healthy clean-URL redirect as a failed deployment.
+                live_path = "" if relative == "index.html" else relative
+                live_bytes, _ = fetch(f"{LIVE_URL}/{live_path}?release_check={attempt}")
                 live_hash = hashlib.sha256(live_bytes).hexdigest()
                 require(live_hash == hashes[relative], f"live {relative} hash mismatch")
             for route in ("john", "andrew", "neil", "ian", "richard"):
@@ -184,6 +188,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--browser", action="store_true", help="Run the full mobile Playwright suite.")
     parser.add_argument("--deploy", action="store_true", help="Deploy worker and exact tested Pages artifact.")
+    parser.add_argument("--verify-live", action="store_true", help="Read the current live release back without deploying.")
     args = parser.parse_args()
     version = validate_source()
     branch, commit = validate_git(require_main=args.deploy)
@@ -194,6 +199,8 @@ def main() -> int:
         print(json.dumps({"buildId": version["buildId"], "branch": branch, "commit": commit, "hashes": hashes}, indent=2))
         if args.deploy:
             deploy(version, hashes, artifact, commit)
+        elif args.verify_live:
+            verify_live(version, hashes)
     print("RELEASE_GUARD_PASSED")
     return 0
 
