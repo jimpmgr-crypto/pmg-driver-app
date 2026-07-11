@@ -129,7 +129,7 @@ def write_opencore(payload: dict[str, Any]) -> None:
         "# PMG Driver App Runtime Health\n\n"
         f"Checked: {payload['checkedAt']}\n\n"
         f"Status: `{payload['status']}`\n\n"
-        f"Frontend: `{payload['buildId']}`  \nWorker: `{payload['workerBuildId'] or 'legacy/unavailable'}`  \n"
+        f"Frontend: `{payload['buildId']}`\nWorker: `{payload['workerBuildId'] or 'legacy/unavailable'}`\n"
         f"API contract: `{payload['driverApiContract'] or 'legacy/unavailable'}`\n\n"
         f"Routes: {route_summary}\n\n"
         f"Errors: {json.dumps(payload['errors'], ensure_ascii=False)}\n\n"
