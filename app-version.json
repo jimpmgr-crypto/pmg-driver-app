@@ -1,0 +1,6 @@
+{
+  "buildId": "20260702-carter-washed-labels-v65",
+  "updatedAt": "2026-07-02T16:45:00+01:00",
+  "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
+  "notes": "carter-washed-labels: Ian Carter and Carter's Landscapes now resolve to the same customer, and washed stone options explicitly state Recycled or Quarried. Keeps concrete-type-required, pipe-30-markup, live torque-only prestart behaviour and walkaround draft restore. prestart-fleet-torque-source lineage preserved. Lane split: Fleet Live is the Gary/Richard vehicle, torque and walkaround source; Tony's plant app remains only for plant/tools."
+}

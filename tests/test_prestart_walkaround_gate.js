@@ -1,0 +1,55 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const version = JSON.parse(fs.readFileSync(path.join(root, 'app-version.json'), 'utf8'));
+const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+
+assert(index.includes(`const APP_BUILD_ID = '${version.buildId}'`), 'driver app build id must match app-version.json');
+assert(sw.includes(`pmg-driver-live-v${version.buildId}`), 'service-worker cache must match app-version.json');
+assert.notStrictEqual(version.buildId, '20260615-driver-customer-picker-v50', 'driver app build id must be bumped from the previous build');
+
+assert(index.includes('.walkaround-card.prestart-gate'), 'walkaround card must have large pre-start gate styling');
+assert(index.includes('position: sticky;'), 'pre-start gate must stay visible at the top of the jobs screen');
+assert(index.includes('Start / In Transit and job completion are held here'), 'gate copy must explain blocked driver actions');
+assert(index.includes("Jobs stay visible"), 'jobs must remain visible for night-before planning');
+
+assert(index.includes('function requireWalkaroundBeforeDriverAction'), 'driver actions must use a shared walkaround guard');
+assert(index.includes("if (!requireWalkaroundBeforeDriverAction('completing work')) return;"), 'job completion must require walkaround');
+assert(index.includes("if (!requireWalkaroundBeforeDriverAction('Start / In Transit')) return;"), 'Start / In Transit must require walkaround');
+assert(index.includes('if (!isWalkaroundVisible() || isManager) return true;'), 'manager view must not be accidentally blocked');
+assert(index.includes("const FLEET_LIVE_URL = 'https://pmg-fleet-live.jimpmgr.workers.dev'"), 'driver app must know the Fleet Live source for Gary torque checks');
+assert(index.includes('/api/driver-torque?vehicle='), 'driver app must read open wheel torque checks from Fleet Live');
+assert(index.includes('Wheel torque check due'), 'pre-start gate must show wheel torque checks when required');
+assert(index.includes('torqueChecks'), 'saved walkaround record must include torque confirmation evidence');
+assert(index.includes('Take each picture in order'), 'walkaround photo flow must guide drivers through the truck photos');
+assert(index.includes('Saved on this phone'), 'photo capture must clearly tell drivers the photo has been saved');
+assert(index.includes('function saveWalkaroundDraft'), 'walkaround work must be persisted while the camera app is open');
+assert(index.includes('function restoreWalkaroundDraftIfMatching'), 'walkaround draft must restore after an Android camera/app restart');
+assert(index.includes('function resumeWalkaroundDraftAfterEnter'), 'driver route must reopen an unfinished walkaround draft instead of returning to loads');
+assert(index.includes('function focusNextWalkaroundPhoto'), 'photo flow must move/highlight the next truck picture after capture');
+assert(index.includes('photoEvidenceRequired: false'), 'walkaround record must state photo proof is optional');
+assert(index.includes('signatureOptional: true'), 'walkaround record must state signature is optional');
+assert(index.includes('const signatureBlob = signatureData ? dataURLToBlob(signatureData) : null;'), 'signature upload must not be attempted when the driver has not signed');
+assert(!index.includes('missing.push(`${slot.label} photo`)'), 'walkaround completion must not block on missing camera photos');
+assert(!index.includes("missing.push('driver signature')"), 'walkaround completion must not block on missing signature');
+assert(!index.includes('No wheel-off torque re-check is open for this wagon.'), 'driver app must not show wheel torque wording when no live re-check exists');
+assert(index.includes("writeCachedTorqueTasks(vehicleRef, []);"), 'failed live torque checks must clear stale cached torque tasks instead of blocking drivers');
+assert(index.includes('function closeConfirmedFleetTorqueTasks'), 'confirmed driver torque checks must close the Fleet Live torque record');
+assert(index.includes("driver-complete"), 'driver torque close must call the Fleet Live driver-complete endpoint');
+assert(index.includes("Tick confirmed at"), 'wheel torque row must give drivers a clear tick/confirm action');
+assert(index.includes('.walkaround-card.prestart-gate.done'), 'completed walkaround state must have dedicated compact styling');
+assert(index.includes('position: static;'), 'completed walkaround card must not remain sticky over the jobs screen');
+assert(index.includes("const selectorRows = fullyClear ? '' :"), 'completed walkaround card must not keep showing wagon/trailer selector fields');
+assert(index.includes("window.scrollTo({ top: 0, behavior: 'auto' });"), 'walkaround completion must force a clean return to the top of the jobs list');
+assert(index.includes("finished ? 'Re-open / check day'"), 'finished drivers must have a clear route out of the completed screen');
+assert(index.includes('id="finished-add-row-btn"'), 'finished drivers must be able to add another day-sheet row from the completed screen');
+assert(index.includes('currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };'), 'saved driver sessions must reopen directly instead of bouncing back to PIN');
+assert(index.includes("$('pin-screen').classList.add('hidden');"), 'entering jobs must always hide the PIN screen');
+assert(sw.includes("'/andrew'"), 'service worker app shell must include Andrew route');
+assert(sw.includes("'/neil'"), 'service worker app shell must include Neil route');
+assert(sw.includes("'/ian'"), 'service worker app shell must include Ian route');
+
+console.log('pre-start safety gate regression checks passed');

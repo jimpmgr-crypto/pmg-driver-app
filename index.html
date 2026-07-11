@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>PMG Driver App</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="theme-color" content="#f97316">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -201,6 +201,17 @@
       font-size: 12px; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.5px;
       margin-bottom: 8px; padding: 0 4px;
+    }
+    .driver-section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .driver-section-head .driver-section-title { margin-bottom: 0; }
+    .manager-driver-link {
+      border: 1px solid var(--primary); background: #fff7ed; color: var(--primary);
+      border-radius: 10px; padding: 8px 10px;
+      font-size: 12px; font-weight: 800; white-space: nowrap;
+      min-height: 36px;
     }
     .driver-section.unassigned {
       background: #fff7ed; border: 2px solid var(--primary);
@@ -483,6 +494,13 @@
     }
     .autocomplete-item:hover, .autocomplete-item.active { background: #fff7ed; }
     .autocomplete-item .ac-code { font-size: 12px; color: var(--muted); }
+    .customer-picker-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .customer-picker-actions .btn {
+      flex: 1;
+      min-height: 42px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
 
     .sig-section { margin-bottom: 16px; }
     .sig-section label {
@@ -588,6 +606,123 @@
       background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
       border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
       font-size: 13px; font-weight: 700;
+    }
+    .walkaround-card {
+      background: #111827; color: white; border: 2px solid #f97316;
+      border-radius: 14px; padding: 14px; margin-bottom: 12px;
+    }
+    .walkaround-card.prestart-gate {
+      position: sticky;
+      top: 64px;
+      z-index: 60;
+      display: grid;
+      gap: 14px;
+      min-height: 188px;
+      border-width: 3px;
+      border-color: #ef4444;
+      background: #7f1d1d;
+      box-shadow: 0 12px 28px rgba(17,24,39,0.24);
+    }
+    #walkaround-screen { padding-top: 8px; }
+    .walkaround-card.done {
+      background: #ecfdf5; color: #065f46; border-color: #10b981;
+    }
+    .walkaround-card.prestart-gate.done {
+      position: static;
+      z-index: auto;
+      min-height: 0;
+      gap: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 4px 12px rgba(16,185,129,0.10);
+    }
+    .walkaround-card h2 { font-size: 18px; line-height: 1.2; margin-bottom: 6px; }
+    .walkaround-card.prestart-gate h2 { font-size: 24px; line-height: 1.1; margin-bottom: 8px; }
+    .walkaround-card.prestart-gate.done h2 { font-size: 18px; margin-bottom: 0; }
+    .walkaround-card p { font-size: 13px; line-height: 1.35; margin-bottom: 12px; color: inherit; }
+    .walkaround-card.prestart-gate p { font-size: 14px; line-height: 1.4; margin-bottom: 0; }
+    .walkaround-card.prestart-gate.done p { display: none; }
+    .walkaround-card .form-row { margin-top: 8px; }
+    .walkaround-card.prestart-gate .form-row {
+      border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.12);
+    }
+    .walkaround-card label { color: inherit; opacity: 0.9; }
+    .walkaround-card select {
+      width: 100%; min-height: 46px; border-radius: 10px; border: 1.5px solid var(--border);
+      padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 15px; background: white; color: var(--text);
+    }
+    .torque-gate {
+      border-radius: 12px; padding: 12px; border: 1.5px solid rgba(255,255,255,0.34);
+      background: rgba(255,255,255,0.12); color: white; font-weight: 800;
+    }
+    .torque-gate.clear { background: rgba(209,250,229,0.95); color: #065f46; border-color: #10b981; }
+    .torque-gate.required { background: #ffedd5; color: #9a3412; border-color: #fb923c; }
+    .torque-gate.checking { background: rgba(255,255,255,0.18); color: white; }
+    .torque-gate-title { font-size: 14px; font-weight: 950; margin-bottom: 4px; }
+    .torque-gate-detail { font-size: 13px; line-height: 1.35; }
+    .walkaround-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+    .walkaround-card.prestart-gate .walkaround-actions .btn {
+      min-height: 58px; font-size: 17px; font-weight: 900;
+    }
+    .walkaround-card.prestart-gate.done .walkaround-actions .btn {
+      min-height: 42px; font-size: 14px;
+    }
+    .walkaround-status {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+      padding: 6px 10px; font-size: 12px; font-weight: 900; background: rgba(255,255,255,0.14);
+      margin-bottom: 8px;
+    }
+    .walkaround-card.prestart-gate:not(.done) .walkaround-status {
+      background: #fee2e2; color: #991b1b;
+    }
+    .walkaround-card.done .walkaround-status { background: #d1fae5; color: #065f46; }
+    .walkaround-form-card {
+      background: white; border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px; margin-bottom: 12px;
+    }
+    .walkaround-form-card h3 { font-size: 17px; margin-bottom: 6px; color: var(--text); }
+    .walkaround-help { color: var(--muted); font-size: 13px; line-height: 1.35; margin-bottom: 12px; }
+    .walkaround-photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .walkaround-photo {
+      border: 1.5px solid var(--border); border-radius: 12px; padding: 10px;
+      background: #f9fafb; min-height: 96px; display: grid; gap: 8px;
+    }
+    .walkaround-photo-title { font-size: 13px; font-weight: 900; color: var(--text); }
+    .walkaround-photo button {
+      border: none; border-radius: 10px; min-height: 42px; background: var(--primary); color: white;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 800;
+    }
+    .walkaround-photo-state { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .walkaround-photo.captured { border-color: #10b981; background: #ecfdf5; }
+    .walkaround-photo.next { border-color: var(--primary); background: #fff7ed; box-shadow: 0 0 0 2px rgba(249,115,22,0.18); }
+    .walkaround-check-row {
+      border-top: 1px solid var(--border); padding: 10px 0;
+    }
+    .walkaround-check-row:first-child { border-top: none; }
+    .walkaround-check-title { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
+    .walkaround-toggle-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .walkaround-toggle-row.two { grid-template-columns: repeat(2, 1fr); }
+    .walkaround-toggle {
+      min-height: 42px; border: 1.5px solid var(--border); border-radius: 10px; background: white;
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 900; color: var(--text);
+    }
+    .walkaround-toggle.active.yes { background: #d1fae5; border-color: #10b981; color: #065f46; }
+    .walkaround-toggle.active.no { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+    .walkaround-toggle.active.na { background: #e5e7eb; border-color: #9ca3af; color: #374151; }
+    .walkaround-torque-row {
+      border: 1.5px solid #fb923c; background: #fff7ed; border-radius: 12px;
+      padding: 12px; display: grid; gap: 10px;
+    }
+    .walkaround-torque-amount { font-size: 22px; line-height: 1; font-weight: 950; color: #9a3412; }
+    .walkaround-sig-wrap {
+      border: 1.5px solid var(--border); border-radius: 10px; background: #f3f4f6;
+      position: relative; overflow: hidden;
+    }
+    .walkaround-sig-wrap canvas {
+      width: 100%; height: 170px; display: block; touch-action: none; background: #f3f4f6;
+    }
+    .walkaround-sig-clear {
+      position: absolute; top: 8px; right: 8px; border: 1px solid var(--border); border-radius: 8px;
+      background: white; padding: 6px 10px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 800;
     }
     .job-card.next-job { border-color: var(--primary); box-shadow: 0 3px 16px rgba(249,115,22,0.18); }
     .job-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
@@ -717,6 +852,11 @@
     <div id="jobs-container"></div>
   </div>
 
+  <!-- ══ WALKAROUND SCREEN ══ -->
+  <div id="walkaround-screen" class="hidden">
+    <div id="walkaround-content"></div>
+  </div>
+
   <!-- ══ JOB DETAIL SCREEN ══ -->
   <div id="job-detail-screen" class="hidden">
     <div class="detail-tabs">
@@ -757,7 +897,7 @@
     <div class="sign-bottom-bar" id="sign-bottom-bar">
       <button class="sign-camera-btn" id="sign-camera-btn">📷</button>
       <input type="file" id="sign-photo-input" accept="image/*" capture="environment" style="display:none">
-      <span class="sign-weight-label">Weight:</span>
+      <span class="sign-weight-label">Qty:</span>
       <input type="number" class="sign-weight-input" id="sign-weight" placeholder="0" step="0.01" min="0" inputmode="decimal">
       <button class="sign-save-btn" id="sign-save-btn">Complete job</button>
     </div>
@@ -794,12 +934,23 @@
         <label>Customer</label>
         <input type="text" id="f-customer" placeholder="Start typing customer name…" autocomplete="off" required>
         <input type="hidden" id="f-customer-id">
+        <div class="customer-picker-actions">
+          <button class="btn btn-secondary" id="show-customer-list-btn" type="button">Show Haultech customers</button>
+        </div>
         <div id="customer-dropdown" class="autocomplete-list hidden"></div>
       </div>
       <div class="form-group">
         <label>Material / Goods Description</label>
         <input type="text" id="f-material" list="material-list" placeholder="Start typing material…" autocomplete="off">
         <datalist id="material-list"></datalist>
+      </div>
+      <div class="form-group hidden" id="concrete-type-fields">
+        <label>Concrete type</label>
+        <select id="f-concrete-type">
+          <option value="">Choose quarried or recycled</option>
+          <option value="quarried">Quarried</option>
+          <option value="recycled">Recycled</option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -824,24 +975,81 @@
             <option value="t">tonnes</option>
             <option value="m3">m3</option>
             <option value="bags">bags</option>
-            <option value="items">items</option>
-            <option value="job">job</option>
+            <option value="each">each</option>
             <option value="days">days</option>
+            <option value="weeks">weeks</option>
             <option value="hours">hours</option>
           </select>
         </div>
       </div>
-      <div class="form-group">
-          <label>Price (£)</label>
-          <input type="number" id="f-price" placeholder="" step="0.01" min="0" disabled>
+      <div class="form-group hidden" id="richard-price-fields">
+        <label>Richard price</label>
+        <div class="form-row">
+          <div class="form-group">
+            <select id="f-price-mode">
+              <option value="rate">Rate per unit</option>
+              <option value="fixed">Fixed price</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <input type="number" id="f-price" placeholder="Optional" step="0.01" min="0" inputmode="decimal">
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Reference</label>
-        <input type="text" id="f-ref" placeholder="Ticket/ref number">
+        <input type="text" id="f-ref" placeholder="Ticket/ref/name, e.g. Phil Smith">
+      </div>
+      <div class="form-group hidden" id="a1-payment-fields">
+        <label>A1 payment</label>
+        <label style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="f-a1-paid" style="width:auto;min-height:auto;">
+          Paid
+        </label>
       </div>
       <div class="form-group">
         <label>Notes</label>
         <textarea id="f-notes" placeholder="Any extra info…"></textarea>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="f-waste-transfer" style="width:auto;min-height:auto;">
+          Waste transfer
+        </label>
+      </div>
+      <div id="f-waste-fields" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <label>EWC / LoW Code</label>
+            <input type="text" id="f-ewc-code" list="ewc-code-list" placeholder="e.g. 17 05 04">
+            <datalist id="ewc-code-list">
+              <option value="17 05 04" label="Soil and stones other than 17 05 03">
+              <option value="17 01 07" label="Mixtures of concrete, bricks, tiles and ceramics">
+              <option value="19 12 09" label="Minerals such as sand, stones">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label>SIC Code</label>
+            <input type="text" id="f-sic-code" value="43120" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>How contained</label>
+          <select id="f-containment">
+            <option value="Loose bulk load in tipper/grab wagon">Loose bulk load in tipper/grab wagon</option>
+            <option value="Loose bulk load in customer vehicle">Loose bulk load in customer vehicle</option>
+            <option value="Skip">Skip</option>
+            <option value="Bulk bag">Bulk bag</option>
+            <option value="Bags/palletised">Bags/palletised</option>
+            <option value="Other - see notes">Other - see notes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="f-waste-hierarchy" style="width:auto;min-height:auto;" checked>
+            Waste hierarchy applied
+          </label>
+        </div>
       </div>
       <div class="form-group">
         <label>SIGNATURE</label>
@@ -938,37 +1146,42 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 const WORKER_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
+const FLEET_LIVE_URL = 'https://pmg-fleet-live.jimpmgr.workers.dev';
 const API_KEY = 'pmg2026driver';
 const TMS_ID = 'd80fd468-e802-492d-b73c-e09ab51bee88';
 const JIM_PASSWORD = 'jimpmg2026';
 const MANAGER_PASSWORD = '1409';
 const LIVE_WRITE = true;
 const TRIAL_DRIVER = 'john';
-const SAFE_WORKER_ENDPOINTS = ['/job-status/', '/ticket/', '/photos/', '/haultech-jobs/'];
+const SAFE_WORKER_ENDPOINTS = ['/job-status/', '/ticket/', '/photos/', '/haultech-jobs/', '/ht/complete/', '/ht/note/'];
 const JOB_TYPE_STD = '4cbd566c-7fd6-41e2-b11a-29a5116457e2';
 const SERVICE_LEVEL_STD = '6c19efc0-0664-41df-a2f3-ad2375659a66';
 
 // BEGIN GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
 const MATERIAL_PRICING = {
   "Mixed Spoil Tip": { type: "flat", rate: 10, unit: "tonnes" },
+  "Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
+  "Spoil Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Clay Tip": { type: "flat", rate: 15, unit: "tonnes" },
-  "Topsoil Tip": { type: 'tiered', under10: 6, over10: 5, unit: "tonnes" },
+  "Topsoil Tip": { type: 'banded', bands: [{"min":15,"rate":15},{"min":10,"rate":19},{"min":0,"rate":20}], unit: "tonnes" },
   "Clean Concrete/Brick": { type: "flat", rate: 0, unit: "tonnes" },
-  "Tree Stump Disposal": { type: "job", rate: 40, unit: "job" },
+  "Rubble Tip": { type: "flat", rate: 0, unit: "tonnes" },
+  "Rubble Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
+  "Tree Stump Disposal": { type: "job", rate: 40, unit: "each" },
   "6F2 Crushed Concrete": { type: 'tiered', under10: 11.5, over10: 10, unit: "tonnes" },
   "40mm Recycled MOT": { type: 'tiered', under10: 16, over10: 15, unit: "tonnes" },
   "Large Clean Crush": { type: 'tiered', under10: 19.5, over10: 17.5, unit: "tonnes" },
   "Road Plainings": { type: 'tiered', under10: 18, over10: 18, unit: "tonnes" },
   "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
-  "Type 3 MOT": { type: "flat", rate: 33, unit: "tonnes" },
-  "20mm Clean Washed": { type: 'tiered', under10: 26.5, over10: 23.5, unit: "tonnes" },
-  "10mm Clean Washed": { type: 'tiered', under10: 28.5, over10: 26.5, unit: "tonnes" },
+  "Recycled 20mm Clean Washed": { type: 'tiered', under10: 26.5, over10: 23.5, unit: "tonnes" },
+  "Recycled 10mm Clean Washed": { type: 'tiered', under10: 28.5, over10: 26.5, unit: "tonnes" },
   "40mm Quarried MOT": { type: 'tiered', under10: 29.5, over10: 27.5, unit: "tonnes" },
   "20mm Quarried MOT": { type: 'tiered', under10: 31.5, over10: 29.5, unit: "tonnes" },
   "40mm Scalpings Blue": { type: 'tiered', under10: 26, over10: 26, unit: "tonnes" },
-  "20mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
-  "6mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
-  "Grade 1 Topsoil": { type: 'tiered', under10: 22, over10: 20, unit: "tonnes" },
+  "Type 3 MOT": { type: "flat", rate: 33, unit: "tonnes" },
+  "Quarried 20mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Quarried 6mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Grade 1 Topsoil": { type: 'banded', bands: [{"min":15,"rate":15},{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
   "Blended Topsoil/Compost": { type: 'tiered', under10: 32, over10: 30, unit: "tonnes" },
   "Fill": { type: "flat", rate: 5, unit: "tonnes" },
   "Recycled Grit Sand": { type: 'tiered', under10: 31, over10: 29, unit: "tonnes" },
@@ -985,21 +1198,25 @@ const MATERIAL_PRICING = {
   "Golden Gravel": { type: 'tiered', under10: 76, over10: 76, unit: "tonnes" },
   "40mm Blue Slate": { type: 'tiered', under10: 77, over10: 68, unit: "tonnes" },
   "Cotswold Buff": { type: 'tiered', under10: 71, over10: 69, unit: "tonnes" },
+  "Cobbles": { type: "flat", rate: 75, unit: "tonnes" },
   "Post Mix/Post Crete": { type: "bag", rate: 5.75, unit: "bags" },
-  "Plastic Cement Bags": { type: "bag", rate: 7.5, unit: "bags" },
-  "Paper Cement Bags": { type: "bag", rate: 7, unit: "bags" },
+  "Plastic Cement Bags": { type: "bag", rate: 7.05, unit: "bags" },
+  "Paper Cement Bags": { type: "bag", rate: 6.65, unit: "bags" },
   "Cold Lay Tar Bags": { type: "bag", rate: 9.75, unit: "bags" },
   "Kiln Dried Sand": { type: "bag", rate: 5.36, unit: "bags" },
   "Tonne Bags (empty)": { type: "bag", rate: 4.5, unit: "bags" },
-  "Path Edges 150mm": { type: "job", rate: 4.5, unit: "job" },
-  "Bullnose Kerb": { type: "job", rate: 8.05, unit: "job" },
-  "Bullnose Kerb External Radius": { type: "job", rate: 12.45, unit: "job" },
-  "Steel Shovel": { type: "job", rate: 20.25, unit: "job" },
+  "Path Edges 150mm": { type: "job", rate: 4.5, unit: "each" },
+  "Bullnose Kerb": { type: "job", rate: 8.05, unit: "each" },
+  "Bullnose Kerb External Radius": { type: "job", rate: 12.45, unit: "each" },
+  "Steel Shovel": { type: "job", rate: 20.25, unit: "each" },
+  "Forst ST6 6 inch Chipper": { type: "day", rate: 125, unit: "days" },
+  "Forst ST6 6 inch Chipper (weekly)": { type: "week", rate: 500, unit: "weeks" },
   "Micro Digger": { type: "day", rate: 50, unit: "days" },
   "1.5t Digger": { type: "day", rate: 60, unit: "days" },
   "3t Digger": { type: "day", rate: 65, unit: "days" },
   "5t Digger": { type: "day", rate: 75, unit: "days" },
   "Telehandler": { type: "day", rate: 80, unit: "days" },
+  "Scissor Lift": { type: "day", rate: 60, unit: "days" },
   "1t High Tip Dumper": { type: "day", rate: 50, unit: "days" },
   "3t Dumper": { type: "day", rate: 60, unit: "days" },
   "800 Roller": { type: "day", rate: 50, unit: "days" },
@@ -1018,83 +1235,87 @@ const MATERIAL_PRICING = {
   "Truss Jib": { type: "day", rate: 65, unit: "days" },
   "Muck Barrow": { type: "day", rate: 50, unit: "days" },
   "110V Transformer": { type: "day", rate: 7, unit: "days" },
-  "Tip Skip": { type: "fixed", rate: 50, unit: "days" },
-  "Drainage pipe 6m": { type: "flat", rate: 40.3, unit: "job" },
-  "Drainage collar": { type: "flat", rate: 4.1, unit: "job" },
-  "Drainage s/s 15": { type: "flat", rate: 9.2, unit: "job" },
-  "Drainage s/s 30": { type: "flat", rate: 9.2, unit: "job" },
-  "Drainage s/s 45": { type: "flat", rate: 8.85, unit: "job" },
-  "Drainage d/s 15": { type: "flat", rate: 11.05, unit: "job" },
-  "Drainage d/s 30": { type: "flat", rate: 10.6, unit: "job" },
-  "Drainage d/s 45": { type: "flat", rate: 11.15, unit: "job" },
-  "Drainage d/s short 90": { type: "flat", rate: 11.1, unit: "job" },
-  "Drainage s/s rest bend": { type: "flat", rate: 14.5, unit: "job" },
-  "Drainage trap": { type: "flat", rate: 14.7, unit: "job" },
-  "Bottle gulley": { type: "flat", rate: 30.75, unit: "job" },
-  "Gulley squaring off kit": { type: "flat", rate: 6.3, unit: "job" },
-  "Slip collar": { type: "flat", rate: 5.2, unit: "job" },
-  "300 manhole base 3 inlet": { type: "flat", rate: 26.05, unit: "job" },
-  "300 manhole base 5 inlet": { type: "flat", rate: 42.5, unit: "job" },
-  "300 riser": { type: "flat", rate: 20.9, unit: "job" },
-  "300 lid": { type: "flat", rate: 47.2, unit: "job" },
-  "300 square lid": { type: "flat", rate: 43.8, unit: "job" },
-  "450 manhole base": { type: "flat", rate: 26.36, unit: "job" },
-  "450 riser": { type: "flat", rate: 31.4, unit: "job" },
-  "450 seal": { type: "flat", rate: 3.8, unit: "job" },
-  "450 lid": { type: "flat", rate: 50.85, unit: "job" },
-  "Recessed lid": { type: "flat", rate: 65, unit: "job" },
-  "4 inch clay to plastic band seal": { type: "flat", rate: 8, unit: "job" },
-  "6 inch clay to plastic band seal": { type: "flat", rate: 16, unit: "job" },
-  "80mm land drainage roll 100m": { type: "flat", rate: 104.82, unit: "job" },
-  "100mm land drainage roll 100m": { type: "flat", rate: 157.43, unit: "job" },
-  "Yard gulley": { type: "flat", rate: 34.75, unit: "job" },
-  "Yard gulley grate B125": { type: "flat", rate: 51.65, unit: "job" },
-  "Geotextile black": { type: "flat", rate: 125, unit: "job" },
-  "Non woven white": { type: "flat", rate: 195, unit: "job" },
-  "1200 gauge visqueen": { type: "flat", rate: 32, unit: "job" },
-  "500 gauge visqueen": { type: "flat", rate: 28, unit: "job" },
-  "8 edgings": { type: "flat", rate: 5.8, unit: "job" },
-  "6 edgings": { type: "flat", rate: 4.5, unit: "job" },
-  "6 inch bullnose kerb": { type: "flat", rate: 8.05, unit: "job" },
-  "ACO": { type: "flat", rate: 29.05, unit: "job" },
-  "A15 ACO": { type: "flat", rate: 12.5, unit: "job" },
-  "Duct tape": { type: "flat", rate: 5.2, unit: "job" },
-  "Gloves (per pair)": { type: "flat", rate: 2.2, unit: "job" },
-  "Goggles": { type: "flat", rate: 4.75, unit: "job" },
-  "225 ties": { type: "flat", rate: 3.8, unit: "job" },
-  "Linemarker": { type: "flat", rate: 3.8, unit: "job" },
-  "Warning tape": { type: "flat", rate: 12.5, unit: "job" },
-  "25mm pipe 100m": { type: "flat", rate: 98.8, unit: "job" },
-  "25mm pipe 50m": { type: "flat", rate: 49.4, unit: "job" },
-  "25mm pipe 25m": { type: "flat", rate: 24.7, unit: "job" },
-  "25mm straight connector": { type: "flat", rate: 5.27, unit: "job" },
-  "25mm insert": { type: "flat", rate: 0.48, unit: "job" },
-  "25mm end cap": { type: "flat", rate: 6.75, unit: "job" },
-  "Concrete": { type: "flat", rate: 0, unit: "job" },
-  "Road Plate": { type: "flat", rate: 0, unit: "job" },
+  "Tip Skip": { type: "fixed", rate: 50, unit: "weeks" },
+  "Drainage pipe 6m": { type: "flat", rate: 28.55, unit: "each" },
+  "Drainage collar": { type: "flat", rate: 4.1, unit: "each" },
+  "Drainage s/s 15": { type: "flat", rate: 9.2, unit: "each" },
+  "Drainage s/s 30": { type: "flat", rate: 9.2, unit: "each" },
+  "Drainage s/s 45": { type: "flat", rate: 8.85, unit: "each" },
+  "Drainage d/s 15": { type: "flat", rate: 11.05, unit: "each" },
+  "Drainage d/s 30": { type: "flat", rate: 10.6, unit: "each" },
+  "Drainage d/s 45": { type: "flat", rate: 11.15, unit: "each" },
+  "Drainage d/s short 90": { type: "flat", rate: 11.1, unit: "each" },
+  "Drainage s/s rest bend": { type: "flat", rate: 14.5, unit: "each" },
+  "Drainage trap": { type: "flat", rate: 14.7, unit: "each" },
+  "Bottle gulley": { type: "flat", rate: 30.75, unit: "each" },
+  "Gulley squaring off kit": { type: "flat", rate: 6.3, unit: "each" },
+  "Slip collar": { type: "flat", rate: 5.2, unit: "each" },
+  "300 manhole base 3 inlet": { type: "flat", rate: 26.05, unit: "each" },
+  "300 manhole base 5 inlet": { type: "flat", rate: 42.5, unit: "each" },
+  "300 riser": { type: "flat", rate: 20.9, unit: "each" },
+  "300 lid": { type: "flat", rate: 47.2, unit: "each" },
+  "300 square lid": { type: "flat", rate: 43.8, unit: "each" },
+  "450 manhole base": { type: "flat", rate: 26.36, unit: "each" },
+  "450 riser": { type: "flat", rate: 31.4, unit: "each" },
+  "450 seal": { type: "flat", rate: 3.8, unit: "each" },
+  "450 lid": { type: "flat", rate: 50.85, unit: "each" },
+  "Recessed lid": { type: "flat", rate: 65, unit: "each" },
+  "4 inch clay to plastic band seal": { type: "flat", rate: 8, unit: "each" },
+  "6 inch clay to plastic band seal": { type: "flat", rate: 16, unit: "each" },
+  "80mm land drainage roll 100m": { type: "flat", rate: 104.82, unit: "each" },
+  "100mm land drainage roll 100m": { type: "flat", rate: 157.43, unit: "each" },
+  "Yard gulley": { type: "flat", rate: 34.75, unit: "each" },
+  "Yard gulley grate B125": { type: "flat", rate: 51.65, unit: "each" },
+  "Geotextile black": { type: "flat", rate: 125, unit: "each" },
+  "Non woven white": { type: "flat", rate: 195, unit: "each" },
+  "1200 gauge visqueen": { type: "flat", rate: 32, unit: "each" },
+  "500 gauge visqueen": { type: "flat", rate: 28, unit: "each" },
+  "8 inch edgings": { type: "flat", rate: 5.8, unit: "each" },
+  "6 inch edgings": { type: "flat", rate: 4.5, unit: "each" },
+  "6 inch bullnose kerb": { type: "flat", rate: 8.05, unit: "each" },
+  "ACO": { type: "flat", rate: 29.05, unit: "each" },
+  "A15 ACO": { type: "flat", rate: 12.5, unit: "each" },
+  "Duct tape": { type: "flat", rate: 5.2, unit: "each" },
+  "Gloves (per pair)": { type: "flat", rate: 2.2, unit: "each" },
+  "Goggles": { type: "flat", rate: 4.75, unit: "each" },
+  "225 ties": { type: "flat", rate: 3.8, unit: "each" },
+  "Linemarker": { type: "flat", rate: 3.8, unit: "each" },
+  "Warning tape": { type: "flat", rate: 12.5, unit: "each" },
+  "25mm pipe 100m": { type: "flat", rate: 98.8, unit: "each" },
+  "25mm pipe 50m": { type: "flat", rate: 49.4, unit: "each" },
+  "25mm pipe 25m": { type: "flat", rate: 24.7, unit: "each" },
+  "25mm straight connector": { type: "flat", rate: 5.27, unit: "each" },
+  "25mm insert": { type: "flat", rate: 0.48, unit: "each" },
+  "25mm end cap": { type: "flat", rate: 6.75, unit: "each" },
+  "Concrete": { type: "flat", rate: 0, unit: "each" },
+  "Road Plate": { type: "flat", rate: 0, unit: "each" },
 };
 // END GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
 
 // BEGIN GENERATED PMG_YARD_PRICES:MATERIALS
 const MATERIALS = [
   {"group": "TIPPING","label": "Mixed Spoil Tip","value": "Mixed Spoil Tip"},
+  {"group": "TIPPING","label": "Grab Away","value": "Grab Away"},
+  {"group": "TIPPING","label": "Spoil Grab Away","value": "Spoil Grab Away"},
   {"group": "TIPPING","label": "Clay Tip","value": "Clay Tip"},
   {"group": "TIPPING","label": "Topsoil Tip","value": "Topsoil Tip"},
   {"group": "TIPPING","label": "Clean Concrete/Brick (Free)","value": "Clean Concrete/Brick"},
+  {"group": "TIPPING","label": "Rubble Tip (Free)","value": "Rubble Tip"},
+  {"group": "TIPPING","label": "Rubble Grab Away","value": "Rubble Grab Away"},
   {"group": "TIPPING","label": "Tree Stump Disposal","value": "Tree Stump Disposal"},
   {"group": "RECYCLED AGGREGATES","label": "6F2 Crushed Concrete","value": "6F2 Crushed Concrete"},
   {"group": "RECYCLED AGGREGATES","label": "40mm Recycled MOT","value": "40mm Recycled MOT"},
   {"group": "RECYCLED AGGREGATES","label": "Large Clean Crush","value": "Large Clean Crush"},
   {"group": "RECYCLED AGGREGATES","label": "Road Plainings","value": "Road Plainings"},
   {"group": "RECYCLED AGGREGATES","label": "20-5mm Concrete Agg","value": "20-5mm Concrete Agg"},
-  {"group": "RECYCLED AGGREGATES","label": "Type 3 MOT","value": "Type 3 MOT"},
-  {"group": "WASHED RECYCLED","label": "20mm Clean Washed","value": "20mm Clean Washed"},
-  {"group": "WASHED RECYCLED","label": "10mm Clean Washed","value": "10mm Clean Washed"},
+  {"group": "WASHED RECYCLED","label": "Recycled 20mm Clean Washed","value": "Recycled 20mm Clean Washed"},
+  {"group": "WASHED RECYCLED","label": "Recycled 10mm Clean Washed","value": "Recycled 10mm Clean Washed"},
   {"group": "QUARRIED AGGREGATES","label": "40mm Quarried MOT","value": "40mm Quarried MOT"},
   {"group": "QUARRIED AGGREGATES","label": "20mm Quarried MOT","value": "20mm Quarried MOT"},
   {"group": "QUARRIED AGGREGATES","label": "40mm Scalpings Blue","value": "40mm Scalpings Blue"},
-  {"group": "QUARRIED WASHED STONE","label": "20mm Clean Stone","value": "20mm Clean Stone"},
-  {"group": "QUARRIED WASHED STONE","label": "6mm Clean Stone","value": "6mm Clean Stone"},
+  {"group": "QUARRIED AGGREGATES","label": "Type 3 MOT","value": "Type 3 MOT"},
+  {"group": "QUARRIED WASHED STONE","label": "Quarried 20mm Clean Stone","value": "Quarried 20mm Clean Stone"},
+  {"group": "QUARRIED WASHED STONE","label": "Quarried 6mm Clean Stone","value": "Quarried 6mm Clean Stone"},
   {"group": "SOILS","label": "Grade 1 Topsoil","value": "Grade 1 Topsoil"},
   {"group": "SOILS","label": "Blended Topsoil/Compost","value": "Blended Topsoil/Compost"},
   {"group": "SOILS","label": "Fill (soil & stone mix)","value": "Fill"},
@@ -1112,6 +1333,7 @@ const MATERIALS = [
   {"group": "DECORATIVE","label": "Golden Gravel","value": "Golden Gravel"},
   {"group": "DECORATIVE","label": "40mm Blue Slate","value": "40mm Blue Slate"},
   {"group": "DECORATIVE","label": "Cotswold Buff","value": "Cotswold Buff"},
+  {"group": "DECORATIVE","label": "Cobbles","value": "Cobbles"},
   {"group": "BAGS & SMALL ITEMS","label": "Post Mix/Post Crete","value": "Post Mix/Post Crete"},
   {"group": "BAGS & SMALL ITEMS","label": "Plastic Cement Bags","value": "Plastic Cement Bags"},
   {"group": "BAGS & SMALL ITEMS","label": "Paper Cement Bags","value": "Paper Cement Bags"},
@@ -1122,11 +1344,14 @@ const MATERIALS = [
   {"group": "BAGS & SMALL ITEMS","label": "Bullnose Kerb","value": "Bullnose Kerb"},
   {"group": "BAGS & SMALL ITEMS","label": "Bullnose Kerb External Radius","value": "Bullnose Kerb External Radius"},
   {"group": "BAGS & SMALL ITEMS","label": "Steel Shovel","value": "Steel Shovel"},
+  {"group": "PLANT HIRE (per day)","label": "Forst ST6 6 inch Chipper","value": "Forst ST6 6 inch Chipper"},
+  {"group": "PLANT HIRE (per day)","label": "Forst ST6 6 inch Chipper (weekly)","value": "Forst ST6 6 inch Chipper (weekly)"},
   {"group": "PLANT HIRE (per day)","label": "Micro Digger","value": "Micro Digger"},
   {"group": "PLANT HIRE (per day)","label": "1.5t Digger","value": "1.5t Digger"},
   {"group": "PLANT HIRE (per day)","label": "3t Digger","value": "3t Digger"},
   {"group": "PLANT HIRE (per day)","label": "5t Digger","value": "5t Digger"},
   {"group": "PLANT HIRE (per day)","label": "Telehandler","value": "Telehandler"},
+  {"group": "PLANT HIRE (per day)","label": "Scissor Lift","value": "Scissor Lift"},
   {"group": "PLANT HIRE (per day)","label": "1t High Tip Dumper","value": "1t High Tip Dumper"},
   {"group": "PLANT HIRE (per day)","label": "3t Dumper","value": "3t Dumper"},
   {"group": "PLANT HIRE (per day)","label": "800 Roller","value": "800 Roller"},
@@ -1180,8 +1405,8 @@ const MATERIALS = [
   {"group": "MEMBRANES","label": "Non woven white","value": "Non woven white"},
   {"group": "MEMBRANES","label": "1200 gauge visqueen","value": "1200 gauge visqueen"},
   {"group": "MEMBRANES","label": "500 gauge visqueen","value": "500 gauge visqueen"},
-  {"group": "HARD LANDSCAPING","label": "8 edgings","value": "8 edgings"},
-  {"group": "HARD LANDSCAPING","label": "6 edgings","value": "6 edgings"},
+  {"group": "HARD LANDSCAPING","label": "8 inch edgings","value": "8 inch edgings"},
+  {"group": "HARD LANDSCAPING","label": "6 inch edgings","value": "6 inch edgings"},
   {"group": "HARD LANDSCAPING","label": "6 inch bullnose kerb","value": "6 inch bullnose kerb"},
   {"group": "HARD LANDSCAPING","label": "B125 ACO channel","value": "ACO"},
   {"group": "HARD LANDSCAPING","label": "A15 ACO channel","value": "A15 ACO"},
@@ -1203,6 +1428,67 @@ const MATERIALS = [
 ];
 // END GENERATED PMG_YARD_PRICES:MATERIALS
 
+const WTN_DEFAULTS = {
+  permitNumber: 'WE3696AA',
+  sicCode: '43120',
+  sicDescription: 'Site preparation',
+  receiverName: 'P.M. Groundworks Limited',
+  receiverAddress: 'Highview, Sower Carr Lane, Hambleton, Poulton-le-Fylde, FY6 9DJ',
+  wasteHierarchyDeclaration: 'Waste hierarchy has been applied before this transfer.',
+  containment: 'Loose bulk load in tipper/grab wagon',
+};
+
+const DRIVER_WASTE_MATERIAL_INFO = {
+  'mixed spoil tip': {
+    direction: 'IN', ewcCode: '17 05 04', recoveryCode: 'R05',
+    description: 'Soil and stones other than those mentioned in 17 05 03',
+  },
+  'spoil grab away': {
+    direction: 'IN', ewcCode: '17 05 04', recoveryCode: 'R05',
+    description: 'Soil and stones other than those mentioned in 17 05 03',
+  },
+  'topsoil tip': {
+    direction: 'IN', ewcCode: '17 05 04', recoveryCode: 'R05',
+    description: 'Soil and stones other than those mentioned in 17 05 03',
+  },
+  'clay tip': {
+    direction: 'IN', ewcCode: '17 05 04', recoveryCode: 'R05',
+    description: 'Soil and stones other than those mentioned in 17 05 03',
+  },
+  'clean concrete/brick': {
+    direction: 'IN', ewcCode: '17 01 07', recoveryCode: 'R05',
+    description: 'Mixtures of concrete, bricks, tiles and ceramics other than those mentioned in 17 01 06',
+  },
+  'rubble tip': {
+    direction: 'IN', ewcCode: '17 01 07', recoveryCode: 'R05',
+    description: 'Mixtures of concrete, bricks, tiles and ceramics other than those mentioned in 17 01 06',
+  },
+  'rubble grab away': {
+    direction: 'IN', ewcCode: '17 01 07', recoveryCode: 'R05',
+    description: 'Mixtures of concrete, bricks, tiles and ceramics other than those mentioned in 17 01 06',
+  },
+  '6f2 crushed concrete': {
+    direction: 'OUT', ewcCode: '19 12 09', recoveryCode: 'R05',
+    description: 'Minerals such as sand and stones',
+  },
+  '40mm recycled mot': {
+    direction: 'OUT', ewcCode: '19 12 09', recoveryCode: 'R05',
+    description: 'Minerals such as sand and stones',
+  },
+  'large clean crush': {
+    direction: 'OUT', ewcCode: '19 12 09', recoveryCode: 'R05',
+    description: 'Minerals such as sand and stones',
+  },
+  '20-5mm concrete agg': {
+    direction: 'OUT', ewcCode: '19 12 09', recoveryCode: 'R05',
+    description: 'Minerals such as sand and stones',
+  },
+  'grade 1 topsoil': {
+    direction: 'OUT', ewcCode: '17 05 04', recoveryCode: 'R05',
+    description: 'Soil and stones other than those mentioned in 17 05 03',
+  },
+};
+
 const INCAB_USERS = {
   john:    { pin: '1234', driverId: 'f5c31070-2945-408a-bc7a-0245159a191a', name: 'John Bowman' },
   richard: { pin: '1409', driverId: '201938f2-da93-4987-bd42-32342fcce78f', name: 'Richard Whittaker' },
@@ -1218,21 +1504,17 @@ const VEHICLES = {
   '695b915e-d817-476c-b3e1-a1768233edd9': 'PN25FLF',
   '31aa7aef-e40a-4095-b796-e8ed80639aa8': 'PN25AMU',
   '112689c0-e2f4-4e32-9bfb-8e4fa24bb422': 'LL21HJJ',
+  'ac4f1d74-3b3e-472f-b500-47d7620c9c11': 'DX12RFN',
+  '8fe4fd9e-a8bd-4e80-9257-68a39942e879': 'YX02DVT',
 };
+const VEHICLE_IDS_BY_REG = Object.fromEntries(Object.entries(VEHICLES).map(([id, reg]) => [reg, id]));
 
-const DRIVER_VEHICLE_OPTIONS = [
-  'YX02DVT',
-  'DX12RFN',
-  'YJ13GRS',
-  'PN25AMU',
-  'BT66ZJU',
-  'LL21HJJ',
-  'PN25FLF',
-  'EY15BOV',
-];
+const DRIVER_VEHICLE_OPTIONS = Object.values(VEHICLES);
 
 const DRIVER_IDS = {};
 for (const [k, v] of Object.entries(INCAB_USERS)) DRIVER_IDS[v.driverId] = v.name;
+
+const VOLUMETRIC_CONCRETE_VEHICLES = new Set(['LL21HJJ', 'PN25FLF']);
 
 const POD_CODES = {
   success: '933d89d0-aaf6-45c4-a34a-7e33efcb7d36',
@@ -1248,6 +1530,47 @@ const COMMON_PLACES = [
   'Levens View, Ulverston'
 ];
 
+const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
+const APP_BUILD_ID = '20260702-carter-washed-labels-v65';
+const APP_VERSION_URL = '/app-version.json';
+const APP_UPDATE_CHECK_MS = 60 * 1000;
+const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
+const JOB_REFRESH_MS = 3 * 60 * 1000;
+const JOB_REFRESH_LABEL = '3 minutes';
+const TORQUE_REFRESH_MS = 5 * 60 * 1000;
+const DEFAULT_WHEEL_TORQUE_NM = 625;
+const DRIVER_ADDED_LIVE_REASON = 'Driver-added row written to Haultech; PMG local copy kept as backup';
+const DRIVER_ADDED_BACKUP_REASON = 'Driver-added row saved locally; Haultech backup uploader will retry';
+const WALKAROUND_TEST_OVERRIDE = new URLSearchParams(window.location.search).get('walkaround') === '1';
+const TRAILER_OPTIONS = [
+  { value: '', label: 'No trailer' },
+  { value: 'C525446', label: 'C525446 - Nooteboom low loader' },
+  { value: 'C552979', label: 'C552979 - Kassbohrer trailer' },
+];
+const WALKAROUND_PHOTO_SLOTS = [
+  { id: 'front_left', label: 'Front left' },
+  { id: 'rear_left', label: 'Rear left' },
+  { id: 'rear_right', label: 'Rear right' },
+  { id: 'front_right', label: 'Front right' },
+  { id: 'trailer_coupling', label: 'Trailer / coupling', trailerOnly: true },
+];
+const WALKAROUND_CHECKS = [
+  { id: 'leaks', label: 'Fuel, oil and fluid leaks' },
+  { id: 'battery', label: 'Battery security' },
+  { id: 'tyres', label: 'Wheels, tyres and fixings' },
+  { id: 'body', label: 'Bodywork, wings and spray suppression' },
+  { id: 'plates', label: 'Registration plates' },
+  { id: 'steering', label: 'Steering' },
+  { id: 'brakes', label: 'Brakes including ABS / EBS' },
+  { id: 'air', label: 'Air build up and leaks' },
+  { id: 'lights', label: 'Lights, indicators and reflectors' },
+  { id: 'mirrors', label: 'Mirrors, glass, wipers and horn' },
+  { id: 'cab', label: 'Seat belts, cab and tachograph rolls' },
+  { id: 'load', label: 'Load secure / height checked' },
+  { id: 'coupling', label: 'Trailer coupling and electrical lines', conditional: true },
+  { id: 'fit', label: 'Are you fit to drive?' },
+];
+
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1260,6 +1583,20 @@ let trialMode = false;
 let selectedProblemReason = '';
 let selectedFeedbackTags = [];
 let dayReviewOpen = false;
+let suppressAutoFinishForDay = false;
+let walkaroundState = null;
+let walkaroundSigCtx = null;
+let walkaroundSigDrawing = false;
+let walkaroundSigHasData = false;
+let walkaroundActivationTimer = null;
+let torqueCheckState = {
+  vehicle: '',
+  loading: false,
+  error: '',
+  tasks: [],
+  checkedAt: '',
+  loadedAt: 0,
+};
 
 function driverVehicleStorageKey() {
   return currentUser ? `pmg_driver_vehicle_${currentUser.driverId || currentUser.name}` : 'pmg_driver_vehicle';
@@ -1279,31 +1616,58 @@ function setSelectedDriverVehicle(vehicle) {
   } catch {}
 }
 
+function driverTrailerStorageKey() {
+  return currentUser ? `pmg_driver_trailer_${currentUser.driverId || currentUser.name}` : 'pmg_driver_trailer';
+}
+
+function getSelectedDriverTrailer() {
+  try {
+    return localStorage.getItem(driverTrailerStorageKey()) || '';
+  } catch {
+    return '';
+  }
+}
+
+function setSelectedDriverTrailer(trailer) {
+  try {
+    localStorage.setItem(driverTrailerStorageKey(), trailer || '');
+  } catch {}
+}
+
 function vehicleOptionsHTML(selected = '') {
   return `<option value="">Select truck / wagon</option>` + DRIVER_VEHICLE_OPTIONS
     .map(v => `<option value="${esc(v)}"${v === selected ? ' selected' : ''}>${esc(v)}</option>`)
     .join('');
 }
 
+function trailerOptionsHTML(selected = '') {
+  return TRAILER_OPTIONS
+    .map(t => `<option value="${esc(t.value)}"${t.value === selected ? ' selected' : ''}>${esc(t.label)}</option>`)
+    .join('');
+}
+
 // Static customer map built from known Haultech customer IDs
 const CUSTOMER_MAP = {
   "000965e0-c271-47cb-a600-b59d78673aac": "A & P Hodgkinson",
-  "1ea642ea-a21d-4251-8a16-aff629ca1b50": "A. Parkinson Groundworks",
+  "11822d06-6a3f-4d2a-95c2-6b7149cddfc7": "A Jenkinson",
   "e6bfbfd8-7815-463e-9898-68733663b42d": "A.C Cornthwaite",
   "abda59fe-70cb-4311-b5de-22f2a58d3002": "A.D Developments",
   "f29b3b6a-4f3b-4c1a-812c-8ab08869d671": "A.G Precision engineering",
   "05d38858-8dd4-4355-9c44-0e792ad308a6": "A.P and L.A Worledge",
   "2dfea998-fbf3-4500-8023-f168a85f15c7": "A1",
+  "5faf22a5-3e36-42b8-8382-8934937995f8": "Acorn Driveways",
   "bc21814e-e933-415a-b0c0-d4539674dffc": "Adrian Lewis Builders",
   "15f4cf37-08c7-4adf-a115-4ce84e84a9c5": "Affordable Windows",
   "353bcd9d-0e98-4249-9c2c-9a9d15d10570": "Alex Degnen",
   "e0a3556b-9471-4e00-83a4-9dc8cb1dc630": "Ameon",
   "37091c3c-5dfd-4010-b873-4a8699e0b908": "Anderson & Sons. Contracting",
-  "e7e107bf-3f3a-4596-83a6-caf3ea9995ac": "Andrei",
   "598c75a1-4f69-436b-bf85-942f9c66928c": "Andrew Scott",
   "e76120de-2d25-466e-9139-12f7435b90d4": "Andrews Bowen",
   "4aab08a0-f009-45af-a4d4-dc2da534b0af": "ANDREWS BOWENS",
+  "843a4757-786b-4d67-bc3c-c3b1e563c2fa": "Andrews Paving and Landscaping Limited",
+  "9b4e4a9f-2390-4ab2-afe8-36abd88f6a6f": "AP Agri Services Ltd",
   "0f347fd7-38e0-4872-a678-78b9ecf3ff34": "Archway",
+  "b5593914-be1e-4b8c-b92b-40a4eadca099": "Ardex Engineering",
   "6535e4c1-333d-427f-853f-457626db08d6": "Armer Landscapes and Groundworks",
   "a490004c-8e57-4888-965e-7e3b1e6d2c01": "Arnfield Developments",
   "f490a636-2b42-4767-9907-6af71fc64378": "ASHPHALT PAVING SERVICES LTD",
@@ -1337,6 +1701,7 @@ const CUSTOMER_MAP = {
   "3ba40e89-5ee0-4625-baae-c5c9d1c164e7": "G.M Groundworks Ltd",
   "fd681bd1-94f7-4f9f-8afc-0f3eaf740a6e": "G.S.T building",
   "6bb52a69-9a61-4e98-8282-02bbdbf09bdc": "Garry Claxton",
+  "529827d7-2caf-414e-8ced-101832aafdd7": "Garstang Ground Services Ltd",
   "5070edf0-9cac-4972-be98-323da364be35": "GL Huck and Son",
   "1330690e-faad-426c-a1b7-4cce53b74296": "Glasdon UK",
   "30ab86d6-6309-4aa1-886d-4a123a9d4ca3": "Grange Farm Caravan Park",
@@ -1353,9 +1718,12 @@ const CUSTOMER_MAP = {
   "5d29a8a2-f4f8-4545-a429-05a23fd20c31": "Huck Properties Ltd",
   "3bbce3fd-6d7a-4e5a-9ca5-4845e6b4aca9": "Hy Fly",
   "39ba827d-b6da-4903-94c8-fdec4b76cced": "Ian Carter",
+  "20031a23-7636-4749-896f-9347c2be726e": "IAN JENKINSON",
+  "6c27941d-6388-4a3e-a1b5-e2bd1c7715a6": "Ian Rainford",
   "1956079c-6d5b-44d4-8c82-6884ad89672b": "IPH Bulk Haulage Limited",
   "43d9eba1-f572-4fe8-81fe-bc1d0467d30b": "J F J C Hewitt and Family",
   "9ae9573c-8f6d-4252-9309-c723bad6c745": "J JONES & CO BUILDING CONTRACTING LTD",
+  "8e7f0a08-ad3c-4c3a-a5e7-c22a163667d1": "J R PYE ENGINEERING",
   "2cbbb83b-ab82-40b4-89cb-04125d69b4a7": "J. Adamson Outdoor Spaces",
   "2e2e6f93-8446-4e52-938b-5a6f85ecb275": "J.R Singleton",
   "995d9ff1-ec0e-4c5c-93fa-4ab970f006a2": "James Wiseman",
@@ -1363,7 +1731,9 @@ const CUSTOMER_MAP = {
   "b8bcf111-6be9-4821-9f3a-041e9678b6db": "JC Groundworks Limited",
   "ca615615-f931-435b-a5c4-553ef6414a1c": "Jeffries Contractors",
   "ef872f6c-9d5b-4ed9-bbcc-448f60619818": "John Fausset",
+  "fd894a5d-408b-49ea-841b-dc8d0521d6ae": "JONATHAN CLUCAS",
   "fc4c9346-7f3f-458a-bc4b-4d86fc920634": "Jos Jeffries Paving Design",
+  "d8d7e2fe-8996-4342-a838-0a69eda2da9e": "KEVIN SWARBRICK",
   "1f93853b-2e2f-436d-bf6d-7119b719eeef": "KSG Groundworks and Landscapes",
   "f266fdac-3c22-4579-8cb5-6f48b8a7bfd2": "Lancashire Building and Brickwork",
   "37faa1d5-d282-436e-84be-56ad72643885": "Lawson",
@@ -1378,6 +1748,7 @@ const CUSTOMER_MAP = {
   "429d9f20-6360-48ed-bf75-c28fa3d9d071": "Meanley Estate",
   "93cd2173-5ff2-4684-b23e-6ac7fe60e3e8": "Mick Skelly",
   "8032bf7a-c615-422d-8079-15bf53e953df": "MJ Teale",
+  "6ec04a30-f478-4191-a69f-e8acb449490e": "MJ WILKINSON PLANT HIRE",
   "b2612f48-6d18-4e7c-a781-555bab4f9081": "MJS Groundworks",
   "407a870c-7b7e-4a3f-a1df-2c878101f8d4": "Moore readymix",
   "7b452c92-45da-4f09-bdd0-14ad00c5d629": "Mr A Makinson",
@@ -1386,6 +1757,7 @@ const CUSTOMER_MAP = {
   "1c66d0d0-9e7d-4e57-938a-8e11f808866e": "NJ Powell Groundworks Ltd",
   "f3504eff-30f2-48f8-a10b-87ffc9923cea": "P. Baker Groundworks",
   "c939427a-892a-41ab-8717-812cb347f824": "Park Farm",
+  "548a0f39-7d75-4c47-8cac-1c28e9b1b1d8": "Paul Kendall",
   "749487fe-a864-451b-8f47-2ea660c4ca9d": "Pete Nicholson",
   "3dc00288-8c4e-4abb-8f8e-784f266a0362": "Pipescan Ltd",
   "e5a6600a-36ee-4f82-a737-bdcdc319d0a1": "Plan It Developments",
@@ -1412,6 +1784,7 @@ const CUSTOMER_MAP = {
   "c40c8be1-76c4-4547-b09d-5c3554f71f8b": "SJM Builders",
   "7857e9ac-01d0-4174-ad60-e8d1428efe89": "SR MOORE",
   "8b28ba5d-ad9e-4055-b9c3-cdc17ceb4b47": "Stephen Rogerson Fencing",
+  "ea18b5b3-1085-4dca-b1d7-c656e6a76cb2": "STEVE WRIGHT",
   "c25d81bc-001f-4f09-91cc-dace9b54c609": "STONE UK LTD",
   "c8a9efc2-bb9f-4002-885e-4ac81eea2273": "Swarbrick Builders",
   "4d452d95-c197-47f8-877e-a914a1801fec": "Swift Surfacing",
@@ -1424,18 +1797,22 @@ const CUSTOMER_MAP = {
   "a3673f8e-05af-4360-8dde-9243cd877f1d": "TOTAL BUILDING NORTH WEST LTD",
   "d443fd17-98a7-4e6b-b4cc-81f6ffb51e1e": "Tudor Farm and Equine",
   "e9d61d6f-a64e-4eaa-ad4e-0c5858b1ecde": "Vehicle inspection pits uk Ltd",
+  "c706d366-36cf-4c3a-b44f-ca8fce38393a": "W.J Sanderson",
   "0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915": "W.Robinson",
   "bb2da142-5507-4e4d-a228-87a72a875db5": "White Feather Homes",
+  "720dae43-f35f-446b-99f6-da9e2c5ff9e9": "Whitesides Ltd",
   "5ddeef1b-0ccd-4354-a810-9f95e96e45c7": "WJ Davidson",
+  "da59556d-6614-4a94-8428-88781dc69123": "Woolfen Hall Farm",
   "650fea1c-aa1d-47f5-891e-77300886eef4": "Wyre Building Supplies Limited",
   "b6edf99f-aeb1-46f7-8560-1623b8f4036f": "Wyre Drives",
   "20162a01-94ad-433a-b566-8bf0000cf047": "Wyre Landscapes",
 };
 let refreshTimer = null;
-let currentScreen = 'login'; // login | jobs | detail | sign
+let currentScreen = 'login'; // login | jobs | walkaround | detail | sign
 let activeJob = null; // job being viewed/signed
 let signPhotoFile = null;
 let pendingServiceWorkerReload = false;
+let pendingAppVersionReload = false;
 
 const $ = id => document.getElementById(id);
 
@@ -1450,6 +1827,49 @@ function todayISO() {
   return local.toISOString().split('T')[0];
 }
 
+function isoDateOnly(value) {
+  const match = String(value || '').match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : '';
+}
+
+function getHaultechJobDate(job) {
+  return isoDateOnly(job?.deliveryDate)
+    || isoDateOnly(job?.collectionDate)
+    || isoDateOnly(job?.date)
+    || todayISO();
+}
+
+function adjacentIsoDate(date, offsetDays) {
+  const base = isoDateOnly(date);
+  if (!base) return '';
+  const dt = new Date(base + 'T12:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() + offsetDays);
+  return dt.toISOString().slice(0, 10);
+}
+
+function driverNoteLookupDates(job) {
+  const jobDate = getHaultechJobDate(job);
+  return Array.from(new Set([
+    jobDate,
+    todayISO(),
+    adjacentIsoDate(jobDate, -1),
+    adjacentIsoDate(jobDate, 1),
+  ].filter(Boolean)));
+}
+
+function composeDriverHaultechNote({ note = '', consignee = '', weight = '', reason = '' } = {}) {
+  const parts = [];
+  const cleanReason = String(reason || '').trim();
+  const cleanNote = String(note || '').trim();
+  const cleanConsignee = String(consignee || '').trim();
+  const numericWeight = parseFloat(weight);
+  if (cleanReason) parts.push(cleanReason);
+  if (cleanNote) parts.push(cleanNote);
+  if (cleanConsignee) parts.push(`Signed by ${cleanConsignee}`);
+  if (Number.isFinite(numericWeight) && numericWeight > 0) parts.push(`${numericWeight}`);
+  return parts.join(' | ');
+}
+
 function formatDate(iso) {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1459,6 +1879,8 @@ function api(path, opts = {}) {
   const method = String(opts.method || 'GET').toUpperCase();
   const unsafeLiveWrite =
     path.startsWith('/ht/complete') ||
+    path.startsWith('/ht/note') ||
+    path.startsWith('/ht/driver-add') ||
     path.startsWith('/ht/upsert') ||
     path.startsWith('/ht/mpod') ||
     (path.startsWith('/ht/job') && method !== 'GET');
@@ -1471,6 +1893,13 @@ function api(path, opts = {}) {
   });
 }
 
+function fleetApi(path, opts = {}) {
+  return fetch(FLEET_LIVE_URL + path, {
+    ...opts,
+    headers: { 'X-PMG-Role': 'gary', ...(opts.headers || {}) },
+  });
+}
+
 function toast(msg) {
   const el = $('toast');
   el.textContent = msg;
@@ -1480,6 +1909,121 @@ function toast(msg) {
 
 function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function normalizeEwcCode(code) {
+  const compact = String(code || '').replace(/\s+/g, '').trim();
+  if (/^\d{6}$/.test(compact)) return `${compact.slice(0, 2)} ${compact.slice(2, 4)} ${compact.slice(4, 6)}`;
+  return String(code || '').trim();
+}
+
+function wasteInfoForMaterial(material) {
+  const text = String(material || '').toLowerCase();
+  if (!text) return null;
+  const exact = DRIVER_WASTE_MATERIAL_INFO[text];
+  if (exact) return exact;
+  for (const [key, info] of Object.entries(DRIVER_WASTE_MATERIAL_INFO)) {
+    if (text.includes(key)) return info;
+  }
+  return null;
+}
+
+function storedWasteTransferNote(job) {
+  return job?._wtn || job?.wtn || job?.wasteTransferNote || job?.waste_transfer_note || null;
+}
+
+function buildWasteTransferNote(fields = {}) {
+  const info = wasteInfoForMaterial(fields.material);
+  const direction = fields.direction || info?.direction || '';
+  const outgoing = direction === 'OUT';
+  const ewcCode = normalizeEwcCode(fields.ewcCode || info?.ewcCode || '');
+  const wasteSelected = !!(fields.wasteTransfer || ewcCode || info);
+  if (!wasteSelected) return null;
+
+  return {
+    wasteMovement: true,
+    direction,
+    material: fields.material || '',
+    description: info?.description || fields.material || '',
+    ewcCode,
+    recoveryCode: fields.recoveryCode || info?.recoveryCode || '',
+    quantity: fields.quantity || '',
+    unit: fields.unit || 't',
+    containment: fields.containment || WTN_DEFAULTS.containment,
+    sicCode: fields.sicCode || WTN_DEFAULTS.sicCode,
+    sicDescription: WTN_DEFAULTS.sicDescription,
+    wasteHierarchyApplied: fields.wasteHierarchyApplied !== false,
+    wasteHierarchyDeclaration: WTN_DEFAULTS.wasteHierarchyDeclaration,
+    transferorName: fields.transferorName || (outgoing ? WTN_DEFAULTS.receiverName : fields.customer) || '',
+    transferorAddress: fields.transferorAddress || (outgoing ? WTN_DEFAULTS.receiverAddress : fields.from) || '',
+    transfereeName: fields.transfereeName || (outgoing ? fields.customer : WTN_DEFAULTS.receiverName) || '',
+    transfereeAddress: fields.transfereeAddress || (outgoing ? fields.to : WTN_DEFAULTS.receiverAddress) || '',
+    permitNumber: WTN_DEFAULTS.permitNumber,
+    reference: fields.reference || '',
+    movements: [{
+      direction,
+      transferorName: fields.transferorName || (outgoing ? WTN_DEFAULTS.receiverName : fields.customer) || '',
+      transferorAddress: fields.transferorAddress || (outgoing ? WTN_DEFAULTS.receiverAddress : fields.from) || '',
+      transfereeName: fields.transfereeName || (outgoing ? fields.customer : WTN_DEFAULTS.receiverName) || '',
+      transfereeAddress: fields.transfereeAddress || (outgoing ? fields.to : WTN_DEFAULTS.receiverAddress) || '',
+    }],
+  };
+}
+
+function getJobWasteTransferNote(job) {
+  const stored = storedWasteTransferNote(job);
+  if (stored && (stored.wasteMovement || stored.ewcCode || stored.ewc_code)) {
+    return {
+      ...stored,
+      ewcCode: normalizeEwcCode(stored.ewcCode || stored.ewc_code || ''),
+      sicCode: stored.sicCode || stored.sic_code || WTN_DEFAULTS.sicCode,
+      containment: stored.containment || WTN_DEFAULTS.containment,
+      wasteHierarchyApplied: stored.wasteHierarchyApplied !== false,
+    };
+  }
+
+  const material = getJobMaterial(job);
+  const info = wasteInfoForMaterial(material);
+  if (!info) return null;
+
+  return buildWasteTransferNote({
+    material,
+    quantity: getJobWeight(job),
+    unit: job?.unit || job?._unit || 't',
+    from: getJobFrom(job),
+    to: getJobTo(job),
+    customer: getJobCustomer(job),
+    reference: getJobRef(job),
+    direction: info.direction,
+    ewcCode: info.ewcCode,
+    recoveryCode: info.recoveryCode,
+    containment: job?.containment || job?._containment || WTN_DEFAULTS.containment,
+    sicCode: job?.sicCode || job?._sicCode || WTN_DEFAULTS.sicCode,
+  });
+}
+
+function wasteTransferNoteSummary(wtn) {
+  if (!wtn) return '';
+  const parts = [
+    wtn.ewcCode ? `EWC ${wtn.ewcCode}` : '',
+    wtn.recoveryCode ? wtn.recoveryCode : '',
+    wtn.containment ? `contained: ${wtn.containment}` : '',
+    wtn.sicCode ? `SIC ${wtn.sicCode}` : '',
+    wtn.wasteHierarchyApplied === false ? '' : 'waste hierarchy applied',
+  ].filter(Boolean);
+  return parts.join('; ');
+}
+
+function renderWasteTransferPanel(job) {
+  const wtn = getJobWasteTransferNote(job);
+  if (!wtn) return '';
+  return `
+    <div class="proof-checklist">
+      <div class="proof-check"><span>EWC / LoW</span><span>${esc(wtn.ewcCode || 'Check code')}</span></div>
+      <div class="proof-check"><span>How contained</span><span>${esc(wtn.containment || WTN_DEFAULTS.containment)}</span></div>
+      <div class="proof-check"><span>SIC</span><span>${esc(wtn.sicCode || WTN_DEFAULTS.sicCode)}</span></div>
+      <div class="proof-check"><span>Hierarchy</span><span>${wtn.wasteHierarchyApplied === false ? 'Not recorded' : 'Applied'}</span></div>
+    </div>`;
 }
 
 function initials(name) {
@@ -1501,6 +2045,10 @@ function statusBadge(status) {
   return `<span class="badge badge-scheduled"><span class="badge-dot"></span>SCHEDULED</span>`;
 }
 
+function isTerminalJobStatus(status) {
+  return ['complete', 'cancelled', 'not-done', 'carry-forward', 'problem', 'needs-office-review'].includes(status);
+}
+
 function showError(msg) {
   const el = $('error-bar');
   if (msg) { el.textContent = '⚠️ ' + msg; el.classList.remove('hidden'); }
@@ -1512,9 +2060,14 @@ function showError(msg) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function jobToLocal(j) {
+  const wtn = getJobWasteTransferNote(j);
+  const addedBy = getJobAddedBy(j);
+  const driver = getJobDriver(j) || addedBy;
   return {
     id: j.id || j.jobId,
-    driver: getJobDriver(j),
+    driver,
+    addedBy,
+    createdBy: addedBy,
     vehicle: getJobVehicle(j),
     customer: getJobCustomer(j),
     material: getJobMaterial(j),
@@ -1523,11 +2076,19 @@ function jobToLocal(j) {
     quantity: getJobWeight(j),
     price: getJobPrice(j),
     status: getJobStatus(j),
+    reference: getJobRef(j),
+    notes: getJobNotes(j),
     savedAt: j.savedAt || new Date().toISOString(),
     ticketNo: j.ticketNo || j.jobNumber || j.id || j.jobId || '',
     routeOrder: getJobRouteOrder(j),
     loadNumber: getJobLoadNumber(j),
-    _driverAdded: !!(j._driverAdded || (j.id && String(j.id).startsWith('driver-'))),
+    wtn,
+    wasteTransferNote: wtn,
+    ewcCode: wtn?.ewcCode || '',
+    sicCode: wtn?.sicCode || '',
+    containment: wtn?.containment || '',
+    wasteHierarchyApplied: wtn ? wtn.wasteHierarchyApplied !== false : false,
+    _driverAdded: isDriverAddedJob(j),
   };
 }
 
@@ -1543,12 +2104,16 @@ function localGetJobs(date) {
 }
 
 async function cloudPutJobs(date, jobs) {
-  const resp = await fetch(WORKER_URL + '/haultech-jobs/' + date, {
+  const resp = await fetch(WORKER_URL + '/jobs/' + date, {
     method: 'PUT',
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(jobs),
   });
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
+}
+
+function driverReviewBackupJobs(jobs) {
+  return jobs.filter(j => j && (j._driverAdded || j.driverAdded || String(j.id || '').startsWith('driver-')));
 }
 
 function getRetryQueue() {
@@ -1588,6 +2153,10 @@ function setDayFinished(payload, date = todayISO()) {
   writeJSON(dayFinishedKey(date), payload);
 }
 
+function clearDayFinished(date = todayISO()) {
+  try { localStorage.removeItem(dayFinishedKey(date)); } catch {}
+}
+
 function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
   catch { return fallback; }
@@ -1611,7 +2180,7 @@ function markDriverFailedWritebacksSavedLocally() {
   const queue = getWritebackQueue();
   let changed = false;
   const updated = queue.map(item => {
-    if (item && item.driver === driver && (item.state === 'failed' || item.state === 'needs office review')) {
+    if (item && item.driver === driver && item.state === 'needs office review') {
       changed = true;
       return {
         ...item,
@@ -1766,43 +2335,178 @@ async function flushRetryQueue() {
   updateSyncUI();
 }
 
+function needsWritebackAttention(item) {
+  return item && (item.state === 'pending Haultech' || item.state === 'failed');
+}
+
 function updateSyncUI() {
   markDriverFailedWritebacksSavedLocally();
   const backupPending = pruneRetryQueue().length > 0;
-  const writebackPending = getWritebackQueue().some(item => item.state === 'pending Haultech');
-  const pending = writebackPending;
+  const queue = getWritebackQueue();
+  const writebackPending = queue.some(item => item.state === 'pending Haultech');
+  const writebackFailed = queue.some(item => item.state === 'failed');
+  const pending = queue.some(needsWritebackAttention);
   const banner = $('sync-banner');
   if (pending) {
     banner.classList.remove('hidden');
     document.body.classList.add('has-sync-banner');
     const label = banner.querySelector('span');
     if (label) {
-      label.textContent = LIVE_WRITE ? '⚠️ Haultech writeback has pending items' : '⚠️ Trial queue saved - Haultech writes disabled';
+      label.textContent = writebackFailed
+        ? '⚠️ Haultech writeback has failed items'
+        : (LIVE_WRITE ? '⚠️ Haultech writeback has pending items' : '⚠️ Trial queue saved - Haultech writes disabled');
     }
   } else {
     banner.classList.add('hidden');
     document.body.classList.remove('has-sync-banner');
   }
-  updateSyncDot(writebackPending ? 'red' : (backupPending ? 'grey' : 'green'));
+  updateSyncDot(pending ? 'red' : (backupPending ? 'grey' : 'green'));
 }
 
 function updateSyncDot(state) {
   document.querySelectorAll('.sync-dot').forEach(dot => {
     const colors = { green: '#10b981', red: '#ef4444', grey: '#6b7280' };
     dot.style.background = colors[state] || '#6b7280';
-    dot.title = { green: 'Synced', red: 'Haultech writeback pending', grey: 'Cloud backup retry pending' }[state] || '';
+    dot.title = { green: 'Synced', red: 'Haultech writeback needs attention', grey: 'Cloud backup retry pending' }[state] || '';
   });
 }
 
 async function saveJobsToCloud(date, jobs) {
   const simplified = jobs.map(jobToLocal);
+  const reviewBackup = driverReviewBackupJobs(simplified);
   localSaveJobs(date, jobs);
+  if (!reviewBackup.length) {
+    updateSyncUI();
+    return;
+  }
   try {
-    await cloudPutJobs(date, simplified);
+    await cloudPutJobs(date, reviewBackup);
     updateSyncUI();
   } catch {
-    addToRetryQueue(date, simplified);
+    addToRetryQueue(date, reviewBackup);
   }
+}
+
+function normaliseDriverMatchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(ltd|limited)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normaliseDriverMatchVehicle(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function normaliseDriverMatchQty(value) {
+  const n = parseFloat(String(value || '').replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
+
+function isLocalDriverTempJob(job) {
+  const ids = [job?.id, job?.jobId, job?.ticketNo, job?.reference, job?._reference].filter(Boolean);
+  return !!(job?._driverAdded || job?.driverAdded || ids.some(id => String(id).startsWith('driver-')));
+}
+
+function parseDriverAddedGoods(text) {
+  const raw = normaliseNoteText(text);
+  if (!raw) return {};
+  const match = raw.match(/^\s*([^-]+?)\s*-\s*([A-Z0-9 ]{5,12})\s*-\s*(.+?)\s*-\s*([0-9]+(?:\.[0-9]+)?)\s*(?:m3|m³|cube|cubes|t|ton|tonnes)?\s*-\s*(.+?)\s+to\s+(.+?)\s*$/i);
+  if (!match) return {};
+  return {
+    driver: match[1],
+    vehicle: match[2],
+    material: match[3],
+    quantity: match[4],
+    from: match[5],
+    to: match[6],
+  };
+}
+
+function parseDriverAppSourceNote(text) {
+  const raw = normaliseNoteText(text);
+  if (!raw) return {};
+  const match = raw.match(/driver app source\s*:\s*([^|/]+?)\s*\/\s*([^|/]+?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)\s*(?:m3|m³|cube|cubes|t|ton|tonnes)?\s*\/\s*(.+?)\s+to\s+([^|]+?)(?:\s*\||$)/i);
+  if (!match) return {};
+  return {
+    driver: match[1],
+    vehicle: match[2],
+    quantity: match[3],
+    from: match[4],
+    to: match[5],
+  };
+}
+
+function driverAddedFingerprint(job) {
+  if (!job) return null;
+  const parsed = parseDriverAddedGoods([
+    job.goodsDescription,
+    job._material,
+    job.material,
+    job.description,
+    getJobMaterial(job),
+  ].filter(Boolean).join(' '));
+  const source = parseDriverAppSourceNote([
+    job.accountNotes,
+    job.accountnotes,
+    job.trafficNotes,
+    job.trafficnotes,
+    job.specialInstructions,
+    job.notes,
+    job._notes,
+  ].filter(Boolean).join(' | '));
+  const driver = normaliseDriverMatchText(parsed.driver || source.driver || getJobDriver(job) || getJobAddedBy(job) || job.driver || job.driverName || job._driver);
+  const vehicle = normaliseDriverMatchVehicle(parsed.vehicle || source.vehicle || getJobVehicle(job) || job.vehicle || job._vehicle);
+  const material = normaliseDriverMatchText(parsed.material || getJobMaterial(job) || job.material || job._material);
+  const from = normaliseDriverMatchText(parsed.from || source.from || getJobFrom(job) || job.from || job._from);
+  const to = normaliseDriverMatchText(parsed.to || source.to || getJobTo(job) || job.to || job._to);
+  const quantity = normaliseDriverMatchQty(parsed.quantity || source.quantity || getJobWeight(job) || job.quantity || job._quantity);
+  if (!driver || !vehicle || !material || !from || !to) return null;
+  return { driver, vehicle, material, from, to, quantity };
+}
+
+function sameDriverAddedFingerprint(a, b) {
+  if (!a || !b) return false;
+  if (a.driver !== b.driver || a.vehicle !== b.vehicle || a.material !== b.material || a.from !== b.from || a.to !== b.to) return false;
+  if (a.quantity === null || b.quantity === null) return true;
+  return Math.abs(a.quantity - b.quantity) < 0.05;
+}
+
+function findMatchingLiveDriverJob(localJob, jobs = allJobs) {
+  const localFp = driverAddedFingerprint(localJob);
+  if (!localFp) return null;
+  return (jobs || []).find(candidate => {
+    if (!candidate || candidate === localJob || candidate._cached || isLocalDriverTempJob(candidate)) return false;
+    return sameDriverAddedFingerprint(localFp, driverAddedFingerprint(candidate));
+  }) || null;
+}
+
+function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
+  const queue = getWritebackQueue();
+  if (!queue.length) return;
+  let changed = false;
+  const updated = queue.map(item => {
+    if (!item || item.state !== 'pending Haultech') return item;
+    const localJob = localJobs.find(lj => String(lj.id || lj.jobId || lj.ticketNo || '') === String(item.jobId || ''));
+    if (!localJob || !isLocalDriverTempJob(localJob)) return item;
+    const matched = cloudJobs.find(j =>
+      !j?._cached &&
+      !isLocalDriverTempJob(j) &&
+      sameDriverAddedFingerprint(driverAddedFingerprint(localJob), driverAddedFingerprint(j))
+    );
+    if (!matched || getJobStatus(matched) !== 'complete') return item;
+    changed = true;
+    return {
+      ...item,
+      state: 'written',
+      reason: `Matched completed Haultech job ${getJobNumber(matched)}`,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  if (changed) setWritebackQueue(updated);
 }
 
 function mergeWithLocal(date, cloudJobs) {
@@ -1811,6 +2515,7 @@ function mergeWithLocal(date, cloudJobs) {
 
   const cloudKeys = new Set();
   const localByKey = new Map();
+  const cloudDriverMatches = [];
   for (const lj of localJobs) {
     const k = String(lj.ticketNo || lj.id || '');
     if (k) localByKey.set(k, lj);
@@ -1818,22 +2523,35 @@ function mergeWithLocal(date, cloudJobs) {
   for (const j of cloudJobs) {
     const k = j.ticketNo || j.jobNumber || j.id || j.jobId;
     if (k) cloudKeys.add(String(k));
+    const fp = driverAddedFingerprint(j);
+    if (fp) cloudDriverMatches.push({ job: j, fp });
   }
 
   cloudJobs = cloudJobs.map(j => {
     const k = String(j.ticketNo || j.jobNumber || j.id || j.jobId || '');
     const local = localByKey.get(k);
-    if (!local || !local.status || local.status === 'scheduled') return j;
+    const semanticLocal = local || localJobs.find(lj =>
+      isLocalDriverTempJob(lj) &&
+      sameDriverAddedFingerprint(driverAddedFingerprint(lj), driverAddedFingerprint(j))
+    );
+    if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return j;
     const liveStatus = getJobStatus(j);
     if (liveStatus === 'complete') return j;
-    return { ...j, status: local.status };
+    return { ...j, status: semanticLocal.status };
   });
+  clearMatchedDriverWritebackQueue(localJobs, cloudJobs);
 
   const toAdd = [];
   const toRepush = [];
   for (const lj of localJobs) {
     const k = String(lj.ticketNo || lj.id || '');
     if (!k || cloudKeys.has(k)) continue;
+    if (isLocalDriverTempJob(lj)) {
+      const localFp = driverAddedFingerprint(lj);
+      if (cloudDriverMatches.some(match => sameDriverAddedFingerprint(localFp, match.fp))) {
+        continue;
+      }
+    }
     toAdd.push({
       jobId: lj.id, _cached: true, _driverAdded: true,
       _driver: lj.driver, _customer: lj.customer,
@@ -1841,6 +2559,14 @@ function mergeWithLocal(date, cloudJobs) {
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
+      _unit: lj.unit,
+      _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
+      _reference: lj.reference || lj.ticketNo || '',
+      _notes: lj.notes || '',
+      _wtn: lj.wtn || lj.wasteTransferNote || null,
+      _ewcCode: lj.ewcCode || '',
+      _sicCode: lj.sicCode || '',
+      _containment: lj.containment || '',
       savedAt: lj.savedAt,
     });
     toRepush.push(lj);
@@ -1916,9 +2642,25 @@ function setHeaderForSign(jobNum) {
   updateSyncUI();
 }
 
+function setHeaderForWalkaround() {
+  $('main-header').innerHTML = `
+    <div class="header-left">
+      <button class="icon-btn back-btn" id="walkaround-header-back">←</button>
+    </div>
+    <div class="header-center">Walkaround</div>
+    <div class="header-right">
+      <span class="sync-dot" id="sync-dot" title="Synced"></span>
+      <button class="icon-btn" id="walkaround-header-gear">⚙️</button>
+    </div>`;
+  $('walkaround-header-back').addEventListener('click', showJobList);
+  $('walkaround-header-gear').addEventListener('click', handleGearClick);
+  updateSyncUI();
+}
+
 function hideAllScreens() {
   $('login-screen').classList.add('hidden');
   $('jobs-screen').classList.add('hidden');
+  $('walkaround-screen').classList.add('hidden');
   $('job-detail-screen').classList.add('hidden');
   $('sign-screen').classList.add('hidden');
   $('add-job-btn').classList.add('hidden');
@@ -1943,8 +2685,12 @@ function showJobDetail(job) {
   hideAllScreens();
   currentScreen = 'detail';
   activeJob = job;
+  const terminal = isTerminalJobStatus(getJobStatus(job));
+  const canDelete = isDriverAddedJob(job);
   $('job-detail-screen').classList.remove('hidden');
   $('detail-bottom-bar').style.display = 'flex';
+  $('detail-sign-btn').classList.toggle('hidden', terminal);
+  $('detail-delete-btn').classList.toggle('hidden', !canDelete);
   $('info-fab').style.display = 'flex';
   const jobNum = getJobNumber(job);
   setHeaderForDetail(jobNum);
@@ -1961,6 +2707,11 @@ function showJobDetail(job) {
 }
 
 function showSignScreen(job) {
+  if (isTerminalJobStatus(getJobStatus(job))) {
+    toast('Job already closed');
+    return;
+  }
+  if (!requireWalkaroundBeforeDriverAction('completing work')) return;
   hideAllScreens();
   currentScreen = 'sign';
   activeJob = job;
@@ -2057,11 +2808,13 @@ $('pin-keypad').addEventListener('click', e => {
 
 function enterJobsScreen() {
   $('login-screen').classList.add('hidden');
+  $('pin-screen').classList.add('hidden');
+  $('user-grid').classList.remove('hidden');
   $('date-label').textContent = formatDate(todayISO());
   if (currentUser?.username !== 'richard') isManager = false;
   showJobList();
-  loadJobs();
-  refreshTimer = setInterval(loadJobs, 2 * 60 * 1000);
+  loadJobs({ force: true });
+  refreshTimer = setInterval(() => loadJobs({ automatic: true }), JOB_REFRESH_MS);
 }
 
 function logout() {
@@ -2079,12 +2832,14 @@ function logout() {
   currentScreen = 'login';
 }
 
-async function loadJobs() {
+async function loadJobs(options = {}) {
+  if (!options.force && document.hidden) return;
   const date = todayISO();
   $('jobs-container').innerHTML = `<div class="loading"><div class="spinner"></div>Loading jobs from Haultech…</div>`;
   showError(null);
 
   try {
+    if (!customers.length) await loadCustomers();
     const resp = await api(`/ht/jobs?date=${date}`);
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
@@ -2115,11 +2870,41 @@ async function loadJobsFallback(date) {
     const cached = resp.ok ? await resp.json() : [];
     let jobs = cached.map(j => ({
       jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
+      _addedBy: j.addedBy || j.createdBy || j.driver || '',
       _material: j.material, _from: j.from, _to: j.to,
       _vehicle: j.vehicle,
       _quantity: j.quantity, _price: j.price, _status: j.status,
       savedAt: j.savedAt,
     }));
+    try {
+      const savedResp = await api(`/jobs/${date}`);
+      const savedPayload = savedResp.ok ? await savedResp.json() : [];
+      const savedJobs = Array.isArray(savedPayload) ? savedPayload : (savedPayload.jobs || []);
+      const existingKeys = new Set(jobs.map(j => String(j._reference || j.ticketNo || j.jobId || j.id || '')));
+      for (const lj of driverReviewBackupJobs(savedJobs)) {
+        const key = String(lj.reference || lj.ticketNo || lj.id || '');
+        if (key && existingKeys.has(key)) continue;
+        if (isLocalDriverTempJob(lj) && findMatchingLiveDriverJob(lj, jobs)) continue;
+        jobs.push({
+          jobId: lj.id, _cached: true, _driverAdded: true,
+          _driver: lj.driver, _customer: lj.customer,
+          _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
+          _material: lj.material, _from: lj.from, _to: lj.to,
+          _vehicle: lj.vehicle,
+          _quantity: lj.quantity, _price: lj.price, _status: lj.status,
+          _unit: lj.unit,
+          _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
+          _reference: lj.reference || lj.ticketNo || '',
+          _notes: lj.notes || '',
+          _wtn: lj.wtn || lj.wasteTransferNote || null,
+          _ewcCode: lj.ewcCode || '',
+          _sicCode: lj.sicCode || '',
+          _containment: lj.containment || '',
+          savedAt: lj.savedAt,
+        });
+        if (key) existingKeys.add(key);
+      }
+    } catch {}
     jobs = mergeWithLocal(date, jobs);
     allJobs = jobs;
     renderJobs();
@@ -2129,6 +2914,7 @@ async function loadJobsFallback(date) {
     allJobs = localJobs.map(lj => ({
       jobId: lj.id, _cached: true, _driverAdded: true,
       _driver: lj.driver, _customer: lj.customer,
+      _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
       _material: lj.material, _from: lj.from, _to: lj.to,
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
@@ -2143,11 +2929,13 @@ async function loadJobsFallback(date) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function getJobDriver(job) {
-  if (job._cached) return job._driver || '';
+  if (job._cached) return job._driver || getJobAddedBy(job) || '';
+  const addedBy = getJobAddedBy(job);
+  if (addedBy) return addedBy;
   const did = job.deliveryDriverId || job.collectionDriverId;
   if (did && DRIVER_IDS[did]) return DRIVER_IDS[did];
   const alloc = (job.allocations || [])[0];
-  return alloc?.driverName || alloc?.driver || job.driverName || '';
+  return alloc?.driverName || alloc?.driver || job.driverName || job.driver || '';
 }
 
 function getJobDriverId(job) {
@@ -2283,8 +3071,13 @@ function sortJobsForDriver(jobs) {
 }
 
 function getJobPrice(job) {
-  if (job._cached) return job._price || '';
-  return job.quotedPrice || '';
+  if (job._cached) return job._price ?? '';
+  return job.quotedPrice ?? '';
+}
+
+function hasDisplayPrice(price) {
+  if (price === undefined || price === null || String(price).trim() === '') return false;
+  return Number.isFinite(Number(price));
 }
 
 function getJobStatus(job) {
@@ -2300,6 +3093,44 @@ function getJobStatus(job) {
     return job.status;
   }
   return liveStatus;
+}
+
+function isDriverAddedJob(job) {
+  return !!(job?._driverAdded || getJobAddedBy(job) || (job?.id && String(job.id).startsWith('driver-')) || (job?.jobId && String(job.jobId).startsWith('driver-')));
+}
+
+function canonicalDriverName(value) {
+  const clean = normaliseNoteText(value);
+  if (!clean) return '';
+  const found = Object.values(INCAB_USERS).find(user => user.name.toLowerCase() === clean.toLowerCase());
+  return found?.name || clean;
+}
+
+function sameDriverName(a, b) {
+  return normaliseNoteText(a).toLowerCase() === normaliseNoteText(b).toLowerCase();
+}
+
+function extractAddedByDriver(text) {
+  const raw = normaliseNoteText(text);
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  for (const user of Object.values(INCAB_USERS)) {
+    const name = user.name.toLowerCase();
+    if (lower.includes(`added by ${name}`) || lower.startsWith(`${name} /`) || lower.startsWith(`${name}:`)) {
+      return user.name;
+    }
+  }
+  const match = raw.match(/\badded\s+by\s+([^|:/]+(?:\s+[^|:/]+)*?)(?:\s*\/\s*[^|:]*)?(?:\s*(?:\||:|$))/i);
+  return match ? canonicalDriverName(match[1]) : '';
+}
+
+function getJobAddedBy(job) {
+  if (!job) return '';
+  const flaggedDriverAdded = !!(job._driverAdded || (job.id && String(job.id).startsWith('driver-')) || (job.jobId && String(job.jobId).startsWith('driver-')));
+  const direct = job._addedBy || job.addedBy || job.createdBy || job.sourceDriverName || (flaggedDriverAdded ? (job.driver || job.driverName || job._driver) : '');
+  if (direct) return canonicalDriverName(direct);
+  const noteText = [job.accountNotes, job.trafficNotes, job.specialInstructions, job.notes, job._notes].filter(Boolean).join(' | ');
+  return extractAddedByDriver(noteText);
 }
 
 function rawHaultechJobLooksDone(job) {
@@ -2333,12 +3164,35 @@ async function verifyHaultechCompletion(job, consId) {
 }
 
 function getJobNotes(job) {
-  if (job._cached) return '';
+  if (job._cached) return job._notes || '';
   return job.trafficNotes || job.specialInstructions || '';
 }
 
+function normaliseNoteText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function mergeDriverNoteText(existing, driverNote) {
+  const note = normaliseNoteText(driverNote);
+  const base = normaliseNoteText(existing);
+  if (!note) return base;
+  const baseLower = base.toLowerCase();
+  if (baseLower.includes(note.toLowerCase())) return base;
+  return base ? `${base} | ${note}` : note;
+}
+
+function applyDriverCompletionNote(job, driverNote) {
+  const existingDriverNotes = job?._cached ? job._notes : (job?.trafficNotes || job?.trafficnotes || '');
+  const merged = mergeDriverNoteText(existingDriverNotes, driverNote);
+  if (!job) return merged;
+  if (job._cached) job._notes = merged;
+  else job.trafficNotes = merged;
+  job.notes = merged;
+  return merged;
+}
+
 function getJobRef(job) {
-  if (job._cached) return '';
+  if (job._cached) return job._reference || job.ticketNo || '';
   return job.customerReference || '';
 }
 
@@ -2451,13 +3305,15 @@ function renderJobs() {
 function getDriverJobs(driverId, driverName) {
   const lname = driverName.toLowerCase();
   return allJobs.filter(j => {
-    if (j._cached) return (j._driver || '').toLowerCase() === lname;
+    if (j._cached) return (j._driver || getJobAddedBy(j) || '').toLowerCase() === lname;
+    const addedBy = getJobAddedBy(j);
+    if (addedBy && sameDriverName(addedBy, driverName)) return true;
     const jDriverId = getJobDriverId(j);
     if (jDriverId) return jDriverId === driverId;
     const jDriverName = getJobDriver(j);
     if (jDriverName && jDriverName.toLowerCase() === lname) return true;
-    const tn = (j.trafficNotes || '').toLowerCase().trim();
-    return tn.startsWith(lname);
+    const tn = normaliseNoteText([j.trafficNotes, j.accountNotes, j.specialInstructions].filter(Boolean).join(' | ')).toLowerCase();
+    return tn.startsWith(lname) || tn.includes(`added by ${lname}`);
   });
 }
 
@@ -2508,13 +3364,19 @@ function renderDayReviewPanel(jobs) {
 function renderDriverView(container) {
   const jobs = sortJobsForDriver(getDriverJobs(currentUser.driverId, currentUser.name));
   const openJobs = getOpenDayReviewJobs(jobs);
-  if (jobs.length && !openJobs.length && !getDayFinished()) {
+  let finished = getDayFinished();
+  if (finished && openJobs.length) {
+    clearDayFinished();
+    finished = null;
+  }
+  if (jobs.length && !openJobs.length && !finished && !suppressAutoFinishForDay) {
     saveFinishedForDay(jobs, { automatic: true });
+    finished = getDayFinished();
   }
   const queue = renderQueueSummary();
   const selectedVehicle = getSelectedDriverVehicle();
-  const finished = getDayFinished();
   const canFinishDay = jobs.length && !openJobs.length;
+  const walkaroundPanel = renderWalkaroundPanel();
   const trialBanner = trialMode ? `
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} ${LIVE_WRITE ? 'live-write proof transfer' : 'driver mode'}</strong><br>
@@ -2524,6 +3386,7 @@ function renderDriverView(container) {
     </div>` : '';
   const summary = `
     ${trialBanner}
+    ${walkaroundPanel}
     <div class="driver-summary">
       <h2>${esc(currentUser.name)}</h2>
       <div class="driver-summary-meta">
@@ -2534,16 +3397,17 @@ function renderDriverView(container) {
         <span>${LIVE_WRITE ? 'Live write enabled' : 'Trial shadow mode'}</span>
         <span>${finished ? 'Finished for the day' : (canFinishDay ? 'Ready to finish day' : 'Day still open')}</span>
       </div>
-      <div class="form-group" style="margin:12px 0 0">
+      <div class="form-group ${isWalkaroundVisible() ? 'hidden' : ''}" style="margin:12px 0 0">
         <label for="driver-vehicle-select">Truck / Wagon today</label>
-        <select id="driver-vehicle-select">${vehicleOptionsHTML(selectedVehicle)}</select>
+        <select id="driver-vehicle-select" class="driver-vehicle-select">${vehicleOptionsHTML(selectedVehicle)}</select>
       </div>
       <div class="driver-summary-actions">
-        <button class="btn ${canFinishDay ? 'btn-complete' : 'btn-secondary'}" id="complete-day-btn" type="button">${canFinishDay ? 'Finished for the day' : 'Complete day'}</button>
+        <button class="btn ${finished ? 'btn-secondary' : (canFinishDay ? 'btn-complete' : 'btn-secondary')}" id="complete-day-btn" type="button">${finished ? 'Re-open / check day' : (canFinishDay ? 'Finished for the day' : 'Complete day')}</button>
+        ${finished ? '<button class="btn btn-complete" id="finished-add-row-btn" type="button">Add another day-sheet row</button>' : ''}
       </div>
       ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Saved-local items do not stop this day being finished.</div>` : ''}
     </div>
-    <div class="driver-update">Office changes will appear here when the Haultech feed refreshes. The app refreshes every 2 minutes.</div>
+    <div class="driver-update">Office changes will appear here when the Haultech feed refreshes. The app refreshes every ${esc(JOB_REFRESH_LABEL)}.</div>
     ${renderDayReviewPanel(jobs)}
     ${queue}`;
   if (jobs.length === 0) {
@@ -2556,26 +3420,37 @@ function renderDriverView(container) {
       </div>`;
     attachDayReviewListeners(container, jobs);
     attachDriverVehicleSelector(container);
+    attachWalkaroundPanelListeners(container);
     return;
   }
   container.innerHTML = summary + jobs.map((job, i) => jobCardHTML(job, false, i === 0)).join('');
   attachDayReviewListeners(container, jobs);
   attachDriverVehicleSelector(container);
+  attachWalkaroundPanelListeners(container);
   attachCardListeners(container, jobs);
   attachQuickActionListeners(container, jobs);
 }
 
 function attachDriverVehicleSelector(container) {
-  container.querySelector('#driver-vehicle-select')?.addEventListener('change', e => {
+  container.querySelectorAll('.driver-vehicle-select').forEach(select => select.addEventListener('change', e => {
     setSelectedDriverVehicle(e.target.value);
     toast(e.target.value ? `Truck / wagon set to ${e.target.value}` : 'Truck / wagon cleared');
+    ensureTorqueChecksForSelectedVehicle({ force: true });
     renderJobs();
-  });
+  }));
 }
 
 function attachDayReviewListeners(container, jobs) {
   const findJob = id => jobs.find(j => String(j.id || j.jobId || '') === String(id));
   container.querySelector('#complete-day-btn')?.addEventListener('click', () => {
+    if (getDayFinished()) {
+      clearDayFinished();
+      suppressAutoFinishForDay = true;
+      dayReviewOpen = true;
+      toast('Day re-opened on this phone');
+      renderJobs();
+      return;
+    }
     if (getOpenDayReviewJobs(jobs).length === 0 && jobs.length) {
       saveFinishedForDay(jobs);
       renderJobs();
@@ -2583,6 +3458,11 @@ function attachDayReviewListeners(container, jobs) {
     }
     dayReviewOpen = !dayReviewOpen;
     renderJobs();
+  });
+  container.querySelector('#finished-add-row-btn')?.addEventListener('click', () => {
+    clearDayFinished();
+    suppressAutoFinishForDay = true;
+    openAddJobModal();
   });
   container.querySelectorAll('.day-review-close').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2612,6 +3492,7 @@ async function handleDayReviewAction(job, action) {
   const status = 'cancelled';
   const reason = 'Cancelled by driver - not done today';
   const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
+  const haultechNote = composeDriverHaultechNote({ reason });
   const event = queueTrialEvent('day_review_cancelled', job, {
     status,
     reason,
@@ -2621,6 +3502,11 @@ async function handleDayReviewAction(job, action) {
 
   updateJobStatusLocal(job, status);
   localSaveJobs(todayISO(), allJobs);
+  try {
+    if (haultechNote) await writeHaultechDriverNoteForJob(job, haultechNote);
+  } catch (e) {
+    setQueueState(event.eventId, 'failed', e.message || 'Haultech note write failed; local day review still saved on this phone');
+  }
   try {
     await api(`/job-status/${storageKey}`, {
       method: 'POST',
@@ -2668,6 +3554,863 @@ function saveFinishedForDay(jobs, options = {}) {
   return true;
 }
 
+function isWalkaroundVisible() {
+  if (WALKAROUND_TEST_OVERRIDE) return true;
+  const liveAt = Date.parse(WALKAROUND_VISIBLE_AFTER);
+  return Number.isFinite(liveAt) && Date.now() >= liveAt;
+}
+
+function scheduleWalkaroundActivationRefresh() {
+  if (walkaroundActivationTimer || isWalkaroundVisible()) return;
+  const liveAt = Date.parse(WALKAROUND_VISIBLE_AFTER);
+  if (!Number.isFinite(liveAt)) return;
+  const delay = Math.max(0, Math.min(liveAt - Date.now() + 1000, 2147483647));
+  walkaroundActivationTimer = setTimeout(() => {
+    walkaroundActivationTimer = null;
+    if (currentScreen === 'jobs') renderJobs();
+    checkForAppVersionUpdate('walkaround_activation').catch(() => {});
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => reg?.update?.()).catch(() => {});
+    }
+  }, delay);
+}
+
+function safeIdPart(value) {
+  return String(value || '').replace(/[^A-Za-z0-9._:-]+/g, '-').replace(/-+/g, '-').slice(0, 72) || 'none';
+}
+
+function shortStableHash(value) {
+  let hash = 2166136261;
+  const text = String(value || '');
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function createWalkaroundRecordId(date, driverRef, vehicle, trailer) {
+  const timestamp = Date.now().toString(36);
+  const base = `${date}-${driverRef || 'unknown'}-${vehicle || 'no-vehicle'}-${trailer || 'no-trailer'}-${timestamp}`;
+  return safeIdPart(`wa-${timestamp}-${shortStableHash(base)}-${base}`);
+}
+
+function walkaroundTicketId(recordId) {
+  return safeIdPart(`walkaround-${shortStableHash(recordId)}-${recordId}`);
+}
+
+function walkaroundAssetId(recordId, kind) {
+  return safeIdPart(`waasset-${safeIdPart(kind)}-${shortStableHash(`${recordId}:${kind}`)}-${recordId}`);
+}
+
+function walkaroundStorageKeyFor(record = {}) {
+  const driver = record.driverId || record.driver || currentUser?.driverId || currentUser?.name || 'unknown';
+  const vehicle = record.vehicle || getSelectedDriverVehicle() || 'no-vehicle';
+  const trailer = record.trailer || getSelectedDriverTrailer() || 'no-trailer';
+  const date = record.date || todayISO();
+  return `pmg_walkaround_${date}_${safeIdPart(driver)}_${safeIdPart(vehicle)}_${safeIdPart(trailer)}`;
+}
+
+function walkaroundStorageKey(date = todayISO()) {
+  return walkaroundStorageKeyFor({ date });
+}
+
+function getLocalWalkaroundRecord() {
+  if (!currentUser || !getSelectedDriverVehicle()) return null;
+  return readJSON(walkaroundStorageKey(), null);
+}
+
+function setLocalWalkaroundRecord(record) {
+  writeJSON(walkaroundStorageKeyFor(record), record);
+}
+
+function normaliseVehicleRef(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function safeList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function torqueCacheKey(vehicle) {
+  return `pmg_driver_torque_${normaliseVehicleRef(vehicle)}`;
+}
+
+function torqueTaskId(task = {}) {
+  return task.taskId || task.eventId || `${normaliseVehicleRef(task.vehicle)}-${task.createdAt || task.date || task.torqueNm || DEFAULT_WHEEL_TORQUE_NM}`;
+}
+
+function readCachedTorqueTasks(vehicle) {
+  const cached = readJSON(torqueCacheKey(vehicle), null);
+  return Array.isArray(cached?.tasks) ? cached.tasks : [];
+}
+
+function writeCachedTorqueTasks(vehicle, tasks) {
+  writeJSON(torqueCacheKey(vehicle), { tasks: safeList(tasks), cachedAt: new Date().toISOString() });
+}
+
+function currentTorqueTasks() {
+  const vehicle = normaliseVehicleRef(getSelectedDriverVehicle());
+  if (!vehicle) return [];
+  if (normaliseVehicleRef(torqueCheckState.vehicle) !== vehicle) return [];
+  if (torqueCheckState.loading || torqueCheckState.error) return [];
+  return safeList(torqueCheckState.tasks);
+}
+
+function torqueConfirmationsFromRecord(record) {
+  return [
+    ...safeList(record?.torqueChecks),
+    ...safeList(record?.torqueConfirmations),
+    ...(record?.torqueCheck ? [record.torqueCheck] : []),
+  ].filter(item => item && typeof item === 'object');
+}
+
+function recordConfirmsTorqueTask(record, task) {
+  if (!record) return false;
+  if (normaliseVehicleRef(record.vehicle) !== normaliseVehicleRef(task.vehicle || getSelectedDriverVehicle())) return false;
+  return torqueConfirmationsFromRecord(record).some(confirmation => {
+    if (confirmation.confirmed !== true) return false;
+    return confirmation.taskId === torqueTaskId(task) || (confirmation.eventId && confirmation.eventId === task.eventId);
+  });
+}
+
+function pendingTorqueTasksForSelectedVehicle(record = getLocalWalkaroundRecord()) {
+  return currentTorqueTasks().filter(task => !recordConfirmsTorqueTask(record, task));
+}
+
+function renderTorqueGateStatus(record = getLocalWalkaroundRecord()) {
+  const vehicle = getSelectedDriverVehicle();
+  if (!vehicle) return '';
+  const vehicleRef = normaliseVehicleRef(vehicle);
+  const stateMatches = normaliseVehicleRef(torqueCheckState.vehicle) === vehicleRef;
+  const pending = pendingTorqueTasksForSelectedVehicle(record);
+  if (pending.length) {
+    const amount = pending.map(task => `${task.torqueNm || DEFAULT_WHEEL_TORQUE_NM} Nm`).join(', ');
+    return `
+      <div class="torque-gate required">
+        <div class="torque-gate-title">Wheel torque check due</div>
+        <div class="torque-gate-detail">Confirm wheel torque before moving this wagon. Required amount: ${esc(amount)}.</div>
+      </div>`;
+  }
+  if (stateMatches && torqueCheckState.loading) {
+    return '';
+  }
+  if (stateMatches && torqueCheckState.error) {
+    return '';
+  }
+  return '';
+}
+
+function ensureTorqueChecksForSelectedVehicle(options = {}) {
+  const vehicle = getSelectedDriverVehicle();
+  const vehicleRef = normaliseVehicleRef(vehicle);
+  if (!vehicleRef) {
+    torqueCheckState = { vehicle: '', loading: false, error: '', tasks: [], checkedAt: '', loadedAt: 0 };
+    return;
+  }
+  const now = Date.now();
+  const sameVehicle = normaliseVehicleRef(torqueCheckState.vehicle) === vehicleRef;
+  if (!options.force && sameVehicle && (torqueCheckState.loading || (now - torqueCheckState.loadedAt < TORQUE_REFRESH_MS))) return;
+  torqueCheckState = { vehicle: vehicleRef, loading: true, error: '', tasks: [], checkedAt: torqueCheckState.checkedAt || '', loadedAt: torqueCheckState.loadedAt || 0 };
+  fleetApi(`/api/driver-torque?vehicle=${encodeURIComponent(vehicleRef)}`)
+    .then(async resp => {
+      if (!resp.ok) throw new Error(await responseError(resp, `torque check HTTP ${resp.status}`));
+      return resp.json();
+    })
+    .then(data => {
+      const tasks = safeList(data.openTasks);
+      torqueCheckState = { vehicle: vehicleRef, loading: false, error: '', tasks, checkedAt: data.checkedAt || new Date().toISOString(), loadedAt: Date.now() };
+      writeCachedTorqueTasks(vehicleRef, tasks);
+      if (currentScreen === 'jobs') renderJobs();
+    })
+    .catch(err => {
+      torqueCheckState = { vehicle: vehicleRef, loading: false, error: err.message || 'Torque check failed', tasks: [], checkedAt: '', loadedAt: Date.now() };
+      writeCachedTorqueTasks(vehicleRef, []);
+      if (currentScreen === 'jobs') renderJobs();
+    });
+}
+
+function selectedWalkaroundLabel() {
+  const vehicle = getSelectedDriverVehicle();
+  const trailer = getSelectedDriverTrailer();
+  return vehicle ? `${vehicle}${trailer ? ' + ' + trailer : ''}` : '';
+}
+
+function hasSelectedWalkaroundComplete() {
+  const record = getLocalWalkaroundRecord();
+  return !!record && pendingTorqueTasksForSelectedVehicle(record).length === 0;
+}
+
+function focusWalkaroundGate() {
+  if (currentScreen !== 'jobs') {
+    showJobList();
+    renderJobs();
+  }
+  setTimeout(() => {
+    const card = $('walkaround-card');
+    if (card) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, 50);
+}
+
+function requireWalkaroundBeforeDriverAction(actionLabel = 'driving') {
+  if (!isWalkaroundVisible() || isManager) return true;
+  const vehicle = getSelectedDriverVehicle();
+  ensureTorqueChecksForSelectedVehicle();
+  const pendingTorque = pendingTorqueTasksForSelectedVehicle();
+  const done = hasSelectedWalkaroundComplete();
+  if (vehicle && done) return true;
+  toast(pendingTorque.length
+    ? `Confirm wheel torque ${pendingTorque[0].torqueNm || DEFAULT_WHEEL_TORQUE_NM} Nm before ${actionLabel}`
+    : (vehicle ? `Complete walkaround for ${vehicle} before ${actionLabel}` : 'Select truck / wagon and complete walkaround first'));
+  focusWalkaroundGate();
+  return false;
+}
+
+function walkaroundTicketQueueKey() {
+  return 'pmg_walkaround_ticket_queue_v1';
+}
+
+function getPendingWalkaroundTickets() {
+  const queue = readJSON(walkaroundTicketQueueKey(), []);
+  return Array.isArray(queue) ? queue : [];
+}
+
+function setPendingWalkaroundTickets(queue) {
+  writeJSON(walkaroundTicketQueueKey(), queue);
+}
+
+function queueWalkaroundTicket(record) {
+  const queue = getPendingWalkaroundTickets().filter(item => item.recordId !== record.recordId);
+  queue.push(record);
+  setPendingWalkaroundTickets(queue);
+}
+
+async function saveWalkaroundTicketRecord(record) {
+  const ticketId = walkaroundTicketId(record.recordId);
+  const resp = await api(`/ticket/${ticketId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+  if (!resp.ok) throw new Error(await responseError(resp, `walkaround ticket HTTP ${resp.status}`));
+  return true;
+}
+
+async function flushWalkaroundTicketQueue(options = {}) {
+  const queue = getPendingWalkaroundTickets();
+  if (!queue.length) return;
+  const remaining = [];
+  let synced = 0;
+  for (const queued of queue) {
+    const record = { ...queued, syncState: 'saved_to_worker', syncError: '', retriedAt: new Date().toISOString() };
+    try {
+      await saveWalkaroundTicketRecord(record);
+      setLocalWalkaroundRecord(record);
+      synced += 1;
+    } catch (err) {
+      remaining.push({ ...queued, syncError: err.message || 'Ticket retry failed' });
+    }
+  }
+  setPendingWalkaroundTickets(remaining);
+  if (synced && !options.silent) toast(`Walkaround office sync updated`);
+  if (synced && currentScreen === 'jobs') renderJobs();
+}
+
+function requiredWalkaroundPhotoSlots() {
+  const hasTrailer = !!getSelectedDriverTrailer();
+  return WALKAROUND_PHOTO_SLOTS.filter(slot => !slot.trailerOnly || hasTrailer);
+}
+
+function defaultWalkaroundChecks() {
+  return WALKAROUND_CHECKS.reduce((acc, check) => {
+    acc[check.id] = null;
+    return acc;
+  }, {});
+}
+
+function resetWalkaroundState() {
+  walkaroundState = {
+    checks: defaultWalkaroundChecks(),
+    torqueConfirmations: pendingTorqueTasksForSelectedVehicle().reduce((acc, task) => {
+      acc[torqueTaskId(task)] = false;
+      return acc;
+    }, {}),
+    photos: {},
+    photoDataUrls: {},
+    defectNotes: '',
+    startedAt: new Date().toISOString(),
+  };
+  walkaroundSigCtx = null;
+  walkaroundSigDrawing = false;
+  walkaroundSigHasData = false;
+}
+
+function walkaroundDraftIdentity() {
+  return {
+    date: todayISO(),
+    driverId: currentUser?.driverId || '',
+    vehicle: getSelectedDriverVehicle() || '',
+    trailer: getSelectedDriverTrailer() || '',
+  };
+}
+
+function walkaroundDraftMatches(draft, identity = walkaroundDraftIdentity()) {
+  return !!draft
+    && draft.date === identity.date
+    && draft.driverId === identity.driverId
+    && draft.vehicle === identity.vehicle
+    && (draft.trailer || '') === (identity.trailer || '');
+}
+
+function saveWalkaroundDraft() {
+  if (!walkaroundState) return;
+  try {
+    const identity = walkaroundDraftIdentity();
+    localStorage.setItem(WALKAROUND_DRAFT_KEY, JSON.stringify({
+      ...identity,
+      active: true,
+      checks: walkaroundState.checks || {},
+      torqueConfirmations: walkaroundState.torqueConfirmations || {},
+      defectNotes: walkaroundState.defectNotes || '',
+      startedAt: walkaroundState.startedAt || new Date().toISOString(),
+      photoDataUrls: walkaroundState.photoDataUrls || {},
+      photoNames: Object.fromEntries(Object.entries(walkaroundState.photos || {}).map(([slot, photo]) => [slot, photo.name || `${slot}.jpg`])),
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+function clearWalkaroundDraft() {
+  try { localStorage.removeItem(WALKAROUND_DRAFT_KEY); } catch {}
+}
+
+function restoreWalkaroundDraftIfMatching() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+    if (!walkaroundDraftMatches(draft)) return false;
+    walkaroundState.checks = { ...defaultWalkaroundChecks(), ...(draft.checks || {}) };
+    walkaroundState.torqueConfirmations = { ...walkaroundState.torqueConfirmations, ...(draft.torqueConfirmations || {}) };
+    walkaroundState.defectNotes = draft.defectNotes || '';
+    walkaroundState.startedAt = draft.startedAt || walkaroundState.startedAt;
+    walkaroundState.photoDataUrls = draft.photoDataUrls || {};
+    Object.entries(walkaroundState.photoDataUrls).forEach(([slot, dataUrl]) => {
+      const blob = dataURLToBlob(dataUrl);
+      walkaroundState.photos[slot] = {
+        blob,
+        name: draft.photoNames?.[slot] || `${slot}.jpg`,
+        type: blob.type || 'image/jpeg',
+      };
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function renderWalkaroundPanel() {
+  if (!isWalkaroundVisible()) return '';
+  const vehicle = getSelectedDriverVehicle();
+  const trailer = getSelectedDriverTrailer();
+  ensureTorqueChecksForSelectedVehicle();
+  const saved = getLocalWalkaroundRecord();
+  const done = !!saved;
+  const fullyClear = hasSelectedWalkaroundComplete();
+  const selectedUnit = selectedWalkaroundLabel();
+  const statusText = fullyClear
+    ? `Done ${new Date(saved.completedAt || saved.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+    : (vehicle ? 'Required before moving' : 'Select wagon first');
+  const uploadText = saved?.syncState === 'saved_to_worker'
+    ? 'Saved to PMG'
+    : (saved?.syncState === 'ticket_pending' ? 'Office sync pending' : (saved ? 'Check save state' : 'Not done yet'));
+  const title = fullyClear
+    ? `${selectedUnit} checked for today`
+    : (vehicle ? `${selectedUnit} is not clear to move` : 'Select truck / wagon before moving');
+  const detail = fullyClear
+    ? 'Pre-start walkaround is saved against this selected unit for today.'
+    : 'Jobs stay visible, but Start / In Transit and job completion are held here until the selected wagon pre-start is complete.';
+  const selectorRows = fullyClear ? '' : `
+      <div class="form-row">
+        <div class="form-group">
+          <label>Truck / Wagon</label>
+          <select class="driver-vehicle-select" data-source="walkaround">${vehicleOptionsHTML(vehicle)}</select>
+        </div>
+        <div class="form-group">
+          <label>Trailer</label>
+          <select class="driver-trailer-select">${trailerOptionsHTML(trailer)}</select>
+        </div>
+      </div>`;
+  return `
+    <div class="walkaround-card prestart-gate ${fullyClear ? 'done' : ''}" id="walkaround-card">
+      <div class="walkaround-status">${fullyClear ? 'Clear' : 'Pre-start required'} · ${esc(statusText)} · ${esc(uploadText)}</div>
+      <h2>${esc(title)}</h2>
+      <p>${esc(detail)}</p>
+      ${renderTorqueGateStatus(saved)}
+      ${selectorRows}
+      <div class="walkaround-actions">
+        <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${fullyClear ? 'Review / do another walkaround' : 'Start pre-start now'}</button>
+      </div>
+    </div>`;
+}
+
+function attachWalkaroundPanelListeners(container) {
+  container.querySelector('#start-walkaround-btn')?.addEventListener('click', () => showWalkaroundScreen());
+  container.querySelectorAll('.driver-trailer-select').forEach(select => {
+    select.addEventListener('change', e => {
+      setSelectedDriverTrailer(e.target.value);
+      toast(e.target.value ? `Trailer set to ${e.target.value}` : 'Trailer cleared');
+      renderJobs();
+    });
+  });
+}
+
+function showWalkaroundScreen() {
+  if (!isWalkaroundVisible()) return;
+  const vehicle = getSelectedDriverVehicle();
+  if (!vehicle) {
+    toast('Select truck / wagon first');
+    return;
+  }
+  ensureTorqueChecksForSelectedVehicle();
+  resetWalkaroundState();
+  const restoredDraft = restoreWalkaroundDraftIfMatching();
+  hideAllScreens();
+  currentScreen = 'walkaround';
+  $('walkaround-screen').classList.remove('hidden');
+  setHeaderForWalkaround();
+  renderWalkaroundScreen();
+  saveWalkaroundDraft();
+  if (restoredDraft) toast('Walkaround draft restored');
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  setTimeout(initWalkaroundSignatureCanvas, 50);
+}
+
+function renderWalkaroundScreen() {
+  const vehicle = getSelectedDriverVehicle();
+  const trailer = getSelectedDriverTrailer();
+  const photoSlots = requiredWalkaroundPhotoSlots();
+  const torqueTasks = pendingTorqueTasksForSelectedVehicle();
+  const signatureStep = torqueTasks.length ? 4 : 3;
+  $('walkaround-content').innerHTML = `
+    <div class="walkaround-card">
+      <div class="walkaround-status">Start here</div>
+      <h2>${esc(vehicle)}${trailer ? ' + ' + esc(trailer) : ''}</h2>
+      <p>Take the truck photos, do the quick checks${torqueTasks.length ? ', then confirm the live wheel-torque re-check' : ''}, then Complete pre-start.</p>
+    </div>
+
+    <div class="walkaround-form-card">
+      <h3>1. Truck photos</h3>
+      <div class="walkaround-help">Take each picture in order. After one saves, the next photo box is highlighted.</div>
+      <div class="walkaround-photo-grid">
+        ${photoSlots.map(slot => `
+          <div class="walkaround-photo ${walkaroundState.photos?.[slot.id] ? 'captured' : ''}" data-photo-slot="${esc(slot.id)}">
+            <div class="walkaround-photo-title">${esc(slot.label)}</div>
+            <input type="file" id="walk-photo-${esc(slot.id)}" accept="image/*" capture="environment" style="display:none">
+            <button type="button" class="walk-photo-btn" data-photo-slot="${esc(slot.id)}">${walkaroundState.photos?.[slot.id] ? 'Retake photo' : 'Take photo'}</button>
+            <div class="walkaround-photo-state">${walkaroundState.photos?.[slot.id] ? 'Saved on this phone' : 'Next photo'}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="walkaround-form-card">
+      <h3>2. Daily checks</h3>
+      <div class="walkaround-help">Use Checked all if there are no defects. If there is a defect, press No on that item and add notes.</div>
+      <button class="btn btn-complete" id="walkaround-check-all" type="button">Checked all / no defects</button>
+      <div id="walkaround-check-list" style="margin-top:10px">
+        ${WALKAROUND_CHECKS.map(check => {
+          const buttons = check.conditional
+            ? `<button class="walkaround-toggle yes" data-check="${esc(check.id)}" data-value="yes" type="button">Yes</button>
+               <button class="walkaround-toggle no" data-check="${esc(check.id)}" data-value="no" type="button">No</button>
+               <button class="walkaround-toggle na" data-check="${esc(check.id)}" data-value="na" type="button">N/A</button>`
+            : `<button class="walkaround-toggle yes" data-check="${esc(check.id)}" data-value="yes" type="button">Yes</button>
+               <button class="walkaround-toggle no" data-check="${esc(check.id)}" data-value="no" type="button">No</button>`;
+          return `
+            <div class="walkaround-check-row">
+              <div class="walkaround-check-title">${esc(check.label)}</div>
+              <div class="walkaround-toggle-row ${check.conditional ? '' : 'two'}">${buttons}</div>
+            </div>`;
+        }).join('')}
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Defect notes</label>
+        <textarea id="walkaround-defect-notes" placeholder="Only needed if anything is marked No"></textarea>
+      </div>
+    </div>
+
+    ${torqueTasks.length ? `
+      <div class="walkaround-form-card">
+        <h3>3. Wheel torque check</h3>
+        <div class="walkaround-help">This appears because the mechanic has logged wheel-off work against this wagon. Confirm the re-check before moving it.</div>
+        <div style="display:grid; gap:10px">
+          ${torqueTasks.map(task => `
+            <div class="walkaround-torque-row">
+              <div>
+                <div class="walkaround-check-title">${esc(task.displayVehicle || vehicle)} wheel torque re-check</div>
+                <div class="walkaround-torque-amount">${esc(task.torqueNm || DEFAULT_WHEEL_TORQUE_NM)} Nm</div>
+                <div class="walkaround-help" style="margin:6px 0 0">${esc(task.note || 'Wheel torque re-check required')}</div>
+              </div>
+              <button class="walkaround-toggle yes walkaround-torque-confirm" data-torque-task="${esc(torqueTaskId(task))}" type="button">Tick confirmed at ${esc(task.torqueNm || DEFAULT_WHEEL_TORQUE_NM)} Nm</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="walkaround-form-card">
+      <h3>${signatureStep}. Driver signature</h3>
+      <div class="walkaround-help">Optional. The checked items above are enough to clear the pre-start.</div>
+      <div class="walkaround-sig-wrap">
+        <canvas id="walkaround-sig-canvas"></canvas>
+        <button type="button" class="walkaround-sig-clear" id="walkaround-sig-clear">Clear</button>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="walkaround-complete-btn" type="button">Complete pre-start</button>
+  `;
+  if ($('walkaround-defect-notes')) $('walkaround-defect-notes').value = walkaroundState.defectNotes || '';
+  attachWalkaroundScreenListeners();
+  updateWalkaroundCheckButtons();
+  updateWalkaroundTorqueButtons();
+  focusNextWalkaroundPhoto('', { announce: false, scroll: false });
+}
+
+function attachWalkaroundScreenListeners() {
+  $('walkaround-check-all')?.addEventListener('click', () => {
+    WALKAROUND_CHECKS.forEach(check => {
+      walkaroundState.checks[check.id] = check.conditional && !getSelectedDriverTrailer() ? 'na' : 'yes';
+    });
+    $('walkaround-defect-notes').value = '';
+    walkaroundState.defectNotes = '';
+    updateWalkaroundCheckButtons();
+    saveWalkaroundDraft();
+    toast('Checks marked clear');
+  });
+
+  document.querySelectorAll('.walkaround-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.torqueTask) {
+        walkaroundState.torqueConfirmations[btn.dataset.torqueTask] = true;
+        updateWalkaroundTorqueButtons();
+        saveWalkaroundDraft();
+        return;
+      }
+      walkaroundState.checks[btn.dataset.check] = btn.dataset.value;
+      updateWalkaroundCheckButtons();
+      saveWalkaroundDraft();
+    });
+  });
+
+  $('walkaround-defect-notes')?.addEventListener('input', e => {
+    walkaroundState.defectNotes = e.target.value;
+    saveWalkaroundDraft();
+  });
+
+  document.querySelectorAll('.walk-photo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      saveWalkaroundDraft();
+      const input = $(`walk-photo-${btn.dataset.photoSlot}`);
+      input?.click();
+    });
+  });
+
+  requiredWalkaroundPhotoSlots().forEach(slot => {
+    const input = $(`walk-photo-${slot.id}`);
+    input?.addEventListener('change', async e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const blob = await compressImageFile(file);
+        const dataUrl = await blobToDataURL(blob);
+        walkaroundState.photos[slot.id] = { blob, name: file.name || `${slot.id}.jpg`, type: blob.type || 'image/jpeg' };
+        walkaroundState.photoDataUrls[slot.id] = dataUrl;
+        const wrap = document.querySelector(`.walkaround-photo[data-photo-slot="${slot.id}"]`);
+        if (wrap) {
+          wrap.classList.add('captured');
+          const state = wrap.querySelector('.walkaround-photo-state');
+          if (state) state.textContent = 'Saved on this phone';
+          const button = wrap.querySelector('.walk-photo-btn');
+          if (button) button.textContent = 'Retake photo';
+        }
+        saveWalkaroundDraft();
+        focusNextWalkaroundPhoto(slot.id);
+      } catch (err) {
+        toast('Photo could not be read');
+      }
+    });
+  });
+
+  $('walkaround-complete-btn')?.addEventListener('click', completeWalkaround);
+}
+
+function focusNextWalkaroundPhoto(currentSlotId, options = {}) {
+  const announce = options.announce !== false;
+  const scroll = options.scroll !== false;
+  const slots = requiredWalkaroundPhotoSlots();
+  const nextSlot = slots.find(slot => !walkaroundState.photos?.[slot.id] && slot.id !== currentSlotId);
+  if (!nextSlot) {
+    if (announce) toast('All truck photos saved');
+    return;
+  }
+  document.querySelectorAll('.walkaround-photo').forEach(card => card.classList.remove('next'));
+  const nextCard = document.querySelector(`.walkaround-photo[data-photo-slot="${nextSlot.id}"]`);
+  if (nextCard) {
+    nextCard.classList.add('next');
+    const state = nextCard.querySelector('.walkaround-photo-state');
+    if (state) state.textContent = 'Take this next';
+    if (scroll) nextCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  if (announce) toast(`${nextSlot.label} next`);
+}
+
+function updateWalkaroundCheckButtons() {
+  document.querySelectorAll('.walkaround-toggle').forEach(btn => {
+    if (btn.dataset.torqueTask) return;
+    const value = walkaroundState?.checks?.[btn.dataset.check];
+    btn.classList.toggle('active', value === btn.dataset.value);
+  });
+}
+
+function updateWalkaroundTorqueButtons() {
+  document.querySelectorAll('.walkaround-torque-confirm').forEach(btn => {
+    const active = walkaroundState?.torqueConfirmations?.[btn.dataset.torqueTask] === true;
+    btn.classList.toggle('active', active);
+    if (active) btn.textContent = '✓ Torque confirmed';
+  });
+}
+
+async function closeConfirmedFleetTorqueTasks(torqueChecks) {
+  const confirmed = safeList(torqueChecks).filter(check => check.confirmed && check.eventId);
+  const results = [];
+  for (const check of confirmed) {
+    try {
+      const resp = await fleetApi(`/api/torque/${encodeURIComponent(check.eventId)}/driver-complete`, { method: 'POST' });
+      if (!resp.ok) throw new Error(await responseError(resp, `torque close HTTP ${resp.status}`));
+      results.push({ eventId: check.eventId, closed: true });
+    } catch (err) {
+      results.push({ eventId: check.eventId, closed: false, error: err.message || 'Fleet torque close failed' });
+    }
+  }
+  return results;
+}
+
+function initWalkaroundSignatureCanvas() {
+  const canvas = $('walkaround-sig-canvas');
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = Math.max(280, Math.floor(rect.width));
+  canvas.height = 170;
+  walkaroundSigCtx = canvas.getContext('2d');
+  walkaroundSigCtx.strokeStyle = '#111827';
+  walkaroundSigCtx.lineWidth = 2.5;
+  walkaroundSigCtx.lineCap = 'round';
+  walkaroundSigCtx.lineJoin = 'round';
+  walkaroundSigHasData = false;
+
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    walkaroundSigDrawing = true;
+    walkaroundSigHasData = true;
+    const pos = sigPos(e, canvas);
+    walkaroundSigCtx.beginPath();
+    walkaroundSigCtx.moveTo(pos.x, pos.y);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!walkaroundSigDrawing) return;
+    e.preventDefault();
+    const pos = sigPos(e, canvas);
+    walkaroundSigCtx.lineTo(pos.x, pos.y);
+    walkaroundSigCtx.stroke();
+  });
+  canvas.addEventListener('pointerup', () => walkaroundSigDrawing = false);
+  canvas.addEventListener('pointerleave', () => walkaroundSigDrawing = false);
+  $('walkaround-sig-clear')?.addEventListener('click', () => {
+    walkaroundSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+    walkaroundSigHasData = false;
+  });
+}
+
+function getWalkaroundSignatureData() {
+  if (!walkaroundSigHasData) return null;
+  return $('walkaround-sig-canvas')?.toDataURL('image/png') || null;
+}
+
+function dataURLToBlob(dataUrl) {
+  const [meta, data] = String(dataUrl || '').split(',');
+  const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream';
+  const binary = atob(data || '');
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Photo could not be saved'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function compressImageFile(file) {
+  return new Promise(resolve => {
+    if (!file || !String(file.type || '').startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const maxSide = 1280;
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.72);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function uploadWalkaroundAsset(recordId, kind, blob) {
+  const assetId = walkaroundAssetId(recordId, kind);
+  const resp = await fetch(WORKER_URL + `/photos/${assetId}`, {
+    method: 'PUT',
+    headers: { 'X-PMG-Key': API_KEY, 'Content-Type': blob.type || 'application/octet-stream' },
+    body: blob,
+  });
+  if (!resp.ok) throw new Error(await responseError(resp, `${kind} upload HTTP ${resp.status}`));
+  return { kind, assetId, url: `${WORKER_URL}/photos/${assetId}` };
+}
+
+function validateWalkaroundBeforeComplete() {
+  const missing = [];
+  const vehicle = getSelectedDriverVehicle();
+  if (!vehicle) missing.push('select truck / wagon');
+  WALKAROUND_CHECKS.forEach(check => {
+    if (!walkaroundState.checks[check.id]) missing.push(check.label);
+  });
+  pendingTorqueTasksForSelectedVehicle().forEach(task => {
+    if (walkaroundState.torqueConfirmations?.[torqueTaskId(task)] !== true) {
+      missing.push(`wheel torque ${task.torqueNm || DEFAULT_WHEEL_TORQUE_NM} Nm`);
+    }
+  });
+  const failedChecks = Object.entries(walkaroundState.checks).filter(([, value]) => value === 'no');
+  if (failedChecks.length && !$('walkaround-defect-notes')?.value.trim()) missing.push('defect notes');
+  return missing;
+}
+
+async function completeWalkaround() {
+  if (!walkaroundState) return;
+  const missing = validateWalkaroundBeforeComplete();
+  if (missing.length) {
+    toast(`Missing: ${missing.slice(0, 2).join(', ')}${missing.length > 2 ? '...' : ''}`);
+    return;
+  }
+
+  const btn = $('walkaround-complete-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving walkaround...';
+
+  const date = todayISO();
+  const vehicle = getSelectedDriverVehicle();
+  const trailer = getSelectedDriverTrailer();
+  const recordId = createWalkaroundRecordId(date, currentUser?.driverId || currentUser?.name, vehicle, trailer);
+  const signatureData = getWalkaroundSignatureData();
+  const signatureBlob = signatureData ? dataURLToBlob(signatureData) : null;
+  const torqueTasks = pendingTorqueTasksForSelectedVehicle();
+  const torqueChecks = torqueTasks.map(task => ({
+    taskId: torqueTaskId(task),
+    eventId: task.eventId || '',
+    assetId: task.assetId || '',
+    vehicle,
+    torqueNm: task.torqueNm || DEFAULT_WHEEL_TORQUE_NM,
+    confirmed: walkaroundState.torqueConfirmations?.[torqueTaskId(task)] === true,
+    confirmedAt: new Date().toISOString(),
+    sourceName: task.sourceName || '',
+  }));
+  const failedChecks = WALKAROUND_CHECKS
+    .filter(check => walkaroundState.checks[check.id] === 'no')
+    .map(check => ({ id: check.id, label: check.label }));
+  let syncState = 'saved_locally';
+  let syncError = '';
+  let assets = [];
+
+  const baseRecord = {
+    recordId,
+    type: 'driver_walkaround',
+    date,
+    driver: currentUser?.name || '',
+    driverId: currentUser?.driverId || '',
+    vehicle,
+    trailer,
+    checks: walkaroundState.checks,
+    torqueChecks,
+    defects: failedChecks,
+    defectNotes: $('walkaround-defect-notes')?.value.trim() || '',
+    photoSlotsExpected: requiredWalkaroundPhotoSlots().map(slot => slot.id),
+    photoSlots: Object.keys(walkaroundState.photos),
+    photoEvidenceRequired: false,
+    signatureProvided: !!signatureBlob,
+    signatureOptional: true,
+    startedAt: walkaroundState.startedAt,
+    completedAt: new Date().toISOString(),
+    mode: 'non_blocking_prompt',
+    jobsLocked: false,
+  };
+
+  try {
+    const uploads = [];
+    for (const [slot, photo] of Object.entries(walkaroundState.photos)) {
+      uploads.push(uploadWalkaroundAsset(recordId, slot, photo.blob));
+    }
+    if (signatureBlob) uploads.push(uploadWalkaroundAsset(recordId, 'signature', signatureBlob));
+    assets = await Promise.all(uploads);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Complete pre-start';
+    toast('Walkaround not saved - try again with signal');
+    return;
+  }
+
+  const workerRecord = { ...baseRecord, assets, syncState: 'saved_to_worker', syncError: '' };
+  try {
+    await saveWalkaroundTicketRecord(workerRecord);
+    syncState = 'saved_to_worker';
+  } catch (err) {
+    syncState = 'ticket_pending';
+    syncError = err.message || 'Ticket save failed';
+  }
+
+  const localRecord = { ...baseRecord, assets, syncState, syncError };
+  const torqueCloseResults = await closeConfirmedFleetTorqueTasks(torqueChecks);
+  if (torqueCloseResults.length) {
+    localRecord.torqueCloseResults = torqueCloseResults;
+    const closeFailures = torqueCloseResults.filter(result => !result.closed);
+    if (!closeFailures.length) {
+      torqueCheckState = { vehicle: normaliseVehicleRef(vehicle), loading: false, error: '', tasks: [], checkedAt: new Date().toISOString(), loadedAt: Date.now() };
+      writeCachedTorqueTasks(vehicle, []);
+    } else {
+      localRecord.syncError = [localRecord.syncError, `Fleet torque close failed for ${closeFailures.length} item(s)`].filter(Boolean).join('; ');
+    }
+  }
+  setLocalWalkaroundRecord(localRecord);
+  clearWalkaroundDraft();
+  if (syncState === 'ticket_pending') queueWalkaroundTicket(localRecord);
+  toast(syncState === 'saved_to_worker' ? '✓ Walkaround complete' : 'Walkaround proof saved - office sync pending');
+  showJobList();
+  renderJobs();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  reloadForPendingServiceWorkerUpdate();
+}
+
 
 function renderManagerView(container) {
   let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops and safe queue state.</div>${renderQueueSummary()}`;
@@ -2691,13 +4434,26 @@ function renderManagerView(container) {
     const cards = jobs.length
       ? jobs.map(job => jobCardHTML(job, true)).join('')
       : `<div style="padding:12px 4px;color:var(--muted);font-size:13px;">No jobs today</div>`;
+    const personalDriverButton = username === currentUser?.username
+      ? `<button type="button" class="manager-driver-link" data-open-driver-mode="${esc(username)}">Open my driver app</button>`
+      : '';
     html += `<div class="driver-section">
-      <div class="driver-section-title">${esc(user.name)} (${jobs.length} jobs)</div>
+      <div class="driver-section-head">
+        <div class="driver-section-title">${esc(user.name)} (${jobs.length} jobs)</div>
+        ${personalDriverButton}
+      </div>
       ${cards}
     </div>`;
   }
 
   container.innerHTML = html;
+
+  container.querySelectorAll('[data-open-driver-mode]').forEach(button => {
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      openPersonalDriverMode(button.dataset.openDriverMode);
+    });
+  });
 
   // Attach listeners for all cards
   const allCards = container.querySelectorAll('.job-card');
@@ -2710,9 +4466,23 @@ function renderManagerView(container) {
   });
 }
 
+function openPersonalDriverMode(username) {
+  const user = INCAB_USERS[username];
+  if (!user) return;
+  currentUser = { username, ...user };
+  localStorage.setItem('pmg-user', username);
+  isManager = false;
+  trialMode = false;
+  showJobList();
+  renderJobs();
+  toast(`${user.name} driver view`);
+}
+
 function jobCardHTML(job, showDriver, isNext = false) {
   const status = getJobStatus(job);
+  const terminal = isTerminalJobStatus(status);
   const driver = getJobDriver(job);
+  const addedBy = getJobAddedBy(job);
   const vehicle = getJobVehicle(job);
   const customer = getJobCustomer(job);
   const material = getJobMaterial(job);
@@ -2721,7 +4491,9 @@ function jobCardHTML(job, showDriver, isNext = false) {
   const weight = getJobWeight(job);
   const jobNum = getJobNumber(job);
   const jobId = job.id || job.jobId || '';
-  const isDriverAdded = !!(job._driverAdded || (job.id && String(job.id).startsWith('driver-')) || (job.jobId && String(job.jobId).startsWith('driver-')));
+  const wtn = getJobWasteTransferNote(job);
+  const isDriverAdded = isDriverAddedJob(job);
+  const driverLabel = isDriverAdded && addedBy ? `Added by ${addedBy}` : driver;
 
   const actionLabel = status === 'complete' ? 'Complete' : ((status === 'scheduled' && !isDriverAdded) ? 'Start' : 'Complete');
   const actionClass = (status === 'scheduled' && !isDriverAdded) ? 'btn-depart' : 'btn-complete';
@@ -2732,14 +4504,15 @@ function jobCardHTML(job, showDriver, isNext = false) {
         <div class="job-card-main">
           <div class="job-number">#${esc(String(jobNum))}</div>
           <div class="job-customer">${esc(customer)}</div>
-          ${showDriver && driver ? `<div style="margin-bottom:3px"><span class="driver-tag">${esc(driver)}</span></div>` : ''}
+          ${showDriver && driverLabel ? `<div style="margin-bottom:3px"><span class="driver-tag">${esc(driverLabel)}</span></div>` : ''}
           ${vehicle ? `<div class="job-vehicle">🚛 ${esc(vehicle)}</div>` : ''}
           ${material ? `<div class="job-material">${esc(material)}</div>` : ''}
+          ${wtn ? `<div class="job-material">EWC ${esc(wtn.ewcCode || 'check')} · ${esc(wtn.containment || WTN_DEFAULTS.containment)}</div>` : ''}
           <div class="job-meta">
             <span>${esc(from || '—')}</span>
             <span class="arrow">→</span>
             <span>${esc(to || '—')}</span>
-            ${weight ? `<span>· ${esc(String(weight))}t</span>` : ''}
+            ${weight ? `<span>· Qty ${esc(String(weight))}</span>` : ''}
           </div>
         </div>
         <div>${statusBadge(status)}</div>
@@ -2748,9 +4521,11 @@ function jobCardHTML(job, showDriver, isNext = false) {
         <div class="job-card-actions">
           <button class="btn btn-map quick-map" data-map-provider="apple" data-job-id="${esc(jobId)}">Apple Maps</button>
           <button class="btn btn-google-map quick-map" data-map-provider="google" data-job-id="${esc(jobId)}">Google Maps</button>
-          <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}" ${status === 'complete' ? 'disabled' : ''}>${esc(actionLabel)}</button>
-          <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
-          <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Cancel</button>
+          ${!terminal ? `
+            <button class="btn ${actionClass} quick-next" data-job-id="${esc(jobId)}">${esc(actionLabel)}</button>
+            <button class="btn btn-secondary quick-proof" data-job-id="${esc(jobId)}">Photo / sign</button>
+            <button class="btn btn-danger quick-problem" data-job-id="${esc(jobId)}">Cancel</button>
+          ` : ''}
         </div>` : ''}
     </div>`;
 }
@@ -2779,7 +4554,7 @@ function attachQuickActionListeners(container, jobs) {
       e.stopPropagation();
       const job = findJob(btn.dataset.jobId);
       if (!job) return;
-      const isDriverAdded = !!(job._driverAdded || (job.id && String(job.id).startsWith('driver-')) || (job.jobId && String(job.jobId).startsWith('driver-')));
+      const isDriverAdded = isDriverAddedJob(job);
       if (getJobStatus(job) === 'scheduled' && !isDriverAdded) await departJob(job, btn);
       else showSignScreen(job);
     });
@@ -2824,6 +4599,7 @@ function renderDeliveryTab(container, job) {
   const material = getJobMaterial(job);
   const weight = getJobWeight(job);
   const notes = getJobNotes(job);
+  const terminal = isTerminalJobStatus(getJobStatus(job));
 
   const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
   const mapQuery = addrParts.join(', ');
@@ -2871,13 +4647,15 @@ function renderDeliveryTab(container, job) {
 
     <div class="freight-heading">Freight Breakdown</div>
     <div class="weight-row">
-      <label>Weight:</label>
-      <input type="number" id="detail-weight" value="${esc(String(weight || 0))}" step="0.01" min="0" inputmode="decimal">
-      <button class="weight-save-btn" id="detail-weight-save">💾</button>
+      <label>Qty:</label>
+      <input type="number" id="detail-weight" value="${esc(String(weight || 0))}" step="0.01" min="0" inputmode="decimal" ${terminal ? 'disabled' : ''}>
+      <button class="weight-save-btn" id="detail-weight-save" ${terminal ? 'disabled' : ''}>💾</button>
     </div>
 
     <div class="instructions-heading">Special Instructions</div>
     <div class="instructions-text">${esc(notes) || '<span style="color:var(--muted)">None</span>'}</div>
+
+    ${renderWasteTransferPanel(job)}
 
     <div class="proof-checklist">
       <div class="proof-check"><span>Status</span><span>${statusBadge(getJobStatus(job))}</span></div>
@@ -2886,26 +4664,27 @@ function renderDeliveryTab(container, job) {
     </div>
 
     <div class="action-row">
-      <button class="btn btn-depart" id="detail-start-btn" ${getJobStatus(job) !== 'scheduled' ? 'disabled' : ''}>Start / In Transit</button>
+      <button class="btn btn-depart" id="detail-start-btn" ${getJobStatus(job) !== 'scheduled' || terminal ? 'disabled' : ''}>Start / In Transit</button>
     </div>
     <div class="action-row">
-      <button class="btn btn-complete" id="detail-complete-btn">Photo / sign / complete</button>
-      <button class="btn btn-danger" id="detail-problem-btn">Cancel</button>
+      <button class="btn btn-complete" id="detail-complete-btn" ${terminal ? 'disabled' : ''}>Photo / sign / complete</button>
+      <button class="btn btn-danger" id="detail-problem-btn" ${terminal ? 'disabled' : ''}>Cancel</button>
     </div>
   `;
 
   // Weight save handler
   $('detail-weight-save')?.addEventListener('click', () => {
+    if (terminal) return;
     const w = $('detail-weight').value;
     const c = getJobConsignment(job);
     if (c) { c.weight = parseFloat(w) || 0; c.quantity = c.weight; }
-    toast('Weight saved: ' + w + 't');
+    toast('Quantity saved: ' + w);
     queueTrialEvent('weight_changed', job, { weight: w, state: 'saved locally', haultechWriteState: 'saved locally' });
   });
   attachMapChoiceListeners(container, job, 'delivery', mapQuery);
   $('detail-start-btn')?.addEventListener('click', e => departJob(job, e.target));
-  $('detail-complete-btn')?.addEventListener('click', () => showSignScreen(job));
-  $('detail-problem-btn')?.addEventListener('click', () => showProblemModal(job));
+  $('detail-complete-btn')?.addEventListener('click', () => { if (!terminal) showSignScreen(job); });
+  $('detail-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
 }
 
 function renderCollectionTab(container, job) {
@@ -2913,6 +4692,7 @@ function renderCollectionTab(container, job) {
   const addr = getCollectionAddress(job);
   const material = getJobMaterial(job);
   const weight = getJobWeight(job);
+  const terminal = isTerminalJobStatus(getJobStatus(job));
 
   const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
   const mapQuery = addrParts.join(', ');
@@ -2939,22 +4719,23 @@ function renderCollectionTab(container, job) {
         <div class="detail-value">${esc(material || 'N/A')}</div>
       </div>
       <div style="flex:1;">
-        <div class="detail-label">Weight</div>
-        <div class="detail-value">${weight ? esc(String(weight)) + 't' : 'N/A'}</div>
+        <div class="detail-label">Qty</div>
+        <div class="detail-value">${weight ? esc(String(weight)) : 'N/A'}</div>
       </div>
     </div>
+    ${renderWasteTransferPanel(job)}
     <div class="action-row">
-      <button class="btn btn-depart" id="collection-arrived-btn">I'm here / started</button>
+      <button class="btn btn-depart" id="collection-arrived-btn" ${terminal ? 'disabled' : ''}>I'm here / started</button>
     </div>
     <div class="action-row">
-      <button class="btn btn-secondary" id="collection-proof-btn">Take proof</button>
-      <button class="btn btn-danger" id="collection-problem-btn">Cancel</button>
+      <button class="btn btn-secondary" id="collection-proof-btn" ${terminal ? 'disabled' : ''}>Take proof</button>
+      <button class="btn btn-danger" id="collection-problem-btn" ${terminal ? 'disabled' : ''}>Cancel</button>
     </div>
   `;
   attachMapChoiceListeners(container, job, 'collection', mapQuery);
-  $('collection-arrived-btn')?.addEventListener('click', e => departJob(job, e.target));
-  $('collection-proof-btn')?.addEventListener('click', () => showSignScreen(job));
-  $('collection-problem-btn')?.addEventListener('click', () => showProblemModal(job));
+  $('collection-arrived-btn')?.addEventListener('click', e => { if (!terminal) departJob(job, e.target); });
+  $('collection-proof-btn')?.addEventListener('click', () => { if (!terminal) showSignScreen(job); });
+  $('collection-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
 }
 
 function renderStdTab(container, job) {
@@ -2963,13 +4744,16 @@ function renderStdTab(container, job) {
   const price = getJobPrice(job);
   const status = getJobStatus(job);
   const driver = getJobDriver(job);
+  const addedBy = getJobAddedBy(job);
+  const isDriverAdded = isDriverAddedJob(job);
+  const terminal = isTerminalJobStatus(status);
 
   container.innerHTML = `
     <div class="detail-label">Status</div>
     <div class="detail-value">${statusBadge(status)}</div>
 
-    <div class="detail-label">Driver</div>
-    <div class="detail-value">${esc(driver || 'Unassigned')}</div>
+    <div class="detail-label">${isDriverAdded ? 'Added by' : 'Driver'}</div>
+    <div class="detail-value">${esc((isDriverAdded ? addedBy : driver) || driver || 'Unassigned')}</div>
 
     <div class="detail-label">Vehicle</div>
     <div class="detail-value">${esc(vehicle || 'N/A')}</div>
@@ -2977,33 +4761,39 @@ function renderStdTab(container, job) {
     <div class="detail-label">Reference</div>
     <div class="detail-value">${esc(ref || 'N/A')}</div>
 
+    ${renderWasteTransferPanel(job)}
+
     ${isManager ? `
       <div class="detail-label">Price</div>
-      <div class="detail-value">${price ? '£' + Number(price).toFixed(2) : 'Missing price allowed'}</div>
+      <div class="detail-value">${hasDisplayPrice(price) ? '£' + Number(price).toFixed(2) : 'Missing price allowed'}</div>
     ` : ''}
 
     <div class="action-row" style="margin-top:24px;">
       <button class="btn btn-depart" id="std-depart-btn" ${status !== 'scheduled' ? 'disabled' : ''}>
         Start / In Transit
       </button>
-      <button class="btn btn-danger" id="std-problem-btn">Cancel</button>
+      <button class="btn btn-danger" id="std-problem-btn" ${terminal ? 'disabled' : ''}>Cancel</button>
     </div>
   `;
 
   $('std-depart-btn')?.addEventListener('click', async (e) => {
-    await departJob(job, e.target);
+    if (!terminal) await departJob(job, e.target);
   });
-  $('std-problem-btn')?.addEventListener('click', () => showProblemModal(job));
+  $('std-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
 }
 
 // Detail bottom bar listeners
 $('detail-back-btn').addEventListener('click', showJobList);
 $('detail-sign-btn').addEventListener('click', () => {
-  if (activeJob) showSignScreen(activeJob);
+  if (activeJob && !isTerminalJobStatus(getJobStatus(activeJob))) showSignScreen(activeJob);
 });
 
 $('detail-delete-btn').addEventListener('click', async () => {
   if (!activeJob) return;
+  if (!isDriverAddedJob(activeJob)) {
+    toast('Only driver-added rows can be deleted');
+    return;
+  }
   const jobNum = getJobNumber(activeJob);
   const customer = activeJob.customer || activeJob.deliveryAddressLine1 || 'this job';
   if (!confirm(`Delete ticket ${jobNum} for ${customer}?\n\nThis cannot be undone.`)) return;
@@ -3058,6 +4848,7 @@ function renderSignScreen(job) {
         <div class="sign-del-postcode">${esc(addr.postcode || '')}</div>
       </div>
     </div>
+    ${renderWasteTransferPanel(job)}
     <hr class="sign-divider">
 
     <div class="sign-field">
@@ -3085,7 +4876,7 @@ function renderSignScreen(job) {
 
     <div class="sign-primary-actions">
       <button class="sign-primary-complete" id="sign-save-main-btn">Complete job</button>
-      <div class="sign-complete-help">Photo or signature required for live Haultech completion. Weight can be checked below before completing.</div>
+      <div class="sign-complete-help">Photo or signature required for live Haultech completion. Quantity can be checked below before completing.</div>
     </div>
   `;
 
@@ -3159,6 +4950,24 @@ async function responseError(resp, fallback) {
   }
 }
 
+async function writeHaultechDriverNoteForJob(job, driverNotes) {
+  const haultechJobId = getHaultechJobId(job);
+  if (!LIVE_WRITE || !haultechJobId || job?._cached || isDriverAddedJob(job)) {
+    return { ok: false, skipped: true };
+  }
+  const resp = await api(`/ht/note/${haultechJobId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      date: getHaultechJobDate(job),
+      lookupDates: driverNoteLookupDates(job),
+      driverNotes,
+    }),
+  });
+  if (!resp.ok) throw new Error(await responseError(resp, 'Driver note write failed'));
+  return resp.json().catch(() => ({ ok: true }));
+}
+
 async function uploadProofAsset(consId, storageKey, kind, contentType, body) {
   const result = {
     kind,
@@ -3211,6 +5020,10 @@ function hasUnsavedSignProof() {
   return true;
 }
 
+function hasUnsavedWalkaroundWork() {
+  return currentScreen === 'walkaround';
+}
+
 function modalOpen(id) {
   const el = $(id);
   return !!el && !el.classList.contains('hidden');
@@ -3224,12 +5037,13 @@ function hasUnsavedModalWork() {
 }
 
 function hasUnsafeUpdateReloadState() {
-  return hasUnsavedSignProof() || hasUnsavedModalWork();
+  return hasUnsavedSignProof() || hasUnsavedWalkaroundWork() || hasUnsavedModalWork();
 }
 
 function reloadForPendingServiceWorkerUpdate() {
-  if (!pendingServiceWorkerReload || hasUnsafeUpdateReloadState()) return;
+  if ((!pendingServiceWorkerReload && !pendingAppVersionReload) || hasUnsafeUpdateReloadState()) return;
   pendingServiceWorkerReload = false;
+  pendingAppVersionReload = false;
   window.location.reload();
 }
 
@@ -3254,9 +5068,11 @@ function setSignCompleteBusy(isBusy) {
 async function handleSignComplete() {
   if (!activeJob) return;
   const job = activeJob;
-  const consId = getJobConsignmentId(job);
-  const haultechJobId = getHaultechJobId(job);
-  const isDriverAdded = !haultechJobId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
+  const matchedLiveJob = (job._cached || isDriverAddedJob(job)) ? findMatchingLiveDriverJob(job) : null;
+  const haultechCompleteJob = matchedLiveJob || job;
+  const consId = getJobConsignmentId(haultechCompleteJob) || getJobConsignmentId(job);
+  const haultechJobId = getHaultechJobId(haultechCompleteJob);
+  const isDriverAdded = !haultechJobId || (isDriverAddedJob(job) && !matchedLiveJob);
   const storageKey = consId || haultechJobId || job.id;
 
   setSignCompleteBusy(true);
@@ -3264,21 +5080,27 @@ async function handleSignComplete() {
   const consignee = $('sign-consignee')?.value?.trim() || '';
   const notes = $('sign-notes')?.value?.trim() || '';
   const weight = $('sign-weight')?.value || '0';
+  const haultechDriverNote = composeDriverHaultechNote({ note: notes, consignee });
+  const mergedNotes = applyDriverCompletionNote(job, haultechDriverNote || notes);
   const sigData = getSignSigData();
+  const wtn = getJobWasteTransferNote(job);
   let proofEvent = null;
 
   try {
     proofEvent = queueTrialEvent('proof_complete', job, {
       consigneeName: consignee,
-      notes,
+      driverNotes: notes,
+      notes: mergedNotes,
       weight: parseFloat(weight) || 0,
+      wtn,
+      wasteTransferNote: wtn,
       hasSignature: !!sigData,
       hasPhoto: !!signPhotoFile,
       state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
       haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
     });
 
-    if (LIVE_WRITE && !job._cached && !isDriverAdded) {
+    if (LIVE_WRITE && !isDriverAdded) {
       const proofResults = [];
       if (!signPhotoFile && !sigData) {
         setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
@@ -3313,11 +5135,23 @@ async function handleSignComplete() {
 
       // Complete in Haultech only after supplied proof has been protected either
       // in Haultech or in the PMG worker fallback store.
-      const completeResp = await api(`/ht/complete/${haultechJobId}`, { method: 'PATCH' });
+      const completeResp = await api(`/ht/complete/${haultechJobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: getHaultechJobDate(haultechCompleteJob),
+          lookupDates: driverNoteLookupDates(haultechCompleteJob),
+          driverNotes: haultechDriverNote || notes,
+          consigneeName: consignee,
+          originalReference: job.reference || job.customerReference || job._reference || getJobRef(job),
+          quantity: parseFloat(weight) || 0,
+          weight: parseFloat(weight) || 0,
+        }),
+      });
       if (!completeResp.ok) {
         throw new Error(await responseError(completeResp, 'Complete failed'));
       }
-      const completionCheck = await verifyHaultechCompletion(job, haultechJobId);
+      const completionCheck = await verifyHaultechCompletion(haultechCompleteJob, haultechJobId);
 
       // Save POD metadata
       try {
@@ -3326,7 +5160,8 @@ async function handleSignComplete() {
           headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             consignmentId: consId, podCode: 'success', podCodeId: POD_CODES.success,
-            consigneeName: consignee, notes, weight: parseFloat(weight) || 0,
+            consigneeName: consignee, driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
+            wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
@@ -3334,6 +5169,8 @@ async function handleSignComplete() {
       } catch {}
 
       updateJobStatusLocal(job, 'complete');
+      if (matchedLiveJob) updateJobStatusLocal(matchedLiveJob, 'complete');
+      await saveJobsToCloud(todayISO(), allJobs);
       const proofState = completionCheck.ok && !missingHaultechProof.length ? 'written' : 'saved locally';
       const proofMessage = completionCheck.ok
         ? (missingHaultechProof.length
@@ -3366,7 +5203,8 @@ async function handleSignComplete() {
           headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             jobId: storageKey, podCode: 'success', consigneeName: consignee,
-            notes, weight: parseFloat(weight) || 0,
+            driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
+            wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
@@ -3382,6 +5220,7 @@ async function handleSignComplete() {
       } catch {}
 
       updateJobStatusLocal(job, 'complete');
+      await saveJobsToCloud(todayISO(), allJobs);
       setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
       toast('✓ Complete saved');
     }
@@ -3406,6 +5245,7 @@ $('sign-save-btn').addEventListener('click', handleSignComplete);
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function departJob(job, btn) {
+  if (!requireWalkaroundBeforeDriverAction('Start / In Transit')) return;
   const consId = getJobConsignmentId(job);
   const isDriverAdded = !consId || job._driverAdded || (job.id && String(job.id).startsWith('driver-'));
   const storageKey = consId || job.id || job.jobId;
@@ -3486,21 +5326,89 @@ $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManag
 let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
 let fPriceWasAuto = false;
 
+function canCurrentUserPriceJobs() {
+  return currentUser?.username === 'richard' || currentUser?.name === 'Richard Whittaker';
+}
+
+function updateRichardPriceFields() {
+  const allowed = canCurrentUserPriceJobs();
+  $('richard-price-fields')?.classList.toggle('hidden', !allowed);
+  if (!allowed) {
+    $('f-price').value = '';
+    $('f-price-mode').value = 'rate';
+  }
+}
+
+function driverEnteredPricePayload(quantity, unit) {
+  if (!canCurrentUserPriceJobs()) return null;
+  const raw = $('f-price')?.value;
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const mode = $('f-price-mode')?.value === 'fixed' ? 'fixed' : 'rate';
+  const qty = parseFloat(quantity) || 0;
+  const quotedPrice = mode === 'fixed' ? value : value * qty;
+  if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) return null;
+  return {
+    mode,
+    input: value,
+    quotedPrice: Math.round(quotedPrice * 100) / 100,
+    unit: unit || 't',
+  };
+}
+
 function unitForMaterial(material) {
   const pricing = MATERIAL_PRICING[material];
   if (!pricing) return '';
   if (pricing.unit === 'tonnes') return 't';
   if (pricing.unit === 'bags') return 'bags';
   if (pricing.unit === 'days') return 'days';
-  if (pricing.unit === 'job') return 'items';
+  if (pricing.unit === 'weeks') return 'weeks';
+  if (pricing.unit === 'each' || pricing.unit === 'job') return 'each';
   return pricing.unit || '';
 }
 
 function rateForMaterial(material, qty) {
   const pricing = MATERIAL_PRICING[material];
   if (!pricing) return null;
+  if (pricing.type === 'banded' && Array.isArray(pricing.bands)) {
+    const q = parseFloat(qty) || 0;
+    const band = pricing.bands.find(b => q >= b.min) || pricing.bands[pricing.bands.length - 1];
+    return band ? band.rate : null;
+  }
   if (pricing.type === 'tiered') return (parseFloat(qty) || 0) >= 10 ? pricing.over10 : pricing.under10;
   return pricing.rate;
+}
+
+function normaliseVehicleReg(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function isVolumetricConcreteVehicle(vehicle) {
+  const reg = normaliseVehicleReg(vehicle);
+  return VOLUMETRIC_CONCRETE_VEHICLES.has(reg) || reg.includes('LL21') || reg.includes('FLF');
+}
+
+function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
+  const selectedVehicle = vehicle ?? $('f-vehicle')?.value ?? '';
+  const selectedMaterial = material ?? $('f-material')?.value ?? '';
+  const selectedUnit = String(unit ?? $('f-unit')?.value ?? '').toLowerCase();
+  const selectedNotes = notes ?? $('f-notes')?.value ?? '';
+  const text = `${selectedMaterial} ${selectedNotes}`;
+  return isVolumetricConcreteVehicle(selectedVehicle)
+    || ['m3', 'm³', 'cube', 'cubes'].includes(selectedUnit)
+    || /\b(?:concrete|m3|m³|cube|cubes|c\d{2}|rc\d{2})\b/i.test(text);
+}
+
+function updateConcreteTypeFields() {
+  const show = isConcreteEntryCandidate();
+  $('concrete-type-fields')?.classList.toggle('hidden', !show);
+  if (isVolumetricConcreteVehicle($('f-vehicle')?.value)) {
+    $('f-unit').value = 'm3';
+    if (!$('f-material').value.trim()) $('f-material').value = 'Concrete';
+  } else if ($('f-concrete-type')) {
+    $('f-concrete-type').value = '';
+  }
 }
 
 function populateMaterialList() {
@@ -3517,8 +5425,43 @@ function maybeAutoPriceMaterial() {
   const material = $('f-material').value.trim();
   const unit = unitForMaterial(material);
   if (unit) $('f-unit').value = unit;
-  $('f-price').value = '';
+  updateConcreteTypeFields();
+  if (!canCurrentUserPriceJobs()) $('f-price').value = '';
   fPriceWasAuto = false;
+}
+
+function updateWasteFieldsVisibility() {
+  const isWaste = $('f-waste-transfer')?.checked;
+  $('f-waste-fields')?.classList.toggle('hidden', !isWaste);
+}
+
+function maybeAutoWasteMaterial() {
+  const material = $('f-material')?.value?.trim() || '';
+  const info = wasteInfoForMaterial(material);
+  if (!info) return;
+  $('f-waste-transfer').checked = true;
+  $('f-ewc-code').value = normalizeEwcCode(info.ewcCode);
+  $('f-sic-code').value = $('f-sic-code').value || WTN_DEFAULTS.sicCode;
+  $('f-waste-hierarchy').checked = true;
+  updateWasteFieldsVisibility();
+}
+
+function buildAddJobWasteTransferNote({ material, weight, unit, from, to, customerName, ref }) {
+  if (!$('f-waste-transfer')?.checked) return null;
+  return buildWasteTransferNote({
+    wasteTransfer: true,
+    material,
+    quantity: weight,
+    unit,
+    from,
+    to,
+    customer: customerName,
+    reference: ref,
+    ewcCode: $('f-ewc-code').value,
+    sicCode: $('f-sic-code').value || WTN_DEFAULTS.sicCode,
+    containment: $('f-containment').value || WTN_DEFAULTS.containment,
+    wasteHierarchyApplied: $('f-waste-hierarchy').checked,
+  });
 }
 
 function initAddJobSig() {
@@ -3543,7 +5486,7 @@ function isBlankCanvas(canvas) {
   return !data.some(v => v !== 0);
 }
 
-$('add-job-btn').addEventListener('click', () => {
+function openAddJobModal() {
   $('add-job-modal').classList.remove('hidden');
   loadCustomers();
   populateMaterialList();
@@ -3553,39 +5496,80 @@ $('add-job-btn').addEventListener('click', () => {
   fPriceWasAuto = false;
   $('f-photo-preview').style.display = 'none';
   $('f-photo-btn').textContent = '📷 Take Photo';
-});
+  $('f-waste-transfer').checked = false;
+  $('f-ewc-code').value = '';
+  $('f-sic-code').value = WTN_DEFAULTS.sicCode;
+  $('f-containment').value = WTN_DEFAULTS.containment;
+  $('f-waste-hierarchy').checked = true;
+  updateWasteFieldsVisibility();
+  updateA1PaymentFields();
+  updateRichardPriceFields();
+  updateConcreteTypeFields();
+}
+
+$('add-job-btn').addEventListener('click', openAddJobModal);
 $('add-job-close').addEventListener('click', () => $('add-job-modal').classList.add('hidden'));
 $('add-job-modal').addEventListener('click', e => {
   if (e.target === $('add-job-modal')) $('add-job-modal').classList.add('hidden');
 });
 
 let customerSearchTimeout = null;
+function renderCustomerDropdown(matches) {
+  const dd = $('customer-dropdown');
+  if (!matches.length) { dd.classList.add('hidden'); return; }
+  dd.innerHTML = matches.map(c => `
+    <div class="autocomplete-item" data-id="${esc(c.id)}" data-name="${esc(c.name)}">
+      ${esc(c.name)}
+      ${c.code ? `<span class="ac-code">(${esc(c.code)})</span>` : ''}
+    </div>
+  `).join('');
+  dd.classList.remove('hidden');
+  dd.querySelectorAll('.autocomplete-item').forEach(item => {
+    item.addEventListener('click', () => {
+      $('f-customer').value = item.dataset.name;
+      $('f-customer-id').value = item.dataset.id;
+      updateA1PaymentFields();
+      dd.classList.add('hidden');
+    });
+  });
+}
+
+function findCustomerMatches(query, limit = 12) {
+  const q = String(query || '').trim().toLowerCase();
+  const source = customers.slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  if (!q) return source.slice(0, limit);
+  return source.filter(c => {
+    const haystack = [c.name, c.code, ...(Array.isArray(c.aliases) ? c.aliases : [])]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
+  }).slice(0, limit);
+}
+
+function isA1DriverCustomer(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === 'A1';
+}
+
+function updateA1PaymentFields() {
+  const isA1 = isA1DriverCustomer($('f-customer').value);
+  $('a1-payment-fields').classList.toggle('hidden', !isA1);
+  if (!isA1) $('f-a1-paid').checked = false;
+}
+
 $('f-customer').addEventListener('input', (e) => {
   clearTimeout(customerSearchTimeout);
   $('f-customer-id').value = '';
-  const q = e.target.value.trim().toLowerCase();
+  updateA1PaymentFields();
+  const q = e.target.value.trim();
   if (q.length < 2) { $('customer-dropdown').classList.add('hidden'); return; }
-  customerSearchTimeout = setTimeout(() => {
-    const matches = customers.filter(c =>
-      c.name.toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q)
-    ).slice(0, 8);
-    const dd = $('customer-dropdown');
-    if (matches.length === 0) { dd.classList.add('hidden'); return; }
-    dd.innerHTML = matches.map(c => `
-      <div class="autocomplete-item" data-id="${esc(c.id)}" data-name="${esc(c.name)}">
-        ${esc(c.name)}
-        ${c.code ? `<span class="ac-code">(${esc(c.code)})</span>` : ''}
-      </div>
-    `).join('');
-    dd.classList.remove('hidden');
-    dd.querySelectorAll('.autocomplete-item').forEach(item => {
-      item.addEventListener('click', () => {
-        $('f-customer').value = item.dataset.name;
-        $('f-customer-id').value = item.dataset.id;
-        dd.classList.add('hidden');
-      });
-    });
-  }, 150);
+  customerSearchTimeout = setTimeout(() => renderCustomerDropdown(findCustomerMatches(q, 12)), 150);
+});
+
+$('show-customer-list-btn').addEventListener('click', async () => {
+  await loadCustomers();
+  renderCustomerDropdown(findCustomerMatches($('f-customer').value, 20));
+  $('f-customer').focus();
 });
 
 document.addEventListener('click', (e) => {
@@ -3595,9 +5579,18 @@ document.addEventListener('click', (e) => {
 $('f-material').addEventListener('input', () => {
   fPriceWasAuto = false;
   maybeAutoPriceMaterial();
+  maybeAutoWasteMaterial();
 });
 $('f-qty').addEventListener('input', maybeAutoPriceMaterial);
+$('f-unit').addEventListener('change', updateConcreteTypeFields);
+$('f-notes').addEventListener('input', updateConcreteTypeFields);
+$('f-vehicle').addEventListener('change', updateConcreteTypeFields);
 $('f-price').addEventListener('input', () => { fPriceWasAuto = false; });
+$('f-waste-transfer').addEventListener('change', updateWasteFieldsVisibility);
+$('f-ewc-code').addEventListener('input', () => {
+  if ($('f-ewc-code').value.trim()) $('f-waste-transfer').checked = true;
+  updateWasteFieldsVisibility();
+});
 
 async function loadCustomers() {
   if (customers.length) return;
@@ -3609,8 +5602,8 @@ async function loadCustomers() {
 
 $('add-job-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const customerId = $('f-customer-id').value;
-  if (LIVE_WRITE && !customerId) { toast('Select a customer from the list'); return; }
+  const customerName = $('f-customer').value.trim();
+  if (!customerName) { toast('Enter customer / site'); return; }
 
   const btn = $('add-job-submit');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -3618,132 +5611,71 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const date = todayISO();
   const weight = parseFloat($('f-qty').value) || 0;
   const unit = $('f-unit').value || 't';
-  const price = 0;
   const material = $('f-material').value.trim();
   const ref = $('f-ref').value.trim();
   const notes = $('f-notes').value.trim();
+  const isA1Customer = isA1DriverCustomer(customerName);
+  const a1PaymentStatus = isA1Customer ? ($('f-a1-paid').checked ? 'paid' : 'not_paid') : '';
   const from = $('f-from').value.trim();
   const to = $('f-to').value.trim();
-  const customerName = $('f-customer').value.trim();
   const vehicle = $('f-vehicle').value;
+  const concreteEntry = isConcreteEntryCandidate({ vehicle, material, unit, notes });
+  const concreteType = concreteEntry ? $('f-concrete-type').value : '';
+  const richardPrice = driverEnteredPricePayload(weight, unit);
+  const wtn = buildAddJobWasteTransferNote({ material, weight, unit, from, to, customerName, ref });
   if (!vehicle) {
     toast('Select truck / wagon');
     btn.disabled = false;
     btn.textContent = 'Save row for office';
     return;
   }
+  if (isA1Customer && !ref) {
+    toast('Enter A1 customer name / reference');
+    btn.disabled = false;
+    btn.textContent = 'Save row for office';
+    return;
+  }
+  if (concreteEntry && !concreteType) {
+    toast('Choose quarried or recycled');
+    btn.disabled = false;
+    btn.textContent = 'Save row for office';
+    return;
+  }
   setSelectedDriverVehicle(vehicle);
 
-  const dt = new Date(date + 'T00:00:00Z');
-  const epoch = Math.floor(dt.getTime() / 1000) + 43200;
-  const iso = `${date}T00:00:00.0000000`;
-
-  const driverTag = `${currentUser.name} / ${vehicle}`;
-  const payload = {
-    active: true, customerId, jobTypeId: JOB_TYPE_STD,
-    serviceLevelId: SERVICE_LEVEL_STD, customerReference: ref,
-    trafficNotes: driverTag + (notes ? ': ' + notes : ''),
-    accountNotes: 'Added by ' + driverTag,
-    specialInstructions: '',
-    quotedPrice: price, useQuotedPrice: false, collectionRequired: false,
-    deliveryDateEpoch: epoch, collectionDateEpoch: epoch,
-    deliveryDate: iso, collectionDate: iso,
-    weight, quantity: weight, onOrBy: 'B',
-    collectionStatus: 'None', deliveryStatus: 'Scheduled',
-    consignments: [{
-      active: true, collection: false, delivery: true,
-      goodsDescription: material, consignmentReference: ref,
-      weight, quantity: weight,
-      collectionAddressLine1: from || 'PM Groundworks Yard',
-      collectionAddressLine3: 'Hambleton',
-      collectionAddressLine4: 'Lancashire',
-      collectionPostcode: from ? '' : 'FY6 9DJ',
-      collectionCountry: 'United Kingdom',
-      deliveryAddressLine1: to, deliveryPostcode: '',
-      deliveryCountry: 'United Kingdom',
-    }],
-  };
-
   try {
-    if (!LIVE_WRITE) {
-      throw new Error('trial_shadow_add');
-    }
-    const resp = await api('/ht/upsert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (resp.ok) {
-      const jobResp = await resp.json().catch(()=>({}));
-      const newJobId = jobResp.id || jobResp.jobId || ('driver-'+Date.now());
-      const sigData = fSigCanvas ? fSigCanvas.toDataURL('image/png') : null;
-      const hasSig = sigData && fSigCtx && !isBlankCanvas(fSigCanvas);
-      if (hasSig || fPhotoFile) {
-        try {
-          let photoData = null;
-          if (fPhotoFile) { const ab = await fPhotoFile.arrayBuffer(); photoData = btoa(String.fromCharCode(...new Uint8Array(ab))); }
-          await api(`/ticket/evidence-${newJobId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({driverName:currentUser.name,date:todayISO(),signature:hasSig?sigData:null,photo:photoData,notes:notes,type:'add_job_evidence'}) });
-        } catch {}
-      }
-      $('add-job-modal').classList.add('hidden');
-      $('add-job-form').reset();
-      $('f-customer-id').value = '';
-      if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
-      fPhotoFile = null;
-      // Show confirmation modal
-      showJobConfirmation({
-        customer: customerName,
-        vehicle,
-        material,
-        from: from || 'PMG Yard',
-        to,
-        weight, unit,
-        ref: ref || newJobId,
-      });
-      // Immediately inject the new job into the local list so it shows straight away
-      // (Haultech may take a few seconds to reflect it in the list endpoint)
-      const optimisticJob = {
-        id: newJobId,
-        jobId: newJobId,
-        driver: currentUser.name,
-        vehicle,
-        customer: customerName,
-        goodsDescription: material,
-        material,
-        collectionAddressLine1: from || 'PM Groundworks Yard',
-        deliveryAddressLine1: to,
-        quantity: weight,
-        weight,
-        price: 0,
-        status: 'scheduled',
-        consignmentReference: ref,
-        ticketNo: ref || newJobId,
-        date: date,
-        _driverAdded: true,
-      };
-      allJobs.push(optimisticJob);
-      renderJobs();
-      // Also reload from server after a delay to get the canonical version
-      setTimeout(loadJobs, 3000);
-    } else {
-      const err = await resp.json().catch(() => ({}));
-      toast('Failed: ' + (err.error || err.message || 'Unknown error'));
-    }
-  } catch (e) {
-    // Save job locally so it isn't lost. In trial mode this is the intended path.
+    // Driver-created rows must stay in the office-review queue. Live Haultech
+    // creation remains server/office-owned because the driver app cannot verify
+    // pricing, allocation and duplicate state at the point of entry.
     const localDate = date;
     const localJob = {
-      id: 'driver-' + Date.now(),
-      driver: currentUser.name,
+	      id: 'driver-' + Date.now(),
+	      driver: currentUser.name,
+	      driverName: currentUser.name,
+	      addedBy: currentUser.name,
+	      createdBy: currentUser.name,
       vehicle,
       customer: $('f-customer').value,
       material,
+      concreteType,
       from,
       to,
       quantity: weight,
       unit,
-      price: '',
+      price: richardPrice?.quotedPrice ?? '',
+      priceMode: richardPrice?.mode || '',
+      priceInput: richardPrice?.input ?? '',
       status: 'scheduled',
+      reference: ref,
+      notes,
+      a1PaymentStatus,
+      paymentStatus: a1PaymentStatus,
+      wtn,
+      wasteTransferNote: wtn,
+      ewcCode: wtn?.ewcCode || '',
+      sicCode: wtn?.sicCode || '',
+      containment: wtn?.containment || '',
+      wasteHierarchyApplied: wtn ? wtn.wasteHierarchyApplied !== false : false,
       savedAt: new Date().toISOString(),
       ticketNo: ref || ('local-' + Date.now()),
       _driverAdded: true,
@@ -3752,34 +5684,80 @@ $('add-job-form').addEventListener('submit', async (e) => {
     existingLocal.push(localJob);
     localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
     if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
+    let haultechWriteState = 'saved locally';
+    let haultechReason = DRIVER_ADDED_BACKUP_REASON;
+    let confirmedJobId = localJob.id;
+    if (LIVE_WRITE) {
+      try {
+        const liveResp = await api('/ht/driver-add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...localJob, date: localDate }),
+        });
+        const liveResult = await liveResp.json().catch(() => ({}));
+        if (!liveResp.ok || !liveResult.ok) {
+          throw new Error(liveResult.message || liveResult.error || `HTTP ${liveResp.status}`);
+        }
+        haultechWriteState = 'written';
+        confirmedJobId = liveResult.jobId || liveResult.ref || localJob.id;
+        haultechReason = liveResult.alreadyPresent
+          ? 'Already present in Haultech; not duplicated'
+          : DRIVER_ADDED_LIVE_REASON;
+      } catch (writeErr) {
+        haultechWriteState = 'saved locally';
+        haultechReason = `${DRIVER_ADDED_BACKUP_REASON}: ${writeErr.message || 'Haultech write failed'}`;
+      }
+    }
     queueTrialEvent('day_sheet_row_added', localJob, {
-      customer: localJob.customer,
-      vehicle: localJob.vehicle,
+	      customer: localJob.customer,
+	      addedBy: localJob.addedBy,
+	      vehicle: localJob.vehicle,
       material,
+      concreteType: localJob.concreteType,
       from,
       to,
       quantity: weight,
       unit,
-      price: '',
+      price: localJob.price,
+      priceMode: localJob.priceMode,
+      priceInput: localJob.priceInput,
       reference: ref,
       notes,
+      a1PaymentStatus,
+      paymentStatus: a1PaymentStatus,
+      wtn,
+      wasteTransferNote: wtn,
       hasSignature: fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas),
       hasPhoto: !!fPhotoFile,
-      state: 'saved locally',
-      haultechWriteState: 'saved locally',
-      reason: LIVE_WRITE ? e.message : 'Driver-added row saved in trial mode',
+      state: haultechWriteState,
+      haultechWriteState,
+      reason: haultechReason,
     });
     allJobs.push({
-      jobId: localJob.id, _cached: true, _driverAdded: true,
-      _driver: localJob.driver, _customer: localJob.customer,
+	      jobId: confirmedJobId, _cached: true, _driverAdded: true,
+	      _driver: localJob.driver, _customer: localJob.customer,
+	      _addedBy: localJob.addedBy,
       _material: localJob.material, _from: localJob.from, _to: localJob.to,
+      _concreteType: localJob.concreteType,
       _vehicle: localJob.vehicle,
       _quantity: localJob.quantity, _price: localJob.price, _status: localJob.status,
+      _priceMode: localJob.priceMode,
+      _priceInput: localJob.priceInput,
+      _unit: localJob.unit,
+      _reference: localJob.reference,
+      _notes: localJob.notes,
+      _a1PaymentStatus: localJob.a1PaymentStatus,
+      _wtn: localJob.wtn,
+      _ewcCode: localJob.ewcCode,
+      _sicCode: localJob.sicCode,
+      _containment: localJob.containment,
       savedAt: localJob.savedAt,
     });
     $('add-job-modal').classList.add('hidden');
     $('add-job-form').reset();
     $('f-customer-id').value = '';
+    updateA1PaymentFields();
+    updateWasteFieldsVisibility();
     if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
     fPhotoFile = null;
     showJobConfirmation({
@@ -3789,10 +5767,13 @@ $('add-job-form').addEventListener('submit', async (e) => {
       from: from || 'PMG Yard',
       to,
       weight: `${weight}${unit}`,
-      ref: ref || localJob.id,
+      ref: ref || confirmedJobId,
+      paymentStatus: a1PaymentStatus,
     });
     renderJobs();
-    toast('Row saved locally');
+    toast(haultechWriteState === 'written' ? 'Row saved to Haultech' : 'Row saved locally - Haultech retry queued');
+  } catch (e) {
+    toast('Failed to save row: ' + (e.message || 'Unknown error'));
   } finally {
     btn.disabled = false; btn.textContent = 'Save row';
   }
@@ -3803,6 +5784,10 @@ $('add-job-form').addEventListener('submit', async (e) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function showProblemModal(job) {
+  if (isTerminalJobStatus(getJobStatus(job))) {
+    toast('Job already closed');
+    return;
+  }
   activeJob = job;
   selectedProblemReason = '';
   $('problem-note').value = '';
@@ -3824,10 +5809,16 @@ $('problem-reasons').addEventListener('click', e => {
 });
 $('problem-submit').addEventListener('click', async () => {
   if (!activeJob) return;
+  if (isTerminalJobStatus(getJobStatus(activeJob))) {
+    $('problem-modal').classList.add('hidden');
+    toast('Job already closed');
+    return;
+  }
   const ok = window.confirm('Cancel this job? Only press Yes if it was not done today.');
   if (!ok) return;
   const reason = selectedProblemReason || 'Other';
   const note = $('problem-note').value.trim();
+  const haultechNote = composeDriverHaultechNote({ reason, note });
   const photo = $('problem-photo').files[0] || null;
   const event = queueTrialEvent('job_cancelled', activeJob, {
     reason,
@@ -3847,6 +5838,11 @@ $('problem-submit').addEventListener('click', async () => {
     } catch {}
   }
   updateJobStatusLocal(activeJob, 'cancelled');
+  try {
+    if (haultechNote) await writeHaultechDriverNoteForJob(activeJob, haultechNote);
+  } catch (e) {
+    setQueueState(event.eventId, 'failed', e.message || 'Haultech note write failed; local cancellation still saved on this phone');
+  }
   try {
     await api(`/job-status/${activeJob.id || activeJob.jobId}`, {
       method: 'POST',
@@ -3909,7 +5905,7 @@ $('feedback-submit').addEventListener('click', () => {
 // TOOLBAR
 // ══════════════════════════════════════════════════════════════════════════════
 
-$('refresh-btn').addEventListener('click', () => { loadJobs(); toast('Refreshing…'); });
+$('refresh-btn').addEventListener('click', () => { loadJobs({ force: true }); toast('Refreshing…'); });
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
@@ -3930,7 +5926,8 @@ function showJobConfirmation(job) {
     `🏠 To: <strong>${esc(job.to || '—')}</strong>`,
     `⚖️ Weight: <strong>${esc(displayWeight)}</strong>`,
     `🏷️ Ref: <strong>${esc(job.ref || '—')}</strong>`,
-  ].join('<br>');
+    job.paymentStatus ? `💷 Payment: <strong>${esc(job.paymentStatus === 'paid' ? 'Paid' : 'Not paid')}</strong>` : '',
+  ].filter(Boolean).join('<br>');
   $('job-confirm-details').innerHTML = details;
   $('job-confirm-modal').classList.remove('hidden');
 }
@@ -3939,6 +5936,9 @@ function init() {
   renderUserButtons();
   initPlaceChips();
   setHeaderForLogin();
+  recordCurrentAppBuild();
+  scheduleWalkaroundActivationRefresh();
+  scheduleAppAutoUpdateChecks();
 
   // Sync retry button
   $('sync-retry-btn').addEventListener('click', () => {
@@ -3951,6 +5951,11 @@ function init() {
   // Flush retry queue on load + every 30 seconds
   flushRetryQueue();
   setInterval(flushRetryQueue, 30000);
+  flushWalkaroundTicketQueue({ silent: true });
+  setInterval(() => flushWalkaroundTicketQueue({ silent: true }), 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentScreen === 'jobs') loadJobs({ force: true }).catch(() => {});
+  });
 
   // Reflect initial sync state
   updateSyncUI();
@@ -3964,17 +5969,86 @@ function init() {
     currentUser = { username: requestedDriver, ...INCAB_USERS[requestedDriver] };
     localStorage.setItem('pmg-user', requestedDriver);
     enterJobsScreen();
+    resumeWalkaroundDraftAfterEnter();
     toast(`${INCAB_USERS[requestedDriver].name} driver mode`);
     return;
   }
 
   const savedUser = localStorage.getItem('pmg-user');
   if (savedUser && INCAB_USERS[savedUser]) {
-    showPinScreen(savedUser);
+    currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };
+    enterJobsScreen();
+    resumeWalkaroundDraftAfterEnter();
+    toast(`${INCAB_USERS[savedUser].name} driver mode`);
   }
 }
 
 init();
+
+function recordCurrentAppBuild() {
+  try {
+    localStorage.setItem('pmg-driver-current-build', APP_BUILD_ID);
+    sessionStorage.removeItem('pmg-driver-update-attempt-stale');
+  } catch {}
+}
+
+function shouldAttemptBuildReload(latestBuildId) {
+  try {
+    const raw = sessionStorage.getItem('pmg-driver-update-attempt');
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed?.buildId === latestBuildId && Date.now() - Number(parsed.at || 0) < 2 * 60 * 1000) {
+      return false;
+    }
+    sessionStorage.setItem('pmg-driver-update-attempt', JSON.stringify({ buildId: latestBuildId, at: Date.now() }));
+  } catch {}
+  return true;
+}
+
+function requestSafeAppReload(reason = 'update') {
+  if (hasUnsafeUpdateReloadState()) {
+    pendingAppVersionReload = true;
+    toast('Update ready - finish the open job/form first');
+    return;
+  }
+  toast(reason === 'walkaround_activation' ? 'Updating driver app...' : 'App update ready - refreshing');
+  window.location.reload();
+}
+
+function resumeWalkaroundDraftAfterEnter() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+    if (!draft?.active || draft.date !== todayISO() || draft.driverId !== (currentUser?.driverId || '')) return;
+    if (draft.vehicle) setSelectedDriverVehicle(draft.vehicle);
+    if (draft.trailer !== undefined) setSelectedDriverTrailer(draft.trailer || '');
+    setTimeout(() => showWalkaroundScreen(), 350);
+  } catch {}
+}
+
+async function checkForAppVersionUpdate(reason = 'timer') {
+  const resp = await fetch(`${APP_VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
+  if (!resp.ok) return;
+  const version = await resp.json();
+  const latestBuildId = String(version?.buildId || '').trim();
+  if (!latestBuildId) return;
+  if (latestBuildId === APP_BUILD_ID) {
+    try {
+      localStorage.setItem('pmg-driver-current-build', APP_BUILD_ID);
+      sessionStorage.removeItem('pmg-driver-update-attempt');
+    } catch {}
+    return;
+  }
+  if (!shouldAttemptBuildReload(latestBuildId)) return;
+  requestSafeAppReload(reason);
+}
+
+function scheduleAppAutoUpdateChecks() {
+  checkForAppVersionUpdate('initial').catch(() => {});
+  setInterval(() => checkForAppVersionUpdate('timer').catch(() => {}), APP_UPDATE_CHECK_MS);
+  setInterval(reloadForPendingServiceWorkerUpdate, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkForAppVersionUpdate('visible').catch(() => {});
+  });
+}
 
 if ('serviceWorker' in navigator) {
   let refreshingForUpdate = false;
@@ -3994,9 +6068,9 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     handleServiceWorkerUpdate();
   });
-  navigator.serviceWorker.register('sw.js').then(reg => {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
     reg.update().catch(() => {});
-    setInterval(() => reg.update().catch(() => {}), 10 * 60 * 1000);
+    setInterval(() => reg.update().catch(() => {}), APP_UPDATE_CHECK_MS);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) reg.update().catch(() => {});
     });

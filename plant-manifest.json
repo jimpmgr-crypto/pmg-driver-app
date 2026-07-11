@@ -1,0 +1,25 @@
+{
+  "name": "PMG Plant Mechanic App",
+  "short_name": "PMG Plant",
+  "description": "PMG plant service alerts and mechanic records for Tony.",
+  "start_url": "/tony",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f1",
+  "theme_color": "#24352f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,2490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PMG Plant Mechanic App</title>
+  <link rel="manifest" href="/plant-manifest.json">
+  <link rel="icon" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#24352f">
+  <style>
+    :root {
+      --ink: #1d2522;
+      --muted: #607068;
+      --line: #d9e0dc;
+      --panel: #ffffff;
+      --page: #f3f5f1;
+      --green: #2f6b4f;
+      --green-soft: #e3f0e8;
+      --amber: #8f650f;
+      --amber-soft: #fff2cf;
+      --red: #9d2f28;
+      --red-soft: #fbe2df;
+      --blue: #255f82;
+      --blue-soft: #dcecf4;
+      --charcoal: #24352f;
+      --shadow: 0 12px 28px rgba(25, 38, 33, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      letter-spacing: 0;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .topbar {
+      min-height: 72px;
+      background: var(--charcoal);
+      color: #f7fbf8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 22px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 8px 18px rgba(19, 31, 26, 0.2);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 750;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: #d7e0da;
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .sync-pill {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #e9f0eb;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr) 390px;
+      gap: 14px;
+      padding: 14px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .rail {
+      padding: 12px;
+      align-self: start;
+      position: sticky;
+      top: 86px;
+      max-height: calc(100vh - 102px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .searchbar {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-weight: 720;
+    }
+
+    .field-hint {
+      display: block;
+      margin-top: 5px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #cbd6d0;
+      border-radius: 6px;
+      min-height: 40px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 72px;
+      background: #fbfcfa;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 23px;
+      line-height: 1.05;
+      margin-bottom: 4px;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .service-alerts {
+      display: grid;
+      gap: 8px;
+    }
+
+    .service-alerts:empty {
+      display: none;
+    }
+
+    .service-alert-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .service-alert-card {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--amber);
+      border-radius: 8px;
+      background: #fffaf0;
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .service-alert-card.overdue {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .service-alert-card.urgent {
+      border-left-color: var(--red);
+      background: #fff4f2;
+    }
+
+    .service-alert-card b {
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .service-alert-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .notification-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfa;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .notification-card.is-hidden {
+      display: none;
+    }
+
+    .notification-card.enabled {
+      background: var(--green-soft);
+      border-color: #c1d9ca;
+    }
+
+    .notification-card b {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .notification-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .notification-card button {
+      width: 100%;
+      min-height: 38px;
+      border-radius: 7px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 760;
+    }
+
+    .asset-list {
+      display: grid;
+      gap: 8px;
+      overflow: auto;
+      padding-right: 2px;
+      flex: 1 1 260px;
+      min-height: 220px;
+      align-content: start;
+    }
+
+    .asset-row-wrap {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .asset-button {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 78px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .asset-button.active {
+      border-color: var(--green);
+      box-shadow: inset 4px 0 0 var(--green);
+      background: var(--green-soft);
+    }
+
+    .asset-button[aria-expanded="true"],
+    .service-alert-card[aria-expanded="true"] {
+      border-color: var(--green);
+      box-shadow: inset 4px 0 0 var(--green);
+    }
+
+    .asset-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+      font-weight: 780;
+      line-height: 1.25;
+    }
+
+    .asset-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .inline-detail {
+      display: grid;
+      gap: 9px;
+      margin: 0 2px 4px;
+      padding: 10px;
+      border: 1px solid #c4d7c9;
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      background: #f7fbf7;
+    }
+
+    .inline-facts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .inline-fact,
+    .inline-line {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .inline-fact span,
+    .inline-line b {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .inline-fact strong,
+    .inline-line span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      line-height: 1.28;
+    }
+
+    .inline-lines {
+      display: grid;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+      background: #edf1ee;
+      color: #394740;
+    }
+
+    .chip.overdue { background: var(--red-soft); color: var(--red); }
+    .chip.due-soon { background: var(--amber-soft); color: var(--amber); }
+    .chip.scheduled { background: var(--green-soft); color: var(--green); }
+    .chip.watch { background: var(--blue-soft); color: var(--blue); }
+    .chip.unknown { background: #ebece9; color: #58615c; }
+
+    .detail {
+      padding: 16px;
+      min-height: calc(100vh - 100px);
+    }
+
+    .record-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+
+    .record-head h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .record-head p {
+      margin: 0;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .record-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+
+    .print-btn {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8faf7;
+      color: var(--ink);
+      min-height: 30px;
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .print-btn:hover {
+      border-color: #b9c7be;
+      background: #eef3f0;
+    }
+
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .identity-cell {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfa;
+      min-height: 70px;
+    }
+
+    .identity-cell span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+      font-weight: 720;
+    }
+
+    .identity-cell b {
+      display: block;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .identity-cell.evidence-cell {
+      grid-column: span 2;
+    }
+
+    .section {
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section:first-of-type { border-top: 0; }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      background: #fff;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    th {
+      color: #526259;
+      background: #f7f9f6;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .right-stack {
+      display: grid;
+      gap: 14px;
+      align-self: start;
+      position: sticky;
+      top: 86px;
+      max-height: calc(100vh - 102px);
+      overflow: auto;
+    }
+
+    .service-panel { order: 1; }
+    .identity-panel { order: 2; }
+
+    .form-panel {
+      padding: 14px;
+    }
+
+    .form-panel h2,
+    .form-panel h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .selected-strip {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfa;
+      font-weight: 760;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .selected-strip span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .selected-strip small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .service-panel form {
+      margin-top: 10px;
+    }
+
+    .collapsible-panel summary,
+    .extra-panel summary {
+      cursor: pointer;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .collapsible-panel summary::after,
+    .extra-panel summary::after {
+      content: "Open";
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .collapsible-panel[open] summary::after,
+    .extra-panel[open] summary::after {
+      content: "Close";
+    }
+
+    .collapsible-panel .form-grid,
+    .extra-panel .checksheet,
+    .extra-panel .filter-edit-list {
+      margin-top: 10px;
+    }
+
+    .extra-panel {
+      border-top: 1px solid var(--line);
+      padding-top: 2px;
+    }
+
+    .add-form details {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .add-form summary {
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.25;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+    }
+
+    .add-fields {
+      padding-top: 10px;
+    }
+
+    .checksheet {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .check-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 112px;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfa;
+    }
+
+    .check-row span {
+      font-size: 13px;
+      font-weight: 680;
+      overflow-wrap: anywhere;
+    }
+
+    .filter-edit-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .filter-edit-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      min-height: 40px;
+      border-radius: 6px;
+      background: #eef3ef;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+      min-height: 42px;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-weight: 800;
+      width: 100%;
+    }
+
+    .primary-btn {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .secondary-btn {
+      background: #eef3ef;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .review-list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .review-item {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fffdf7;
+    }
+
+    .review-item b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .review-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .empty {
+      border: 1px dashed #c4cec8;
+      border-radius: 8px;
+      padding: 14px;
+      color: var(--muted);
+      background: #fbfcfa;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: var(--charcoal);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+      max-width: min(520px, calc(100vw - 32px));
+      text-align: center;
+      z-index: 20;
+    }
+
+    .toast.show { opacity: 1; }
+
+    .muted { color: var(--muted); }
+    .bill-only { display: none; }
+
+    @media (max-width: 1260px) {
+      .layout {
+        grid-template-columns: 300px minmax(0, 1fr);
+      }
+      .right-stack {
+        grid-column: 1 / -1;
+        position: static;
+        max-height: none;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .topbar {
+        position: static;
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .top-actions { justify-content: stretch; }
+      .sync-pill { justify-content: center; width: 100%; }
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+      .rail,
+      .right-stack {
+        position: static;
+        max-height: none;
+      }
+      .rail { order: 1; }
+      .right-stack { order: 2; }
+      .detail { order: 3; }
+      .right-stack { grid-template-columns: 1fr; }
+      .stats { display: none; }
+      .identity-grid { grid-template-columns: 1fr 1fr; }
+      .identity-cell.evidence-cell { grid-column: 1 / -1; }
+      .record-head { grid-template-columns: 1fr; }
+      .record-actions { justify-content: flex-start; }
+      .record-head h2 { font-size: 24px; }
+    }
+
+    @media (max-width: 520px) {
+      .split,
+      .stats,
+      .identity-grid,
+      .filter-edit-row,
+      .check-row {
+        grid-template-columns: 1fr;
+      }
+      .topbar { padding: 12px; }
+      .brand h1 { font-size: 20px; }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #111;
+      }
+
+      .topbar,
+      .rail,
+      .right-stack,
+      .service-alerts,
+      .notification-card,
+      .toast,
+      .print-btn {
+        display: none !important;
+      }
+
+      .layout {
+        display: block;
+        max-width: none;
+        padding: 0;
+      }
+
+      .panel,
+      .detail {
+        border: 0;
+        box-shadow: none;
+      }
+
+      .detail {
+        min-height: auto;
+        padding: 0;
+      }
+
+      .record-head {
+        break-after: avoid;
+      }
+
+      .identity-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .table-wrap {
+        overflow: visible;
+      }
+
+      table {
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body data-role="tony">
+  <header class="topbar">
+    <div class="brand">
+      <h1>PMG Plant Mechanic App</h1>
+      <p id="subhead">Tony mechanic</p>
+    </div>
+    <div class="top-actions">
+      <span id="syncState" class="sync-pill">Loading</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel rail">
+      <div class="searchbar">
+        <label>
+          <span class="field-label">Search plant</span>
+          <input id="searchInput" type="search" placeholder="Plant number, machine, serial">
+        </label>
+        <div class="filter-grid">
+          <label>
+            <span class="field-label">Group</span>
+            <select id="plantGroupFilter">
+              <option value="all">All</option>
+              <option value="diggers">Diggers</option>
+              <option value="dumpers">Dumpers</option>
+              <option value="vehicles">Vehicles</option>
+              <option value="small_plant">Small plant</option>
+              <option value="tools">Tools</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>
+            <span class="field-label">Status</span>
+            <select id="statusFilter">
+              <option value="all">All</option>
+              <option value="overdue">Overdue</option>
+              <option value="due-soon">Due soon</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="watch">No next due</option>
+              <option value="unknown">Needs setup</option>
+            </select>
+          </label>
+          <label>
+            <span class="field-label">Sort</span>
+            <select id="sortMode">
+              <option value="recent">Recent work</option>
+              <option value="plant">Plant number</option>
+              <option value="status">Status</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+      <div id="serviceAlerts" class="service-alerts" aria-live="polite"></div>
+      <div id="notificationCard" class="notification-card is-hidden">
+        <div>
+          <b>Service notifications</b>
+          <span id="notificationText">Enable alerts on this phone.</span>
+        </div>
+        <button id="enableNotifications" type="button">Enable notifications</button>
+      </div>
+      <div id="assetList" class="asset-list" aria-live="polite"></div>
+
+      <form id="assetForm" class="form-grid add-form">
+        <details>
+          <summary>Add item</summary>
+          <div class="form-grid add-fields">
+            <div class="split">
+              <label>
+                <span class="field-label">Plant no.</span>
+                <input name="plantNumber" autocomplete="off">
+              </label>
+              <label>
+                <span class="field-label">Registration</span>
+                <input name="registration" autocomplete="off" placeholder="e.g. BT15LFB">
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                <span class="field-label">Year</span>
+                <input name="year" autocomplete="off">
+              </label>
+            </div>
+            <label>
+              <span class="field-label">Machine type</span>
+              <input name="machineType" autocomplete="off">
+            </label>
+            <label>
+              <span class="field-label">Serial number</span>
+              <input name="serialNumber" autocomplete="off">
+            </label>
+            <label>
+              <span class="field-label">Location</span>
+              <input name="site" autocomplete="off">
+            </label>
+            <button type="submit" class="secondary-btn">Add to plant hub</button>
+          </div>
+        </details>
+      </form>
+    </aside>
+
+    <section class="panel detail" id="recordDetail"></section>
+
+    <aside class="right-stack">
+      <section class="panel form-panel service-panel">
+        <h2 class="tony-label">Log work</h2>
+        <div id="selectedServiceAsset" class="selected-strip"><span>Selected plant</span>Select a plant item</div>
+        <form id="serviceForm" class="form-grid">
+          <div class="split">
+            <label>
+              <span class="field-label">Date</span>
+              <input name="date" type="date" required>
+            </label>
+            <label>
+              <span id="usageReadingLabel" class="field-label">Current hours at service</span>
+              <input name="hours" inputmode="numeric" autocomplete="off" placeholder="e.g. 3480">
+              <input name="mileage" type="hidden">
+              <span id="usageReadingHint" class="field-hint">Used for the 500-hour reminder.</span>
+            </label>
+          </div>
+          <label>
+            <span class="field-label">Service type</span>
+            <select name="serviceType">
+              <option>Full service</option>
+              <option>250 hour service</option>
+              <option>500 hour service</option>
+              <option>750 hour service</option>
+              <option>1000 hour service</option>
+              <option>Service schedule review</option>
+              <option>Wheel off - torque re-check required</option>
+              <option>Pre / post hire check</option>
+              <option>Repair</option>
+              <option>Inspection</option>
+              <option>Parts only</option>
+            </select>
+          </label>
+          <div>
+            <label>
+              <span class="field-label">Wheel torque Nm</span>
+              <input name="torqueNm" inputmode="numeric" autocomplete="off" value="625">
+            </label>
+          </div>
+          <label>
+            <span class="field-label">Work done</span>
+            <textarea name="workDone"></textarea>
+          </label>
+          <label>
+            <span class="field-label">Problems found</span>
+            <textarea name="anomalies"></textarea>
+          </label>
+          <div class="split">
+            <label>
+              <span class="field-label">Next due date</span>
+              <input name="nextDueDate" type="date">
+              <span class="field-hint">Auto: 12 months from service date.</span>
+            </label>
+            <label>
+              <span id="serviceIntervalLabel" class="field-label">Hour interval</span>
+              <select name="nextServiceIntervalHours">
+                <option value="500" selected>500 hours</option>
+                <option value="250">250 hours</option>
+                <option value="750">750 hours</option>
+                <option value="1000">1000 hours</option>
+              </select>
+              <span id="serviceIntervalHint" class="field-hint">Default rule: 12 months or 500 hours, whichever comes first.</span>
+            </label>
+          </div>
+          <div>
+            <label>
+              <span id="nextUsageReadingLabel" class="field-label">Next due hours</span>
+              <input name="nextDueHours" inputmode="numeric" autocomplete="off">
+              <input name="nextDueMileage" type="hidden">
+              <span id="nextUsageReadingHint" class="field-hint">Auto-fills from current hours + interval.</span>
+            </label>
+          </div>
+          <details class="extra-panel">
+            <summary>Tick sheet</summary>
+            <div id="checksheet" class="checksheet"></div>
+          </details>
+          <details class="extra-panel">
+            <summary>Filters / parts</summary>
+            <div class="section-title">
+              <h3>Filter updates</h3>
+              <button type="button" id="addFilterRow" class="icon-btn" title="Add filter row">+</button>
+            </div>
+            <div id="filterEditList" class="filter-edit-list"></div>
+          </details>
+          <input name="createdBy" value="Tony" type="hidden">
+          <button type="submit" class="primary-btn">Save service entry</button>
+        </form>
+      </section>
+
+      <section class="panel form-panel identity-panel">
+        <details class="collapsible-panel">
+          <summary>Edit plant details</summary>
+          <form id="identityForm" class="form-grid">
+            <label>
+              <span class="field-label">Display name</span>
+              <input name="displayName" autocomplete="off">
+            </label>
+            <div class="split">
+              <label>
+                <span class="field-label">Plant no.</span>
+                <input name="plantNumber" autocomplete="off">
+              </label>
+              <label>
+                <span class="field-label">Registration</span>
+                <input name="registration" autocomplete="off">
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                <span class="field-label">Year</span>
+                <input name="year" autocomplete="off">
+              </label>
+            </div>
+            <label>
+              <span class="field-label">Machine type</span>
+              <input name="machineType" autocomplete="off">
+            </label>
+            <label>
+              <span class="field-label">Serial number</span>
+              <input name="serialNumber" autocomplete="off">
+            </label>
+            <label>
+              <span class="field-label">Location</span>
+              <input name="site" autocomplete="off">
+            </label>
+            <button type="submit" class="secondary-btn">Save plant details</button>
+          </form>
+        </details>
+      </section>
+
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const WORKER_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
+    const API_KEY = 'pmg2026driver';
+    const CHECK_ITEMS = [
+      'Engine oil',
+      'Coolant',
+      'Fuel system',
+      'Hydraulic oil',
+      'Oil filter',
+      'Fuel filter',
+      'Air filter',
+      'Grease points',
+      'Tracks or tyres',
+      'Lights and beacons',
+      'Safety guards',
+      'Battery',
+      'Belts and hoses',
+      'Test run'
+      ];
+      const STATUS_ORDER = { overdue: 0, 'due-soon': 1, watch: 2, unknown: 3, scheduled: 4 };
+      const DEFAULT_SERVICE_INTERVAL_HOURS = 500;
+      const DEFAULT_VEHICLE_SERVICE_INTERVAL_MILES = 10000;
+      const SERVICE_INTERVAL_MONTHS = 12;
+      const SERVICE_DUE_SOON_DAYS = 30;
+      const SERVICE_DUE_SOON_HOURS = 50;
+      const SERVICE_DUE_SOON_MILES = 1000;
+      const SERVICE_ALERT_DAYS = [30, 15, 2];
+      const PLANT_GROUPS = {
+        all: 'All',
+        diggers: 'Diggers',
+        dumpers: 'Dumpers',
+        vehicles: 'Vehicles',
+        small_plant: 'Small plant',
+        tools: 'Tools',
+        other: 'Other'
+      };
+
+    const state = {
+      role: 'tony',
+      mode: 'loading',
+      workerOnline: false,
+      assets: [],
+      stats: {},
+      reviewItems: [],
+      historyByAsset: {},
+      reviewByAsset: {},
+      filterParts: {},
+      selectedId: localStorage.getItem('pmgPlantSelected') || '',
+      expandedInline: { type: '', id: '' },
+      record: null,
+      query: '',
+      plantGroupFilter: 'all',
+      statusFilter: 'all',
+      sortMode: 'recent',
+      notifications: { status: 'checking', message: 'Checking notifications.' }
+    };
+
+    const els = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      [
+        'subhead', 'syncState', 'searchInput', 'plantGroupFilter', 'statusFilter', 'sortMode', 'selectedServiceAsset',
+        'stats', 'serviceAlerts', 'notificationCard', 'notificationText', 'enableNotifications', 'assetList',
+        'usageReadingLabel', 'usageReadingHint', 'serviceIntervalLabel', 'serviceIntervalHint', 'nextUsageReadingLabel', 'nextUsageReadingHint',
+        'recordDetail', 'serviceForm', 'assetForm', 'identityForm', 'checksheet', 'filterEditList', 'addFilterRow', 'toast'
+      ].forEach(id => { els[id] = document.getElementById(id); });
+
+      document.body.dataset.role = 'tony';
+      els.searchInput.addEventListener('input', event => {
+        state.query = event.target.value;
+        renderAssetList();
+      });
+      els.plantGroupFilter.addEventListener('change', event => {
+        state.plantGroupFilter = event.target.value;
+        renderAssetList();
+      });
+      els.statusFilter.addEventListener('change', event => {
+        state.statusFilter = event.target.value;
+        renderAssetList();
+      });
+      els.sortMode.addEventListener('change', event => {
+        state.sortMode = event.target.value;
+        renderAssetList();
+      });
+      els.serviceAlerts.addEventListener('click', event => {
+        const button = event.target.closest('.service-alert-card');
+        if (!button) return;
+        event.preventDefault();
+        toggleInlineAsset('alert', button.dataset.id);
+      });
+      els.assetList.addEventListener('click', event => {
+        const button = event.target.closest('.asset-button');
+        if (!button) return;
+        event.preventDefault();
+        toggleInlineAsset('asset', button.dataset.id);
+      });
+      els.serviceForm.addEventListener('submit', saveServiceEntry);
+      els.assetForm.addEventListener('submit', saveAsset);
+      els.identityForm.addEventListener('submit', saveIdentity);
+      els.addFilterRow.addEventListener('click', () => addFilterEditRow());
+      els.enableNotifications.addEventListener('click', enableServiceNotifications);
+      window.selectPlantAsset = selectAsset;
+
+      serviceField('date').value = new Date().toISOString().slice(0, 10);
+      updateUsageModeForAsset(null);
+      serviceField('nextServiceIntervalHours').value = String(DEFAULT_SERVICE_INTERVAL_HOURS);
+      serviceField('nextDueDate').dataset.auto = 'true';
+      serviceField('nextDueHours').dataset.auto = 'true';
+      serviceField('date').addEventListener('change', () => updateNextDueDateFromServiceDate());
+      serviceField('hours').addEventListener('input', () => updateNextDueHoursFromInterval());
+      serviceField('nextServiceIntervalHours').addEventListener('change', () => updateNextDueHoursFromInterval(true));
+      serviceField('nextDueDate').addEventListener('input', event => {
+        event.target.dataset.auto = event.target.value.trim() ? 'false' : 'true';
+      });
+      serviceField('nextDueHours').addEventListener('input', event => {
+        event.target.dataset.auto = event.target.value.trim() ? 'false' : 'true';
+      });
+      serviceField('serviceType').addEventListener('change', () => {
+        if (serviceTypeNeedsTorque(serviceField('serviceType').value) && !serviceField('torqueNm').value.trim()) {
+          serviceField('torqueNm').value = '625';
+        }
+        const interval = intervalFromServiceType(serviceField('serviceType').value);
+        if (!interval) {
+          serviceField('nextServiceIntervalHours').value = String(defaultIntervalForAsset(selectedServiceAsset()));
+          if (serviceField('nextDueDate').dataset.auto !== 'false') serviceField('nextDueDate').value = '';
+          if (serviceField('nextDueHours').dataset.auto !== 'false') serviceField('nextDueHours').value = '';
+          return;
+        }
+        serviceField('nextServiceIntervalHours').value = String(interval);
+        if (categoryForServiceType(serviceField('serviceType').value) === 'service') {
+          updateNextDueDateFromServiceDate(true);
+        } else if (serviceField('nextDueDate').dataset.auto !== 'false') {
+          serviceField('nextDueDate').value = '';
+        }
+        updateNextDueHoursFromInterval(true);
+      });
+      updateNextDueDateFromServiceDate(true);
+      renderChecksheet();
+      addFilterEditRow();
+      loadData();
+      setupNotifications();
+    });
+
+    async function api(path, opts = {}) {
+      const headers = { 'X-PMG-Key': API_KEY, ...(opts.headers || {}) };
+      const response = await fetch(WORKER_URL + path, { ...opts, headers });
+      if (!response.ok) {
+        let message = `Request failed ${response.status}`;
+        try {
+          const body = await response.json();
+          message = body.error || message;
+        } catch {}
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
+    function urlBase64ToUint8Array(value) {
+      const padding = '='.repeat((4 - value.length % 4) % 4);
+      const base64 = `${value}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
+      const raw = window.atob(base64);
+      return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
+    }
+
+    function notificationSupported() {
+      return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    }
+
+    async function plantServiceWorkerRegistration() {
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      return registration;
+    }
+
+    async function setupNotifications() {
+      if (!els.notificationCard) return;
+      if (!notificationSupported()) {
+        state.notifications = {
+          status: 'unsupported',
+          message: 'Add this page to the Home Screen, then open it from the app icon to enable alerts.'
+        };
+        renderNotificationCard();
+        return;
+      }
+      try {
+        const registration = await plantServiceWorkerRegistration();
+        const subscription = await registration.pushManager.getSubscription();
+        if (Notification.permission === 'granted' && subscription) {
+          await savePushSubscription(subscription);
+          state.notifications = { status: 'enabled', message: 'Notifications are on for this phone.' };
+        } else if (Notification.permission === 'denied') {
+          state.notifications = { status: 'blocked', message: 'Notifications are blocked in this phone settings.' };
+        } else {
+          state.notifications = { status: 'ready', message: 'Enable 8am service alerts on this phone.' };
+        }
+      } catch (error) {
+        state.notifications = { status: 'unsupported', message: 'Open from the Home Screen app icon to enable alerts.' };
+      }
+      renderNotificationCard();
+    }
+
+    function renderNotificationCard() {
+      if (!els.notificationCard) return;
+      const info = state.notifications || {};
+      els.notificationCard.className = `notification-card ${info.status === 'enabled' ? 'enabled' : ''}`;
+      els.notificationText.textContent = info.message || 'Enable alerts on this phone.';
+      els.enableNotifications.hidden = !['ready', 'checking'].includes(info.status);
+      els.enableNotifications.disabled = info.status === 'checking';
+      if (info.status === 'checking') els.enableNotifications.textContent = 'Checking...';
+      else els.enableNotifications.textContent = 'Enable notifications';
+    }
+
+    async function enableServiceNotifications() {
+      if (!notificationSupported()) {
+        state.notifications = {
+          status: 'unsupported',
+          message: 'Add this page to the Home Screen, then open it from the app icon to enable alerts.'
+        };
+        renderNotificationCard();
+        return;
+      }
+      try {
+        state.notifications = { status: 'checking', message: 'Setting up notifications...' };
+        renderNotificationCard();
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          state.notifications = { status: permission === 'denied' ? 'blocked' : 'ready', message: 'Notifications were not enabled on this phone.' };
+          renderNotificationCard();
+          return;
+        }
+        const config = await api('/plant/push-config');
+        const registration = await plantServiceWorkerRegistration();
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+          });
+        }
+        await savePushSubscription(subscription);
+        state.notifications = { status: 'enabled', message: 'Notifications are on for this phone.' };
+        renderNotificationCard();
+        toast('Service notifications enabled.');
+      } catch (error) {
+        state.notifications = { status: 'ready', message: 'Notification setup failed. Try again from the Home Screen app.' };
+        renderNotificationCard();
+        toast(error.message || 'Notification setup failed.');
+      }
+    }
+
+    async function savePushSubscription(subscription) {
+      const body = {
+        ...subscription.toJSON(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        userAgent: navigator.userAgent,
+        role: 'tony',
+        enabled: true
+      };
+      return api('/plant/push-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    async function loadData() {
+      setBusy(true);
+      let workerPayload = null;
+      try {
+        workerPayload = await api(`/plant/assets?role=${encodeURIComponent(state.role)}`);
+        state.workerOnline = true;
+      } catch (error) {
+        state.workerOnline = false;
+      }
+
+      if (workerPayload && Array.isArray(workerPayload.assets) && workerPayload.assets.length) {
+        state.mode = 'worker';
+        state.assets = workerPayload.assets;
+        state.stats = workerPayload.stats || {};
+        state.reviewItems = workerPayload.reviewItems || [];
+        state.historyByAsset = {};
+        state.reviewByAsset = groupByAsset(state.reviewItems);
+        state.filterParts = {};
+      } else {
+        const seed = await loadSeedState();
+        Object.assign(state, seed);
+        state.mode = state.workerOnline ? 'seed-worker' : 'seed';
+      }
+
+      if (!state.selectedId || !state.assets.some(asset => asset.id === state.selectedId)) {
+        state.selectedId = state.assets[0]?.id || '';
+      }
+      await loadRecord(state.selectedId);
+      setBusy(false);
+      renderAll();
+    }
+
+    async function loadSeedState() {
+      const response = await fetch('/plant-seed.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error('plant seed missing');
+      const snapshot = await response.json();
+      const historyByAsset = groupByAsset(snapshot.history || []);
+      const reviewByAsset = groupByAsset(snapshot.reviewItems || []);
+      const filterParts = snapshot.filterParts || {};
+      const assets = (snapshot.assets || []).map(asset => {
+        const historyRows = historyByAsset[asset.id] || [];
+        const latestHistoryAt = historyRows.reduce((latest, event) => latestTimestamp(latest, activityAt(event)), '');
+        const lastWorkedAt = [
+          asset.lastWorkedAt,
+          asset.latestMechanicEntryAt,
+          latestHistoryAt,
+          asset.updatedAt,
+          asset.lastServiceDate,
+          asset.lastInspectionDate,
+          asset.lastServiceScheduleReviewDate,
+          asset.lastCostDate
+        ].reduce((latest, value) => latestTimestamp(latest, value), '');
+        const due = dueStatus(asset);
+        return {
+          ...asset,
+          lastWorkedAt,
+          latestHistoryAt,
+          dueStatus: due.state,
+          dueLabel: due.label,
+          dueMeta: due,
+          historyCount: (historyByAsset[asset.id] || []).length,
+          filterPartCount: (filterParts[asset.id] || []).length,
+          reviewCount: (reviewByAsset[asset.id] || []).length
+        };
+      });
+      return {
+        assets,
+        stats: {
+          ...(snapshot.stats || {}),
+          dueSoonCount: assets.filter(asset => asset.dueStatus === 'due-soon').length,
+          overdueCount: assets.filter(asset => asset.dueStatus === 'overdue').length
+        },
+        reviewItems: snapshot.reviewItems || [],
+        historyByAsset,
+        reviewByAsset,
+        filterParts,
+        sharePointEvidenceRoot: snapshot.sharePointEvidenceRoot || ''
+      };
+    }
+
+    async function loadRecord(assetId) {
+      if (!assetId) {
+        state.record = null;
+        return;
+      }
+      state.selectedId = assetId;
+      localStorage.setItem('pmgPlantSelected', assetId);
+      if (state.mode === 'worker') {
+        try {
+          state.record = await api(`/plant/assets/${encodeURIComponent(assetId)}?role=${encodeURIComponent(state.role)}`);
+          updateUsageModeForAsset(state.record?.asset);
+          return;
+        } catch (error) {
+          toast(error.message);
+        }
+      }
+      const asset = state.assets.find(item => item.id === assetId);
+      state.record = {
+        asset,
+        history: state.historyByAsset[assetId] || [],
+        filterParts: state.filterParts[assetId] || [],
+        reviewItems: state.role === 'tony' ? [] : (state.reviewByAsset[assetId] || [])
+      };
+      updateUsageModeForAsset(asset);
+    }
+
+    function setBusy(isBusy) {
+      els.syncState.textContent = isBusy ? 'Loading' : syncLabel();
+    }
+
+    function syncLabel() {
+      if (state.mode === 'worker') return 'Worker live';
+      if (state.mode === 'seed-worker') return 'Seed preview, worker ready';
+      if (state.mode === 'seed') return 'Seed preview';
+      return 'Loading';
+    }
+
+    function renderAll() {
+      document.body.dataset.role = 'tony';
+      els.subhead.textContent = 'Tony mechanic';
+      els.syncState.textContent = syncLabel();
+      renderStats();
+      renderServiceAlerts();
+      renderNotificationCard();
+      renderAssetList();
+      renderRecord();
+      renderIdentityForm();
+      renderSelectedServiceAsset();
+    }
+
+    function renderStats() {
+      const stats = state.stats || {};
+      els.stats.innerHTML = [
+        statBlock(stats.assetCount || state.assets.length, 'Items'),
+        statBlock(stats.overdueCount || 0, 'Overdue'),
+        statBlock(stats.dueSoonCount || 0, 'Due soon'),
+        statBlock(stats.historyEventCount || 0, 'History rows')
+      ].join('');
+    }
+
+    function statBlock(value, label) {
+      return `<div class="stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`;
+    }
+
+    function renderServiceAlerts() {
+      const alerts = serviceAlertAssets();
+      if (!alerts.length) {
+        els.serviceAlerts.innerHTML = '';
+        return;
+      }
+      const visible = alerts.slice(0, 5);
+      const extraCount = Math.max(0, alerts.length - visible.length);
+      els.serviceAlerts.innerHTML = `
+        <div class="service-alert-heading">
+          <span>Service alerts</span>
+          <span>${escapeHtml(alerts.length)} due</span>
+        </div>
+        ${visible.map(({ asset, alert }) => `
+          <div class="asset-row-wrap">
+            <button type="button" class="service-alert-card ${escapeHtml(alert.className)}" data-id="${escapeHtml(asset.id)}" aria-expanded="${isInlineExpanded('alert', asset.id) ? 'true' : 'false'}">
+              <b>${escapeHtml(alert.label)} - ${escapeHtml(asset.displayName || asset.id)}</b>
+              <span>${escapeHtml(alert.detail)}</span>
+            </button>
+            ${isInlineExpanded('alert', asset.id) ? inlineAssetDetail(asset, alert) : ''}
+          </div>
+        `).join('')}
+        ${extraCount ? `<div class="empty">${escapeHtml(extraCount)} more service alerts.</div>` : ''}
+      `;
+    }
+
+    function serviceAlertAssets() {
+      return state.assets
+        .map(asset => ({ asset, alert: serviceAlertForAsset(asset) }))
+        .filter(item => item.alert)
+        .sort((a, b) => a.alert.priority - b.alert.priority || compareRecentWork(a.asset, b.asset));
+    }
+
+    function serviceAlertForAsset(asset) {
+      const meta = asset.dueMeta || dueStatus(asset);
+      if (!meta) return null;
+      const plant = asset.displayName || asset.plantNumber || asset.id;
+      const hoursRule = asset.nextServiceDueHours ? ` or ${asset.nextServiceDueHours} hours` : '';
+      const mileageRule = asset.nextServiceDueMileage ? ` or ${asset.nextServiceDueMileage} miles` : '';
+      if (meta.dueType === 'hours') {
+        if (meta.state === 'overdue') {
+          return {
+            priority: 0,
+            className: 'overdue',
+            label: 'Service overdue',
+            detail: `${plant} is past its service hours.`
+          };
+        }
+        if (meta.state === 'due-soon') {
+          return {
+            priority: 3,
+            className: 'urgent',
+            label: 'Hours service alert',
+            detail: `${meta.hoursRemaining} service hours left.`
+          };
+        }
+        return null;
+      }
+      if (meta.dueType === 'mileage') {
+        if (meta.state === 'overdue') {
+          return {
+            priority: 0,
+            className: 'overdue',
+            label: 'Mileage service overdue',
+            detail: `${plant} is past its service mileage.`
+          };
+        }
+        if (meta.state === 'due-soon') {
+          return {
+            priority: 1,
+            className: 'due-soon',
+            label: 'Mileage service alert',
+            detail: `${meta.mileageRemaining} service miles left.`
+          };
+        }
+        return null;
+      }
+      if (meta.dueType !== 'date' || !Number.isFinite(Number(meta.days))) return null;
+      const days = Number(meta.days);
+      if (days < 0) {
+        return {
+          priority: 0,
+          className: 'overdue',
+          label: 'Service overdue',
+          detail: `Due date was ${formatDate(meta.dueDate)}${hoursRule}${mileageRule}.`
+        };
+      }
+      if (days > SERVICE_DUE_SOON_DAYS) return null;
+      const threshold = SERVICE_ALERT_DAYS.find(limit => days <= limit) || SERVICE_DUE_SOON_DAYS;
+      const priority = threshold === 2 ? 1 : threshold === 15 ? 2 : 3;
+      return {
+        priority,
+        className: threshold === 2 ? 'urgent' : 'due-soon',
+        label: days === 0 ? 'Service due today' : `${threshold}-day service reminder`,
+        detail: `Due ${formatDate(meta.dueDate)}${hoursRule}${mileageRule}${days > 0 ? `, in ${days} days` : ''}.`
+      };
+    }
+
+    function plantGroupKey(asset) {
+      if (asset.plantGroup && PLANT_GROUPS[asset.plantGroup]) return asset.plantGroup;
+      if (isVehicleAsset(asset)) return 'vehicles';
+      const text = [
+        asset.plantNumber,
+        asset.displayName,
+        asset.machineType,
+        asset.serialNumber
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (/(dumper|thwaites|benford|pt3000|pt6000|pt9000|hd1000|hd1001)/.test(text)) return 'dumpers';
+      if (/\b(breaker|saw|stihl|hilti|bosch|pecker|borer|auger|drill|laser|pump|generator|grinder|mixer|jib|bucket|attachment|tool)\b/.test(text)) return 'tools';
+      if (/\b(roller|telehandler|loader|forklift|tractor|mower|barrow|wacker|plate|compactor|rammer)\b/.test(text)) return 'small_plant';
+      if (/(excavator|digger|kubota|kx\d|kx-|k008|u10|cat\s*3\d{2}|hyundai|mecalac)/.test(text)) return 'diggers';
+      return 'other';
+    }
+
+    function plantGroupLabel(asset) {
+      const key = plantGroupKey(asset);
+      return asset.plantGroupLabel || PLANT_GROUPS[key] || 'Other';
+    }
+
+    function normaliseVehicleRef(value) {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function looksLikeVehicleReg(value) {
+      return /^[A-Z]{2}\d{2}[A-Z]{3}$/.test(normaliseVehicleRef(value));
+    }
+
+    function isVehicleAsset(asset) {
+      const text = [
+        asset?.assetType,
+        asset?.category,
+        asset?.vehicleType,
+        asset?.displayName,
+        asset?.machineType,
+        asset?.plantNumber,
+        asset?.registration,
+        asset?.regNo,
+        asset?.vehicleRegistration,
+        asset?.numberPlate
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (looksLikeVehicleReg(asset?.registration || asset?.regNo || asset?.vehicleRegistration || asset?.numberPlate || asset?.plantNumber)) return true;
+      return /\b(vehicle|van|car|hgv|lorry|wagon|truck|transit|sprinter|tipper|pickup|daf|scania|volvo|ford|trailer|low loader|kassbohrer|nooteboom)\b/.test(text);
+    }
+
+    function usageLabel(asset) {
+      return isVehicleAsset(asset) ? 'Mileage' : 'Hours';
+    }
+
+    function latestTimestamp(a, b) {
+      if (!a) return b || '';
+      if (!b) return a || '';
+      return String(a) > String(b) ? String(a) : String(b);
+    }
+
+    function activityAt(item) {
+      return String(item?.createdAt || item?.updatedAt || item?.date || item?.lastWorkedAt || item?.latestMechanicEntryAt || '').trim();
+    }
+
+    function assetActivityAt(asset) {
+      if (!asset) return '';
+      const historyRows = state.historyByAsset[asset.id] || [];
+      const latestHistoryAt = historyRows.reduce((latest, event) => latestTimestamp(latest, activityAt(event)), '');
+      return [
+        asset.lastWorkedAt,
+        asset.latestMechanicEntryAt,
+        asset.latestHistoryAt,
+        latestHistoryAt,
+        asset.updatedAt,
+        asset.lastServiceDate,
+        asset.lastInspectionDate,
+        asset.lastServiceScheduleReviewDate,
+        asset.lastCostDate
+      ].reduce((latest, value) => latestTimestamp(latest, value), '');
+    }
+
+    function compareRecentWork(a, b) {
+      const recent = String(assetActivityAt(b)).localeCompare(String(assetActivityAt(a)));
+      return recent || plantSort(a, b);
+    }
+
+    function renderAssetList() {
+      const items = filteredAssets();
+      if (!items.length) {
+        els.assetList.innerHTML = '<div class="empty">No plant records found.</div>';
+        return;
+      }
+      els.assetList.innerHTML = items.map(asset => `
+        <div class="asset-row-wrap">
+          <button type="button" class="asset-button ${asset.id === state.selectedId ? 'active' : ''}" data-id="${escapeHtml(asset.id)}" aria-expanded="${isInlineExpanded('asset', asset.id) ? 'true' : 'false'}">
+            <span class="asset-title">
+              <span>${escapeHtml(asset.displayName || asset.id)}</span>
+              <span class="chip ${escapeHtml(asset.dueStatus || 'unknown')}">${escapeHtml(asset.dueLabel || 'Needs setup')}</span>
+            </span>
+            <span class="asset-meta">${escapeHtml(plantGroupLabel(asset))} / ${escapeHtml(compactAssetMeta(asset))}</span>
+            <span class="asset-meta">${asset.historyCount || 0} history rows, ${asset.filterPartCount || 0} filters</span>
+          </button>
+          ${isInlineExpanded('asset', asset.id) ? inlineAssetDetail(asset) : ''}
+        </div>
+      `).join('');
+    }
+
+    async function selectAsset(assetId) {
+      if (!assetId) return;
+      await loadRecord(assetId);
+      renderAll();
+    }
+
+    function isInlineExpanded(type, assetId) {
+      return state.expandedInline?.type === type && String(state.expandedInline.id) === String(assetId);
+    }
+
+    async function toggleInlineAsset(type, assetId) {
+      if (!assetId) return;
+      if (isInlineExpanded(type, assetId)) {
+        state.expandedInline = { type: '', id: '' };
+        renderAll();
+        return;
+      }
+      state.expandedInline = { type, id: assetId };
+      await loadRecord(assetId);
+      renderAll();
+    }
+
+    function inlineAssetDetail(asset, alert = null) {
+      const record = state.record?.asset?.id === asset.id
+        ? state.record
+        : {
+            asset,
+            history: state.historyByAsset[asset.id] || [],
+            filterParts: state.filterParts[asset.id] || [],
+            reviewItems: state.reviewByAsset[asset.id] || []
+          };
+      const fullAsset = record.asset || asset;
+      const historyRows = Array.isArray(record.history) ? record.history : [];
+      const filterRows = Array.isArray(record.filterParts) ? record.filterParts : [];
+      const reviewRows = Array.isArray(record.reviewItems) ? record.reviewItems : [];
+      const history = historyRows.slice(0, 12);
+      const parts = filterRows.slice(0, 8);
+      const reviews = reviewRows.slice(0, 5);
+      const alertInfo = alert || serviceAlertForAsset(fullAsset);
+      const facts = [
+        inlineFact('Status', fullAsset.dueLabel || fullAsset.dueStatus || 'Needs setup'),
+        inlineFact('Group', plantGroupLabel(fullAsset)),
+        inlineFact('Plant no.', fullAsset.plantNumber || '-'),
+        isVehicleAsset(fullAsset) ? inlineFact('Reg', fullAsset.registration || fullAsset.plantNumber || '-') : '',
+        inlineFact('Serial', fullAsset.serialNumber || '-'),
+        inlineFact('Year', fullAsset.year || '-'),
+        inlineFact('Location', fullAsset.site || '-'),
+        inlineFact('Next service due', nextDueText(fullAsset)),
+        inlineFact('Last service', formatDate(fullAsset.lastServiceDate) || '-'),
+        inlineFact(usageLabel(fullAsset), isVehicleAsset(fullAsset) ? (fullAsset.lastKnownMileage || fullAsset.lastServiceMileage || '-') : (fullAsset.lastKnownHours || fullAsset.lastServiceHours || '-')),
+        inlineFact('History', `${historyRows.length || fullAsset.historyCount || 0} rows`),
+        inlineFact('Filters / parts', `${filterRows.length || fullAsset.filterPartCount || 0} rows`)
+      ].filter(Boolean).join('');
+      const lines = [];
+      if (alertInfo) lines.push(inlineLine('Alert', `${alertInfo.label} - ${alertInfo.detail}`));
+      (fullAsset.scheduleNotes || []).slice(0, 3).forEach(note => {
+        lines.push(inlineLine('Schedule note', note));
+      });
+      history.forEach(event => {
+        lines.push(inlineLine(historyTypeLabel(event), `${formatDate(event.date) || '-'} - ${historyDetailText(event)}`));
+      });
+      parts.forEach(part => {
+        const partBits = [part.type || 'Part', publicPartText(part.code), publicPartText(part.notes)]
+          .filter(value => value && value !== '-');
+        lines.push(inlineLine('Filter / part', partBits.join(' - ') || 'Part'));
+      });
+      reviews.forEach(item => {
+        lines.push(inlineLine(item.type || item.severity || 'Review', item.message || '-'));
+      });
+      return `
+        <div class="inline-detail">
+          <div class="inline-facts">${facts}</div>
+          ${lines.length ? `<div class="inline-lines">${lines.join('')}</div>` : '<div class="empty">No extra history loaded for this item yet.</div>'}
+        </div>
+      `;
+    }
+
+    function inlineFact(label, value) {
+      return `<div class="inline-fact"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '-')}</strong></div>`;
+    }
+
+    function inlineLine(label, value) {
+      return `<article class="inline-line"><b>${escapeHtml(label || 'Detail')}</b><span>${escapeHtml(value || '-')}</span></article>`;
+    }
+
+    function filteredAssets() {
+      const query = state.query.trim().toLowerCase();
+      let items = state.assets.filter(asset => {
+        if (state.plantGroupFilter !== 'all' && plantGroupKey(asset) !== state.plantGroupFilter) return false;
+        if (state.statusFilter !== 'all' && asset.dueStatus !== state.statusFilter) return false;
+        if (!query) return true;
+        return [
+          asset.plantNumber, asset.displayName, asset.machineType, asset.serialNumber, asset.site, plantGroupLabel(asset)
+        ].filter(Boolean).join(' ').toLowerCase().includes(query);
+      });
+      if (state.sortMode === 'status') {
+        items = items.slice().sort((a, b) => (STATUS_ORDER[a.dueStatus] ?? 9) - (STATUS_ORDER[b.dueStatus] ?? 9) || compareRecentWork(a, b));
+      } else if (state.sortMode === 'recent') {
+        items = items.slice().sort(compareRecentWork);
+      } else {
+        items = items.slice().sort(plantSort);
+      }
+      return items;
+    }
+
+    function plantSort(a, b) {
+      const an = /^\d+$/.test(String(a.plantNumber || '')) ? Number(a.plantNumber) : Number.POSITIVE_INFINITY;
+      const bn = /^\d+$/.test(String(b.plantNumber || '')) ? Number(b.plantNumber) : Number.POSITIVE_INFINITY;
+      if (an !== bn) return an - bn;
+      return String(a.displayName || a.id).localeCompare(String(b.displayName || b.id));
+    }
+
+    function renderRecord() {
+      const record = state.record;
+      if (!record || !record.asset) {
+        els.recordDetail.innerHTML = '<div class="empty">Select a plant item.</div>';
+        return;
+      }
+      const asset = record.asset;
+      els.recordDetail.innerHTML = `
+        <div class="record-head">
+          <div>
+            <h2>${escapeHtml(asset.displayName || asset.id)}</h2>
+            <p>${escapeHtml(asset.machineType || 'Machine type not set')}</p>
+          </div>
+          <div class="record-actions">
+            <span class="chip ${escapeHtml(asset.dueStatus || 'unknown')}">${escapeHtml(asset.dueLabel || 'Needs setup')}</span>
+            <button type="button" class="print-btn" onclick="window.print()">Print plant sheet</button>
+          </div>
+        </div>
+        <div class="identity-grid">
+          ${identityCell('Group', plantGroupLabel(asset))}
+          ${identityCell('Plant no.', asset.plantNumber || '-')}
+          ${isVehicleAsset(asset) ? identityCell('Reg', asset.registration || asset.plantNumber || '-') : ''}
+          ${identityCell('Serial', asset.serialNumber || '-')}
+          ${identityCell('Year', asset.year || '-')}
+          ${identityCell('Location', asset.site || '-')}
+          ${identityCell('Last service', formatDate(asset.lastServiceDate) || '-')}
+          ${identityCell(`Last ${usageLabel(asset).toLowerCase()}`, isVehicleAsset(asset) ? (asset.lastServiceMileage || asset.lastKnownMileage || '-') : (asset.lastServiceHours || asset.lastKnownHours || '-'))}
+          ${identityCell('Next service due', nextDueText(asset))}
+          ${identityCell('Evidence', asset.sharePointEvidencePath || '-', 'evidence-cell')}
+        </div>
+        ${asset.scheduleNotes?.length ? `<div class="section"><div class="empty">${escapeHtml(asset.scheduleNotes.join('; '))}</div></div>` : ''}
+        <div class="section">
+          <div class="section-title"><h3>Service History</h3><span class="muted">${record.history.length} rows</span></div>
+          ${renderHistory(record.history)}
+        </div>
+        <div class="section">
+          <div class="section-title"><h3>Filters And Parts</h3><span class="muted">${record.filterParts.length} rows</span></div>
+          ${renderFilters(record.filterParts)}
+        </div>
+      `;
+    }
+
+    function renderIdentityForm() {
+      if (!els.identityForm) return;
+      const asset = state.record?.asset;
+      const fields = els.identityForm.elements;
+      Array.from(fields).forEach(field => { field.disabled = !asset; });
+      if (!asset) {
+        els.identityForm.reset();
+        return;
+      }
+      fields.namedItem('displayName').value = asset.displayName || '';
+      fields.namedItem('plantNumber').value = asset.plantNumber || '';
+      fields.namedItem('registration').value = asset.registration || '';
+      fields.namedItem('machineType').value = asset.machineType || '';
+      fields.namedItem('serialNumber').value = asset.serialNumber || '';
+      fields.namedItem('year').value = asset.year || '';
+      fields.namedItem('site').value = asset.site || '';
+    }
+
+    function renderSelectedServiceAsset() {
+      if (!els.selectedServiceAsset) return;
+      const asset = state.record?.asset;
+      if (!asset) {
+        els.selectedServiceAsset.innerHTML = '<span>Selected plant</span>Select a plant item';
+        return;
+      }
+      const meta = [asset.machineType, asset.site ? `Location ${asset.site}` : '', asset.serialNumber ? `Serial ${asset.serialNumber}` : ''].filter(Boolean).join(' | ');
+      els.selectedServiceAsset.innerHTML = `<span>Selected plant</span>${escapeHtml(asset.displayName || asset.id)}${meta ? `<small>${escapeHtml(meta)}</small>` : ''}`;
+    }
+
+    function identityCell(label, value, extraClass = '') {
+      return `<div class="identity-cell ${escapeHtml(extraClass)}"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`;
+    }
+
+    function historyTypeLabel(event) {
+      if ((event.category || '').toLowerCase() === 'invoice') return 'Parts / work';
+      return titleCase(event.category || 'note');
+    }
+
+    function historyDetailText(event) {
+      const bits = [];
+      if (event.sourceName) bits.push(event.sourceName);
+      const work = event.description || event.anomalies || event.serviceType || '';
+      if (work) bits.push(work);
+      if (event.torqueCheckRequired) bits.push(`Wheel torque re-check ${event.torqueNm || 625} Nm`);
+      if (event.invoiceNumber) bits.push(`Ref ${event.invoiceNumber}`);
+      return bits.join(' - ') || '-';
+    }
+
+    function eventReadingText(event) {
+      if (event.mileage || event.odometer) return `${event.mileage || event.odometer} miles`;
+      if (event.hours) return `${event.hours} hours`;
+      return '-';
+    }
+
+    function renderHistory(history) {
+      if (!history.length) return '<div class="empty">No history rows yet.</div>';
+      const showAdmin = false;
+      return `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Reading</th>
+                <th>Details</th>
+                ${showAdmin ? '<th>Source</th><th>Cost</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${history.slice(0, 80).map(event => `
+                <tr>
+                  <td>${escapeHtml(formatDate(event.date) || '-')}</td>
+                  <td>${escapeHtml(historyTypeLabel(event))}</td>
+                  <td>${escapeHtml(eventReadingText(event))}</td>
+                  <td>${escapeHtml(historyDetailText(event))}</td>
+                  ${showAdmin ? `<td>${escapeHtml(event.sourceName || event.origin || '-')}</td><td>${escapeHtml(formatMoney(event.amount) || event.invoiceNumber || '-')}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function publicPartText(value) {
+      const parts = String(value || '').split('|').map(part => part.trim()).filter(Boolean);
+      const visible = parts.filter(part => !/£|^-?\d+\.\d{1,2}$/.test(part.replace(/,/g, '')));
+      return (visible.length ? visible : parts).join(' | ') || '-';
+    }
+
+    function renderFilters(parts) {
+      if (!parts.length) return '<div class="empty">No filter rows yet.</div>';
+      return `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Code</th><th>Notes</th></tr></thead>
+            <tbody>
+              ${parts.map(part => `
+                <tr>
+                  <td>${escapeHtml(part.type || '-')}</td>
+                  <td>${escapeHtml(publicPartText(part.code))}</td>
+                  <td>${escapeHtml(publicPartText(part.notes))}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderChecksheet() {
+      els.checksheet.innerHTML = CHECK_ITEMS.map(item => `
+        <label class="check-row">
+          <span>${escapeHtml(item)}</span>
+          <select name="check:${escapeHtml(item)}">
+            <option>Good</option>
+            <option>Done</option>
+            <option>Monitor</option>
+            <option>N/A</option>
+          </select>
+        </label>
+      `).join('');
+    }
+
+    function addFilterEditRow(type = '', code = '') {
+      const row = document.createElement('div');
+      row.className = 'filter-edit-row';
+      row.innerHTML = `
+        <input name="filterType" placeholder="Type" value="${escapeHtml(type)}">
+        <input name="filterCode" placeholder="Code" value="${escapeHtml(code)}">
+        <button type="button" class="icon-btn" title="Remove row">x</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => row.remove());
+      els.filterEditList.appendChild(row);
+    }
+
+    function serviceField(name) {
+      return els.serviceForm.elements.namedItem(name);
+    }
+
+    function selectedServiceAsset() {
+      return state.record?.asset || state.assets.find(item => item.id === state.selectedId) || null;
+    }
+
+    function defaultIntervalForAsset(asset) {
+      return isVehicleAsset(asset) ? DEFAULT_VEHICLE_SERVICE_INTERVAL_MILES : DEFAULT_SERVICE_INTERVAL_HOURS;
+    }
+
+    function setIntervalOptionsForAsset(asset) {
+      const select = serviceField('nextServiceIntervalHours');
+      const current = select.value;
+      const options = isVehicleAsset(asset)
+        ? [
+            ['10000', '10,000 miles'],
+            ['6000', '6,000 miles'],
+            ['12000', '12,000 miles'],
+            ['15000', '15,000 miles'],
+            ['20000', '20,000 miles']
+          ]
+        : [
+            ['500', '500 hours'],
+            ['250', '250 hours'],
+            ['750', '750 hours'],
+            ['1000', '1000 hours']
+          ];
+      select.innerHTML = options.map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+      select.value = options.some(([value]) => value === current) ? current : String(defaultIntervalForAsset(asset));
+    }
+
+    function updateUsageModeForAsset(asset = selectedServiceAsset()) {
+      const vehicle = isVehicleAsset(asset);
+      setIntervalOptionsForAsset(asset);
+      if (els.usageReadingLabel) els.usageReadingLabel.textContent = vehicle ? 'Current mileage / odometer' : 'Current hours at service';
+      if (els.usageReadingHint) els.usageReadingHint.textContent = vehicle ? 'Used for the 10,000-mile service reminder.' : 'Used for the 500-hour reminder.';
+      if (els.serviceIntervalLabel) els.serviceIntervalLabel.textContent = vehicle ? 'Mileage interval' : 'Hour interval';
+      if (els.serviceIntervalHint) els.serviceIntervalHint.textContent = vehicle
+        ? 'Default rule: 12 months or 10,000 miles, whichever comes first.'
+        : 'Default rule: 12 months or 500 hours, whichever comes first.';
+      if (els.nextUsageReadingLabel) els.nextUsageReadingLabel.textContent = vehicle ? 'Next due mileage' : 'Next due hours';
+      if (els.nextUsageReadingHint) els.nextUsageReadingHint.textContent = vehicle ? 'Auto-fills from current mileage + interval.' : 'Auto-fills from current hours + interval.';
+      serviceField('hours').placeholder = vehicle ? 'e.g. 74200' : 'e.g. 3480';
+    }
+
+    function isScheduleReviewType(type) {
+      return String(type || '').toLowerCase().includes('schedule review');
+    }
+
+    function serviceTypeNeedsTorque(type) {
+      const lower = String(type || '').toLowerCase();
+      return lower.includes('torque') || lower.includes('wheel off');
+    }
+
+    function serviceTypeAllowsHourSchedule(type) {
+      return categoryForServiceType(type) === 'service' || isScheduleReviewType(type);
+    }
+
+    function eventHasScheduleUpdate(event) {
+      return Boolean(event?.nextDueDate)
+        || (event?.nextDueHours !== null && event?.nextDueHours !== undefined && event?.nextDueHours !== '');
+    }
+
+    function updateNextDueDateFromServiceDate(force = false) {
+      const nextDueDate = serviceField('nextDueDate');
+      if (categoryForServiceType(serviceField('serviceType').value) !== 'service') {
+        if (nextDueDate.dataset.auto !== 'false') nextDueDate.value = '';
+        return;
+      }
+      const dueDate = addCalendarMonths(serviceField('date').value, SERVICE_INTERVAL_MONTHS);
+      if (!dueDate) return;
+      if (force || nextDueDate.dataset.auto !== 'false' || !nextDueDate.value.trim()) {
+        nextDueDate.value = dueDate;
+        nextDueDate.dataset.auto = 'true';
+      }
+    }
+
+    function updateNextDueHoursFromInterval(force = false) {
+      if (!serviceTypeAllowsHourSchedule(serviceField('serviceType').value)) return;
+      const hours = Number(serviceField('hours').value);
+      const interval = Number(serviceField('nextServiceIntervalHours').value || defaultIntervalForAsset(selectedServiceAsset()));
+      const nextDueHours = serviceField('nextDueHours');
+      if (!Number.isFinite(hours) || hours < 0 || !Number.isFinite(interval) || interval <= 0) return;
+      if (force || nextDueHours.dataset.auto !== 'false' || !nextDueHours.value.trim()) {
+        nextDueHours.value = String(Math.round(hours + interval));
+        nextDueHours.dataset.auto = 'true';
+      }
+    }
+
+    function intervalFromServiceType(serviceType) {
+      const match = String(serviceType || '').match(/\b(250|500|750|1000)\b/);
+      const asset = selectedServiceAsset();
+      if (!isVehicleAsset(asset) && match) return Number(match[1]);
+      if (isScheduleReviewType(serviceType)) return defaultIntervalForAsset(asset);
+      return categoryForServiceType(serviceType) === 'service' ? defaultIntervalForAsset(asset) : null;
+    }
+
+    async function saveServiceEntry(event) {
+      event.preventDefault();
+      if (!state.selectedId) return toast('Select a plant item first.');
+      if (!state.workerOnline) return toast('Worker is not available. Entry not saved.');
+      const form = new FormData(els.serviceForm);
+      const serviceType = String(form.get('serviceType') || '');
+      const asset = selectedServiceAsset() || state.assets.find(item => item.id === state.selectedId) || {};
+      const vehicleMode = isVehicleAsset(asset);
+      const reading = String(form.get('hours') || '').trim();
+      const torqueCheckRequired = serviceTypeNeedsTorque(serviceType);
+      const category = categoryForServiceType(serviceType);
+      if (category === 'service' && !reading) {
+        const ok = window.confirm(vehicleMode
+          ? 'No current mileage entered. Save date-only service and skip the 10,000-mile reminder for this entry?'
+          : 'No current hours entered. Save date-only service and skip the 500-hour reminder for this entry?');
+        if (!ok) return;
+      }
+      const payload = {
+        assetId: state.selectedId,
+        plantNumber: asset.plantNumber || '',
+        registration: asset.registration || '',
+        assetType: vehicleMode ? 'vehicle' : (asset.assetType || ''),
+        date: form.get('date'),
+        hours: vehicleMode ? '' : reading,
+        mileage: vehicleMode ? reading : '',
+        serviceType,
+        category,
+        torqueCheckRequired,
+        torqueNm: torqueCheckRequired ? (form.get('torqueNm') || '625') : '',
+        workDone: form.get('workDone'),
+        anomalies: form.get('anomalies'),
+        nextDueDate: form.get('nextDueDate'),
+        nextDueDateBasis: serviceField('nextDueDate').dataset.auto === 'true' ? '12_month_service_rule' : 'manual',
+        nextDueHours: vehicleMode ? '' : form.get('nextDueHours'),
+        nextServiceIntervalHours: vehicleMode ? '' : form.get('nextServiceIntervalHours'),
+        nextDueMileage: vehicleMode ? form.get('nextDueHours') : '',
+        nextServiceIntervalMiles: vehicleMode ? form.get('nextServiceIntervalHours') : '',
+        createdBy: form.get('createdBy') || 'Tony',
+        sharePointEvidencePath: asset.sharePointEvidencePath || '',
+        checklist: CHECK_ITEMS.map(item => ({ item, status: form.get(`check:${item}`) || 'Good' })),
+        filterParts: collectFilterRows()
+      };
+      try {
+        const result = await api('/plant/service-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!result?.event?.id) {
+          throw new Error('Entry was not confirmed by the server. Please try again before leaving this page.');
+        }
+        appendLocalEvent(result.event);
+        serviceField('workDone').value = '';
+        serviceField('anomalies').value = '';
+        serviceField('hours').value = '';
+        serviceField('serviceType').value = 'Full service';
+        serviceField('torqueNm').value = '625';
+        serviceField('nextDueDate').dataset.auto = 'true';
+        updateUsageModeForAsset(selectedServiceAsset());
+        serviceField('nextServiceIntervalHours').value = String(defaultIntervalForAsset(selectedServiceAsset()));
+        serviceField('nextDueHours').value = '';
+        serviceField('nextDueHours').dataset.auto = 'true';
+        updateNextDueDateFromServiceDate(true);
+        els.filterEditList.innerHTML = '';
+        addFilterEditRow();
+        await loadRecord(state.selectedId);
+        renderAll();
+        toast('Entry saved and synced.');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function saveAsset(event) {
+      event.preventDefault();
+      if (!state.workerOnline) return toast('Worker is not available. Item not saved.');
+      const form = new FormData(els.assetForm);
+      const payload = {
+        plantNumber: form.get('plantNumber'),
+        registration: form.get('registration'),
+        assetType: form.get('registration') ? 'vehicle' : '',
+        machineType: form.get('machineType'),
+        serialNumber: form.get('serialNumber'),
+        year: form.get('year'),
+        site: form.get('site'),
+        createdBy: 'Tony'
+      };
+      try {
+        const result = await api('/plant/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        els.assetForm.reset();
+        state.selectedId = result.asset.id;
+        await loadData();
+        toast('Plant item saved.');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function saveIdentity(event) {
+      event.preventDefault();
+      if (!state.selectedId || !state.record?.asset) return toast('Select a plant item first.');
+      if (!state.workerOnline) return toast('Worker is not available. Details not saved.');
+      const form = new FormData(els.identityForm);
+      const payload = {
+        displayName: form.get('displayName'),
+        plantNumber: form.get('plantNumber'),
+        registration: form.get('registration'),
+        assetType: form.get('registration') ? 'vehicle' : (state.record.asset.assetType || ''),
+        machineType: form.get('machineType'),
+        serialNumber: form.get('serialNumber'),
+        year: form.get('year'),
+        site: form.get('site'),
+        sharePointEvidencePath: state.record.asset.sharePointEvidencePath || '',
+        updatedBy: 'Tony'
+      };
+      try {
+      const result = await api(`/plant/assets/${encodeURIComponent(state.selectedId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const current = state.assets.find(asset => asset.id === state.selectedId) || {};
+        const merged = { ...current, ...(result.asset || payload), id: state.selectedId };
+        const due = dueStatus(merged);
+        Object.assign(merged, { dueStatus: due.state, dueLabel: due.label, dueMeta: due, plantGroup: plantGroupKey(merged), plantGroupLabel: plantGroupLabel(merged) });
+        state.assets = state.assets.map(asset => asset.id === state.selectedId ? merged : asset);
+        state.record = { ...(state.record || {}), asset: merged };
+        renderAll();
+        toast('Plant details saved.');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    function collectFilterRows() {
+      return Array.from(els.filterEditList.querySelectorAll('.filter-edit-row')).map(row => {
+        const inputs = row.querySelectorAll('input');
+        return { type: inputs[0].value.trim(), code: inputs[1].value.trim() };
+      }).filter(part => part.type || part.code);
+    }
+
+    function appendLocalEvent(event) {
+      if (!event) return;
+      state.historyByAsset[event.assetId] = state.historyByAsset[event.assetId] || [];
+      state.historyByAsset[event.assetId].unshift(event);
+      if (event.filterParts?.length) {
+        state.filterParts[event.assetId] = [...(state.filterParts[event.assetId] || []), ...event.filterParts];
+      }
+      const asset = state.assets.find(item => item.id === event.assetId);
+      if (asset) {
+        asset.historyCount = (asset.historyCount || 0) + 1;
+        asset.latestMechanicEntryAt = latestTimestamp(asset.latestMechanicEntryAt, activityAt(event));
+        asset.lastWorkedAt = latestTimestamp(asset.lastWorkedAt, activityAt(event));
+        if (event.hours) asset.lastKnownHours = Math.max(asset.lastKnownHours || 0, event.hours);
+        if (event.mileage || event.odometer) asset.lastKnownMileage = Math.max(asset.lastKnownMileage || 0, event.mileage || event.odometer);
+        if (event.category === 'service') {
+          asset.lastServiceDate = event.date;
+          if (event.hours) asset.lastServiceHours = event.hours;
+          if (event.mileage || event.odometer) asset.lastServiceMileage = event.mileage || event.odometer;
+        }
+        if (event.category === 'inspection') {
+          asset.lastInspectionDate = event.date;
+        }
+        if (event.category === 'service' || eventHasScheduleUpdate(event)) {
+          if (event.nextDueDate) {
+            asset.nextServiceDueDate = event.nextDueDate;
+            asset.nextServiceDueBasis = event.category === 'service'
+              ? (event.nextDueDateBasis || 'manual')
+              : (event.nextDueDateBasis === '12_month_service_rule' ? 'manual_schedule_review' : (event.nextDueDateBasis || 'manual_schedule_review'));
+          }
+          if (event.nextDueHours !== null && event.nextDueHours !== undefined && event.nextDueHours !== '') {
+            asset.nextServiceDueHours = event.nextDueHours;
+          } else if (event.category === 'service') {
+            delete asset.nextServiceDueHours;
+          }
+          if (event.nextDueMileage !== null && event.nextDueMileage !== undefined && event.nextDueMileage !== '') {
+            asset.nextServiceDueMileage = event.nextDueMileage;
+          } else if (event.category === 'service') {
+            delete asset.nextServiceDueMileage;
+          }
+          if (event.category !== 'service' && eventHasScheduleUpdate(event)) {
+            asset.lastServiceScheduleReviewDate = event.date;
+            asset.lastServiceScheduleReviewType = event.serviceType || event.category;
+          }
+          const due = dueStatus(asset);
+          asset.dueStatus = due.state;
+          asset.dueLabel = due.label;
+          asset.dueMeta = due;
+        }
+      }
+    }
+
+    function groupByAsset(items) {
+      return (items || []).reduce((acc, item) => {
+        if (!item.assetId) return acc;
+        acc[item.assetId] = acc[item.assetId] || [];
+        acc[item.assetId].push(item);
+        return acc;
+      }, {});
+    }
+
+    function dueStatus(asset) {
+      const today = new Date().toISOString().slice(0, 10);
+      const candidates = [hoursDueStatus(asset), mileageDueStatus(asset), dateDueStatus(asset, today)].filter(Boolean);
+      if (candidates.length) return candidates.sort(compareDueCandidates)[0];
+      if (asset.lastInspectionDate) return { state: 'watch', label: 'No service date' };
+      return { state: 'unknown', label: 'Needs setup' };
+    }
+
+    function dateDueStatus(asset, today) {
+      const info = serviceDueDateInfo(asset);
+      if (!info.date) return null;
+      const days = Math.round((Date.parse(`${info.date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
+      const labelPrefix = info.basis === '12_month_service_rule' ? '12-month' : 'Date';
+      if (days < 0) return { state: 'overdue', label: `${labelPrefix} due`, days, dueDate: info.date, dueBasis: info.basis, dueType: 'date' };
+      if (days <= SERVICE_DUE_SOON_DAYS) return { state: 'due-soon', label: `${labelPrefix} soon`, days, dueDate: info.date, dueBasis: info.basis, dueType: 'date' };
+      return { state: 'scheduled', label: `${labelPrefix} set`, days, dueDate: info.date, dueBasis: info.basis, dueType: 'date' };
+    }
+
+    function hoursDueStatus(asset) {
+      if (asset.nextServiceDueHours && asset.lastKnownHours) {
+        const hoursRemaining = asset.nextServiceDueHours - asset.lastKnownHours;
+        if (hoursRemaining <= 0) return { state: 'overdue', label: 'Hours due', hoursRemaining, dueType: 'hours' };
+        if (hoursRemaining <= SERVICE_DUE_SOON_HOURS) return { state: 'due-soon', label: 'Hours soon', hoursRemaining, dueType: 'hours' };
+        return { state: 'scheduled', label: 'Hours set', hoursRemaining, dueType: 'hours' };
+      }
+      return null;
+    }
+
+    function mileageDueStatus(asset) {
+      if (asset.nextServiceDueMileage && asset.lastKnownMileage) {
+        const mileageRemaining = asset.nextServiceDueMileage - asset.lastKnownMileage;
+        if (mileageRemaining <= 0) return { state: 'overdue', label: 'Mileage due', mileageRemaining, dueType: 'mileage' };
+        if (mileageRemaining <= SERVICE_DUE_SOON_MILES) return { state: 'due-soon', label: 'Mileage soon', mileageRemaining, dueType: 'mileage' };
+        return { state: 'scheduled', label: 'Mileage set', mileageRemaining, dueType: 'mileage' };
+      }
+      return null;
+    }
+
+    function compareDueCandidates(a, b) {
+      const order = { overdue: 0, 'due-soon': 1, scheduled: 2 };
+      const stateDiff = (order[a.state] ?? 9) - (order[b.state] ?? 9);
+      if (stateDiff) return stateDiff;
+      if (a.dueType === 'date' && b.dueType === 'date') return a.days - b.days;
+      if (a.dueType === 'hours' && b.dueType === 'hours') return a.hoursRemaining - b.hoursRemaining;
+      if (a.dueType === 'mileage' && b.dueType === 'mileage') return a.mileageRemaining - b.mileageRemaining;
+      if (a.state === 'scheduled') return a.dueType === 'date' ? -1 : 1;
+      return ['hours', 'mileage'].includes(a.dueType) ? -1 : 1;
+    }
+
+    function serviceDueDateInfo(asset) {
+      if (asset.nextServiceDueDate) {
+        return {
+          date: asset.nextServiceDueDate,
+          basis: asset.nextServiceDueBasis || 'manual'
+        };
+      }
+      const date = addCalendarMonths(asset.lastServiceDate, SERVICE_INTERVAL_MONTHS);
+      return date ? { date, basis: '12_month_service_rule' } : { date: '', basis: '' };
+    }
+
+    function addCalendarMonths(value, months) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return '';
+      const year = Number(match[1]);
+      const monthIndex = Number(match[2]) - 1;
+      const day = Number(match[3]);
+      const targetMonthIndex = monthIndex + months;
+      const targetYear = year + Math.floor(targetMonthIndex / 12);
+      const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+      const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+      const targetDay = Math.min(day, lastDay);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    }
+
+    function categoryForServiceType(type) {
+      const lower = String(type || '').toLowerCase();
+      if (lower.includes('torque') || lower.includes('wheel off')) return 'inspection';
+      if (lower.includes('schedule review')) return 'inspection';
+      if (lower.includes('hire check')) return 'inspection';
+      if (lower.includes('repair')) return 'repair';
+      if (lower.includes('inspection')) return 'inspection';
+      if (lower.includes('parts')) return 'parts';
+      return 'service';
+    }
+
+    function compactAssetMeta(asset) {
+      return [asset.machineType, asset.serialNumber ? `Serial ${asset.serialNumber}` : '', asset.site ? `Location ${asset.site}` : ''].filter(Boolean).join(' | ') || 'Details not set';
+    }
+
+    function nextDueText(asset) {
+      const bits = [];
+      const dateInfo = serviceDueDateInfo(asset);
+      if (dateInfo.date) {
+        const basis = dateInfo.basis === '12_month_service_rule' ? '12 months' : 'date';
+        bits.push(`${formatDate(dateInfo.date)} (${basis})`);
+      }
+      if (asset.nextServiceDueHours) {
+        const remaining = asset.lastKnownHours ? Number(asset.nextServiceDueHours) - Number(asset.lastKnownHours) : null;
+        const remainingText = Number.isFinite(remaining) ? `, ${remaining} left` : '';
+        bits.push(`${asset.nextServiceDueHours} hours${remainingText}`);
+      }
+      if (asset.nextServiceDueMileage) {
+        const remaining = asset.lastKnownMileage ? Number(asset.nextServiceDueMileage) - Number(asset.lastKnownMileage) : null;
+        const remainingText = Number.isFinite(remaining) ? `, ${remaining} miles left` : '';
+        bits.push(`${asset.nextServiceDueMileage} miles${remainingText}`);
+      }
+      if (!bits.length) return '-';
+      return `Whichever comes first: ${bits.join(' / ')}`;
+    }
+
+    function formatDate(value) {
+      if (!value) return '';
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function formatMoney(value) {
+      if (value === null || value === undefined || value === '') return '';
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '';
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(num);
+    }
+
+    function titleCase(value) {
+      return String(value || '').replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    let toastTimer = null;
+    function toast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2800);
+    }
+  </script>
+</body>
+</html>

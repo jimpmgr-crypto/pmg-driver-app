@@ -1,0 +1,5103 @@
+{
+  "schema": "pmg-plant-snapshot-v1",
+  "generatedAt": "2026-07-11T00:45:01+00:00",
+  "sharePointEvidenceRoot": "SHARED/Plant and Tool Service Records",
+  "sources": {
+    "plantScheduleWorkbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+    "plantScheduleWorkbooks": [
+      "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx"
+    ],
+    "plantScheduleSharePointUrl": "https://pmgroundworksblackpool.sharepoint.com/:x:/r/sites/PMGroundWorksTeamSite/_layouts/15/Doc.aspx?sourcedoc=%7B3C4E7077-B31D-471E-AE5A-C026175BFF75%7D&file=Plant%20Schedule%20revised%202024.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1",
+    "serviceWorkbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+    "serviceWorkbookMode": "local_file_feed"
+  },
+  "plantOnlyRules": {
+    "includedSheetPattern": "^Plant <number>$ plus Tractor, Kubota Mower and Forklift",
+    "ignoredSheetCount": 34,
+    "ignoredSheetsStored": false,
+    "unusedSchedulePlantNumbersSkipped": [
+      "11",
+      "20",
+      "26",
+      "66"
+    ],
+    "unusedSchedulePlantNumbersStoredAsAssets": false
+  },
+  "assets": [
+    {
+      "id": "plant-1",
+      "plantNumber": "1",
+      "displayName": "Plant 1 - CAT 302-7D",
+      "machineType": "CAT 302-7D",
+      "serialNumber": "7DKL100251",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 1 - CAT 302-7D",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 2
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 1"
+        }
+      ],
+      "lastInspectionDate": "2025-02-28",
+      "lastServiceDate": "2025-12-15",
+      "lastCostDate": "2025-12-15",
+      "nextServiceDueDate": "2026-12-15",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-10",
+      "plantNumber": "10",
+      "displayName": "Plant 10 - CAT304C",
+      "machineType": "CAT304C",
+      "serialNumber": "2491",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 10 - CAT304C",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 3
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 10"
+        }
+      ],
+      "lastCostDate": "2026-05-14",
+      "lastServiceDate": "2026-02-24",
+      "nextServiceDueDate": "2027-02-24",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-12",
+      "plantNumber": "12",
+      "displayName": "Plant 12 - Kubota KX018-4",
+      "machineType": "Kubota KX018-4",
+      "serialNumber": "58513",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 12 - Kubota KX018-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 5
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 12"
+        }
+      ]
+    },
+    {
+      "id": "plant-13",
+      "plantNumber": "13",
+      "displayName": "Plant 13 - Kubota U10-3",
+      "machineType": "Kubota U10-3",
+      "serialNumber": "16494",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 13 - Kubota U10-3",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 6
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 13"
+        }
+      ],
+      "lastServiceDate": "2025-12-04",
+      "lastCostDate": "2025-12-04",
+      "nextServiceDueDate": "2026-12-04",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-14",
+      "plantNumber": "14",
+      "displayName": "Plant 14 - CAT 312E",
+      "machineType": "CAT 312E",
+      "serialNumber": "868",
+      "year": "",
+      "site": "Bradleys",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 14 - CAT 312E",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 7
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 14"
+        }
+      ],
+      "lastInspectionDate": "2026-04-29",
+      "lastCostDate": "2026-06-16",
+      "lastKnownHours": 6383,
+      "lastServiceDate": "2025-11-28",
+      "lastServiceHours": 6383,
+      "nextServiceDueDate": "2026-11-28",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-15",
+      "plantNumber": "15",
+      "displayName": "Plant 15 - CAT 312C",
+      "machineType": "CAT 312C",
+      "serialNumber": "456",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 15 - CAT 312C",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 8
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 15"
+        }
+      ],
+      "lastInspectionDate": "2026-02-28",
+      "lastCostDate": "2026-07-06",
+      "lastServiceDate": "2026-07-06",
+      "nextServiceDueDate": "2027-07-06",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-16",
+      "plantNumber": "16",
+      "displayName": "Plant 16 - Hyundai HX235LCR",
+      "machineType": "Hyundai HX235LCR",
+      "serialNumber": "122",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 16 - Hyundai HX235LCR",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 9
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 16"
+        }
+      ],
+      "lastInspectionDate": "2026-02-28"
+    },
+    {
+      "id": "plant-17",
+      "plantNumber": "17",
+      "displayName": "Plant 17 - CAT 313F",
+      "machineType": "CAT 313F",
+      "serialNumber": "414",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 17 - CAT 313F",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 10
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 17"
+        }
+      ],
+      "lastInspectionDate": "2025-04-29"
+    },
+    {
+      "id": "plant-21",
+      "plantNumber": "21",
+      "displayName": "Plant 21 - Mecalac 9t dumper",
+      "machineType": "Mecalac 9t dumper",
+      "serialNumber": "SLBD1DP0EM9SU0302",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 21 - Mecalac 9t dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 12
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 21"
+        }
+      ],
+      "lastInspectionDate": "2026-02-28",
+      "lastServiceDate": "2026-04-01",
+      "lastCostDate": "2026-07-02",
+      "nextServiceDueDate": "2027-04-01",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-22",
+      "plantNumber": "22",
+      "displayName": "Plant 22 - CAT312E",
+      "machineType": "CAT312E",
+      "serialNumber": "854",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2026-07-01",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 22 - CAT312E",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 13
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 22"
+        }
+      ],
+      "lastInspectionDate": "2025-07-01",
+      "lastCostDate": "2026-06-23",
+      "lastServiceDate": "2026-06-23",
+      "nextServiceDueDate": "2027-06-23",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-23",
+      "plantNumber": "23",
+      "displayName": "Plant 23 - Kubota KX71-3",
+      "machineType": "Kubota KX71-3",
+      "serialNumber": "79347",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 23 - Kubota KX71-3",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 14
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 23"
+        }
+      ],
+      "lastInspectionDate": "2025-03-14",
+      "lastCostDate": "2026-06-18",
+      "lastServiceDate": "2026-06-08",
+      "nextServiceDueDate": "2027-06-08",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-24",
+      "plantNumber": "24",
+      "displayName": "Plant 24 - CAT311C",
+      "machineType": "CAT311C",
+      "serialNumber": "PSD00499",
+      "year": "",
+      "site": "Roseacre",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 24 - CAT311C",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 15
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 24"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastCostDate": "2026-06-23"
+    },
+    {
+      "id": "plant-25",
+      "plantNumber": "25",
+      "displayName": "Plant 25 - Kubota 57-4",
+      "machineType": "Kubota 57-4",
+      "serialNumber": "56086",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2026-10-27",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 25 - Kubota 57-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 16
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 25"
+        }
+      ],
+      "lastInspectionDate": "2025-10-27"
+    },
+    {
+      "id": "plant-27",
+      "plantNumber": "27",
+      "displayName": "Plant 27 - Hyundai R220LC-95",
+      "machineType": "Hyundai R220LC-95",
+      "serialNumber": "C700",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 27 - Hyundai R220LC-95",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 18
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 27"
+        }
+      ],
+      "lastInspectionDate": "2026-01-26",
+      "lastServiceDate": "2026-04-07",
+      "lastCostDate": "2026-04-07",
+      "lastKnownHours": 3871,
+      "lastServiceHours": 3871,
+      "nextServiceDueDate": "2027-04-07",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-50",
+      "plantNumber": "50",
+      "displayName": "Plant 50 - 6 ton thwaites",
+      "machineType": "6 ton thwaites",
+      "serialNumber": "B7275",
+      "year": "",
+      "site": "?",
+      "scheduleInspectionExpiry": "2025-10-04",
+      "scheduleNotes": [
+        "sold???"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 50 - 6 ton thwaites",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 19
+        }
+      ]
+    },
+    {
+      "id": "plant-51",
+      "plantNumber": "51",
+      "displayName": "Plant 51 - Bomag Roller",
+      "machineType": "Bomag Roller",
+      "serialNumber": "24680",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2026-11-21",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 51 - Bomag Roller",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 20
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 51"
+        }
+      ],
+      "lastCostDate": "2026-06-16"
+    },
+    {
+      "id": "plant-52",
+      "plantNumber": "52",
+      "displayName": "Plant 52 - Terex PT9000 Dumper",
+      "machineType": "Terex PT9000 Dumper",
+      "serialNumber": "710FM497",
+      "year": "",
+      "site": "Roseacre",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 52 - Terex PT9000 Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 21
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 52"
+        }
+      ],
+      "lastInspectionDate": "2025-04-29",
+      "lastCostDate": "2026-06-23",
+      "lastServiceDate": "2026-06-23",
+      "nextServiceDueDate": "2027-06-23",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-53",
+      "plantNumber": "53",
+      "displayName": "Plant 53 - Benford PT3000",
+      "machineType": "Benford PT3000",
+      "serialNumber": "605FR149",
+      "year": "",
+      "site": "Preesall",
+      "scheduleInspectionExpiry": "2026-02-28",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 53 - Benford PT3000",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 22
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 53"
+        }
+      ],
+      "lastInspectionDate": "2025-02-28"
+    },
+    {
+      "id": "plant-54",
+      "plantNumber": "54",
+      "displayName": "Plant 54 - Benford Dumper",
+      "machineType": "Benford Dumper",
+      "serialNumber": "U3300-T-6A2285",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 54 - Benford Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 23
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 54"
+        }
+      ],
+      "lastCostDate": "2025-11-12"
+    },
+    {
+      "id": "plant-55",
+      "plantNumber": "55",
+      "displayName": "Plant 55 - JCB Telehandler",
+      "machineType": "JCB Telehandler",
+      "serialNumber": "SF320/4021U2848511",
+      "year": "",
+      "site": "",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 55 - JCB Telehandler",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 24
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 55"
+        }
+      ]
+    },
+    {
+      "id": "plant-56",
+      "plantNumber": "56",
+      "displayName": "Plant 56 - Benford 9 ton",
+      "machineType": "Benford 9 ton",
+      "serialNumber": "603EW086",
+      "year": "",
+      "site": "Norcross",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 56 - Benford 9 ton",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 25
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 56"
+        }
+      ],
+      "lastInspectionDate": "2026-01-26",
+      "lastCostDate": "2025-11-28"
+    },
+    {
+      "id": "plant-57",
+      "plantNumber": "57",
+      "displayName": "Plant 57 - Terex HD1001KR",
+      "machineType": "Terex HD1001KR",
+      "serialNumber": "FT474",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2026-07-01",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 57 - Terex HD1001KR",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 26
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 57"
+        }
+      ],
+      "lastInspectionDate": "2025-07-01"
+    },
+    {
+      "id": "plant-58",
+      "plantNumber": "58",
+      "displayName": "Plant 58 - Terex HD1000",
+      "machineType": "Terex HD1000",
+      "serialNumber": "FT037",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 58 - Terex HD1000",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 27
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 58"
+        }
+      ],
+      "lastInspectionDate": "2026-01-28"
+    },
+    {
+      "id": "plant-59",
+      "plantNumber": "59",
+      "displayName": "Plant 59 - TV800 blue roller",
+      "machineType": "TV800 blue roller",
+      "serialNumber": "HA152",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 59 - TV800 blue roller",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 28
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 59"
+        }
+      ]
+    },
+    {
+      "id": "plant-60",
+      "plantNumber": "60",
+      "displayName": "Plant 60 - JCB 1T Dumper",
+      "machineType": "JCB 1T Dumper",
+      "serialNumber": "101",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 60 - JCB 1T Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 29
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 60"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastCostDate": "2026-06-30"
+    },
+    {
+      "id": "plant-61",
+      "plantNumber": "61",
+      "displayName": "Plant 61 - Benford PT9000",
+      "machineType": "Benford PT9000",
+      "serialNumber": "EW215",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2026-10-27",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 61 - Benford PT9000",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 30
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 61"
+        }
+      ],
+      "lastInspectionDate": "2025-10-27"
+    },
+    {
+      "id": "plant-62",
+      "plantNumber": "62",
+      "displayName": "Plant 62 - JCB Telehandler",
+      "machineType": "JCB Telehandler",
+      "serialNumber": "1530263",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 62 - JCB Telehandler",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 31
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 62"
+        }
+      ],
+      "lastCostDate": "2025-12-19",
+      "lastServiceDate": "2025-12-19",
+      "nextServiceDueDate": "2026-12-19",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-63",
+      "plantNumber": "63",
+      "displayName": "Plant 63 - Benford PT9000 dumper",
+      "machineType": "Benford PT9000 dumper",
+      "serialNumber": "N277",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 63 - Benford PT9000 dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 32
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 63"
+        }
+      ],
+      "lastCostDate": "2025-11-17"
+    },
+    {
+      "id": "plant-64",
+      "plantNumber": "64",
+      "displayName": "Plant 64 - Benford PT6000",
+      "machineType": "Benford PT6000",
+      "serialNumber": "FW237",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 64 - Benford PT6000",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 33
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 64"
+        }
+      ],
+      "lastInspectionDate": "2026-01-26"
+    },
+    {
+      "id": "plant-65",
+      "plantNumber": "65",
+      "displayName": "Plant 65 - 10 ton Terex Dumper",
+      "machineType": "10 ton Terex Dumper",
+      "serialNumber": "MM043",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2026-07-01",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 65 - 10 ton Terex Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 34
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 65"
+        }
+      ],
+      "lastInspectionDate": "2025-07-01",
+      "lastCostDate": "2026-06-23",
+      "lastServiceDate": "2026-06-23",
+      "nextServiceDueDate": "2027-06-23",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-67",
+      "plantNumber": "67",
+      "displayName": "Plant 67 - 6 ton Thwaites dumper",
+      "machineType": "6 ton Thwaites dumper",
+      "serialNumber": "5707",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2026-07-01",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 67 - 6 ton Thwaites dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 36
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 67"
+        }
+      ],
+      "lastInspectionDate": "2025-07-01",
+      "lastServiceDate": "2026-06-22",
+      "lastCostDate": "2026-06-22",
+      "nextServiceDueDate": "2027-06-22",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-68",
+      "plantNumber": "68",
+      "displayName": "Plant 68 - Terex PT9000 Dumper",
+      "machineType": "Terex PT9000 Dumper",
+      "serialNumber": "9283",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 68 - Terex PT9000 Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 37
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 68"
+        }
+      ],
+      "lastInspectionDate": "2026-01-26",
+      "lastCostDate": "2026-06-22",
+      "lastServiceDate": "2026-06-22",
+      "nextServiceDueDate": "2027-06-22",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-69",
+      "plantNumber": "69",
+      "displayName": "Plant 69 - Terex 6000 Dumper",
+      "machineType": "Terex 6000 Dumper",
+      "serialNumber": "9862",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 69 - Terex 6000 Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 38
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 69"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastCostDate": "2025-01-16"
+    },
+    {
+      "id": "plant-70",
+      "plantNumber": "70",
+      "displayName": "Plant 70 - Terex 9000 Dumper",
+      "machineType": "Terex 9000 Dumper",
+      "serialNumber": "9281",
+      "year": "",
+      "site": "Roseacre",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 70 - Terex 9000 Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 39
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 70"
+        }
+      ],
+      "lastInspectionDate": "2025-04-29",
+      "lastCostDate": "2026-01-09"
+    },
+    {
+      "id": "plant-71",
+      "plantNumber": "71",
+      "displayName": "Plant 71 - Benford 6T Dumper",
+      "machineType": "Benford 6T Dumper",
+      "serialNumber": "ET024",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 71 - Benford 6T Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 40
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 71"
+        }
+      ]
+    },
+    {
+      "id": "plant-72",
+      "plantNumber": "72",
+      "displayName": "Plant 72 - Benford roller 800",
+      "machineType": "Benford roller 800",
+      "serialNumber": "HU206",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 72 - Benford roller 800",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 41
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 72"
+        }
+      ]
+    },
+    {
+      "id": "plant-73",
+      "plantNumber": "73",
+      "displayName": "Plant 73 - Hyundai 140LC-9A",
+      "machineType": "Hyundai 140LC-9A",
+      "serialNumber": "548",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 73 - Hyundai 140LC-9A",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 42
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 73"
+        }
+      ]
+    },
+    {
+      "id": "plant-74",
+      "plantNumber": "74",
+      "displayName": "Plant 74 - Kubota KX080-4",
+      "machineType": "Kubota KX080-4",
+      "serialNumber": "C71264",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 74 - Kubota KX080-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 43
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 74"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastCostDate": "2026-01-21"
+    },
+    {
+      "id": "plant-75",
+      "plantNumber": "75",
+      "displayName": "Plant 75 - Kubota KX080-4",
+      "machineType": "Kubota KX080-4",
+      "serialNumber": "71258",
+      "year": "",
+      "site": "Roseacre",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 75 - Kubota KX080-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 44
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 75"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastServiceDate": "2026-06-22",
+      "lastCostDate": "2026-06-22",
+      "nextServiceDueDate": "2027-06-22",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-76",
+      "plantNumber": "76",
+      "displayName": "Plant 76 - Hyundai/Miller HX145LCR",
+      "machineType": "Hyundai/Miller HX145LCR",
+      "serialNumber": "1227",
+      "year": "",
+      "site": "Roseacre",
+      "scheduleInspectionExpiry": "2026-07-01",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 76 - Hyundai-Miller HX145LCR",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 45
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 76"
+        }
+      ],
+      "lastInspectionDate": "2025-07-01"
+    },
+    {
+      "id": "plant-77",
+      "plantNumber": "77",
+      "displayName": "Plant 77 - Hyundai/Miller HX140LC",
+      "machineType": "Hyundai/Miller HX140LC",
+      "serialNumber": "59",
+      "year": "",
+      "site": "Norcross",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 77 - Hyundai-Miller HX140LC",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 46
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 77"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12",
+      "lastServiceDate": "2026-06-22",
+      "lastCostDate": "2026-06-24",
+      "nextServiceDueDate": "2027-06-22",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-78",
+      "plantNumber": "78",
+      "displayName": "Plant 78 - Hyundai Wheel Loader HL955",
+      "machineType": "Hyundai Wheel Loader HL955",
+      "serialNumber": "825",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [
+        "No cert as not going back on site"
+      ],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 78 - Hyundai Wheel Loader HL955",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 47
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 78"
+        }
+      ],
+      "lastCostDate": "2025-11-28"
+    },
+    {
+      "id": "plant-79",
+      "plantNumber": "79",
+      "displayName": "Plant 79 - Kubota K008-3",
+      "machineType": "Kubota K008-3",
+      "serialNumber": "",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 79 - Kubota K008-3",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 48
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 79"
+        }
+      ],
+      "lastServiceDate": "2025-01-12",
+      "lastCostDate": "2026-07-08",
+      "nextServiceDueDate": "2026-01-12",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-80",
+      "plantNumber": "80",
+      "displayName": "Plant 80 - Kubota KX080-4",
+      "machineType": "Kubota KX080-4",
+      "serialNumber": "80020",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2026-10-27",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 80 - Kubota KX080-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 49
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 80"
+        }
+      ],
+      "lastInspectionDate": "2025-10-27",
+      "lastServiceDate": "2026-03-23",
+      "lastCostDate": "2026-03-23",
+      "nextServiceDueDate": "2027-03-23",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-85",
+      "plantNumber": "85",
+      "displayName": "Plant 85 - JCB 1T Dumper",
+      "machineType": "JCB 1T Dumper",
+      "serialNumber": "2561864",
+      "year": "",
+      "site": "Yard",
+      "scheduleInspectionExpiry": "2026-03-14",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 85 - JCB 1T Dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 50
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85"
+        }
+      ],
+      "lastInspectionDate": "2025-03-14",
+      "lastServiceDate": "2026-03-05",
+      "lastCostDate": "2026-04-28",
+      "lastKnownHours": 997,
+      "nextServiceDueDate": "2027-03-05",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-86",
+      "plantNumber": "86",
+      "displayName": "Plant 86 - Mecalac 9t dumper",
+      "machineType": "Mecalac 9t dumper",
+      "serialNumber": "6002",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2027-05-11",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 86 - Mecalac 9t dumper",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 51
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 86"
+        }
+      ],
+      "lastInspectionDate": "2025-05-12"
+    },
+    {
+      "id": "plant-87",
+      "plantNumber": "87",
+      "displayName": "Plant 87 - Kubota KX030-4",
+      "machineType": "Kubota KX030-4",
+      "serialNumber": "53281",
+      "year": "",
+      "site": "Bispham",
+      "scheduleInspectionExpiry": "2027-04-23",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 87 - Kubota KX030-4",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 52
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87"
+        }
+      ],
+      "lastInspectionDate": "2025-04-29",
+      "lastKnownHours": 1139
+    },
+    {
+      "id": "plant-88",
+      "plantNumber": "88",
+      "displayName": "Plant 88 - Kubota KX085-5 2P",
+      "machineType": "Kubota KX085-5 2P",
+      "serialNumber": "10770",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2027-01-26",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 88 - Kubota KX085-5 2P",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 53
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 88"
+        }
+      ],
+      "lastInspectionDate": "2026-01-26",
+      "lastCostDate": "2026-06-22",
+      "lastServiceDate": "2026-06-22",
+      "nextServiceDueDate": "2027-06-22",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-89",
+      "plantNumber": "89",
+      "displayName": "Plant 89 - Kubota KX060-5",
+      "machineType": "Kubota KX060-5",
+      "serialNumber": "15547",
+      "year": "",
+      "site": "Carnforth",
+      "scheduleInspectionExpiry": "2026-10-27",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 89 - Kubota KX060-5",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 54
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 89"
+        }
+      ],
+      "lastInspectionDate": "2025-10-27"
+    },
+    {
+      "id": "plant-90",
+      "plantNumber": "90",
+      "displayName": "Plant 90 - Kubota KX060-5",
+      "machineType": "Kubota KX060-5",
+      "serialNumber": "15609",
+      "year": "",
+      "site": "Ulverston",
+      "scheduleInspectionExpiry": "2026-07-14",
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/Plant 90 - Kubota KX060-5",
+      "sources": [
+        {
+          "type": "plant_schedule",
+          "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+          "row": 55
+        },
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 90"
+        }
+      ],
+      "lastInspectionDate": "2025-07-14",
+      "lastServiceDate": "2025-12-18",
+      "lastCostDate": "2025-12-18",
+      "nextServiceDueDate": "2026-12-18",
+      "nextServiceDueBasis": "12_month_service_rule"
+    },
+    {
+      "id": "plant-forklift",
+      "plantNumber": "Forklift",
+      "displayName": "FORKLIFT - Forklift",
+      "machineType": "Forklift",
+      "serialNumber": "",
+      "year": "",
+      "site": "",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/FORKLIFT - Forklift",
+      "sources": [
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Forklift"
+        }
+      ],
+      "lastCostDate": "2025-11-20"
+    },
+    {
+      "id": "plant-kubota-mower",
+      "plantNumber": "Kubota Mower",
+      "displayName": "KUBOTA MOWER - Paul's Sit on Mower",
+      "machineType": "Paul's Sit on Mower",
+      "serialNumber": "",
+      "year": "",
+      "site": "",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/KUBOTA MOWER - Paul's Sit on Mower",
+      "sources": [
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Kubota Mower"
+        }
+      ],
+      "lastCostDate": "2025-11-20"
+    },
+    {
+      "id": "plant-tractor",
+      "plantNumber": "Tractor",
+      "displayName": "TRACTOR - TRACTOR - JOHN DEERE",
+      "machineType": "TRACTOR - JOHN DEERE",
+      "serialNumber": "",
+      "year": "",
+      "site": "",
+      "scheduleInspectionExpiry": null,
+      "scheduleNotes": [],
+      "sharePointEvidencePath": "SHARED/Plant and Tool Service Records/TRACTOR - TRACTOR - JOHN DEERE",
+      "sources": [
+        {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Tractor"
+        }
+      ],
+      "lastCostDate": "2026-07-03"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist-dbed6d28d137d950",
+      "assetId": "plant-79",
+      "plantNumber": "79",
+      "date": "2026-07-08",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "Protrack Idler",
+      "hours": null,
+      "invoiceNumber": "UK-429254",
+      "amount": 199.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 79",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-1f6596434990cc91",
+      "assetId": "plant-15",
+      "plantNumber": "15",
+      "date": "2026-07-06",
+      "category": "service",
+      "sourceName": "Siteglass services",
+      "description": "replaced and fitted lower and upper screens (6.4 laminated safety glass)",
+      "hours": null,
+      "invoiceNumber": "81425",
+      "amount": 305.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 15",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-0e4ad433210c431a",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "date": "2026-07-03",
+      "category": "invoice",
+      "sourceName": "EK's",
+      "description": "2026-07-03 | BLM2343573 | 16.33",
+      "hours": null,
+      "invoiceNumber": "BLM2343573",
+      "amount": 16.33,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 9
+      }
+    },
+    {
+      "id": "hist-a9596ba363959061",
+      "assetId": "plant-21",
+      "plantNumber": "21",
+      "date": "2026-07-02",
+      "category": "invoice",
+      "sourceName": "Red Rose Tyres",
+      "description": "2026-07-02 | 2999 | 95",
+      "hours": null,
+      "invoiceNumber": "2999",
+      "amount": 95.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 21",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-4249bac243bbc685",
+      "assetId": "plant-60",
+      "plantNumber": "60",
+      "date": "2026-06-30",
+      "category": "repair",
+      "sourceName": "Plant&Machine Parts",
+      "description": "1xhose",
+      "hours": null,
+      "invoiceNumber": "2637",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 60",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-79c634d25e47f325",
+      "assetId": "plant-77",
+      "plantNumber": "77",
+      "date": "2026-06-24",
+      "category": "invoice",
+      "sourceName": "Taylor Braithwaite",
+      "description": "Cable Door Latch, fuel cap plus delivery",
+      "hours": null,
+      "invoiceNumber": "181949",
+      "amount": 262.47,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 77",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-6745fdde8a164491",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "date": "2026-06-23",
+      "category": "service",
+      "sourceName": "Ribblesdale",
+      "description": "fuel filter, oil filter, 2xair filters & fuel filter in line",
+      "hours": null,
+      "invoiceNumber": "VI004614",
+      "amount": 56.83,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 12
+      }
+    },
+    {
+      "id": "hist-9f79331189711b5e",
+      "assetId": "plant-52",
+      "plantNumber": "52",
+      "date": "2026-06-23",
+      "category": "service",
+      "sourceName": "J Whittaker",
+      "description": "Oil filter cellulose spin on, air filter primary radial seal, air filter safety radial seal",
+      "hours": null,
+      "invoiceNumber": "VI004615",
+      "amount": 34.46,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 52",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-71fb6f91f91d3a58",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2026-06-23",
+      "category": "invoice",
+      "sourceName": "EK's",
+      "description": "fuel seperator cartridge metal",
+      "hours": null,
+      "invoiceNumber": "VI004613",
+      "amount": 22.84,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 16
+      }
+    },
+    {
+      "id": "hist-b6b2596903486355",
+      "assetId": "plant-22",
+      "plantNumber": "22",
+      "date": "2026-06-23",
+      "category": "service",
+      "sourceName": "Steve Woods Ltd",
+      "description": "Air & Oil filters",
+      "hours": null,
+      "invoiceNumber": "VI004612",
+      "amount": 77.02,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 22",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-6ca6de4dbcd22dbb",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "date": "2026-06-22",
+      "category": "invoice",
+      "sourceName": "A&P",
+      "description": "C Coupling female assembly",
+      "hours": null,
+      "invoiceNumber": "CIV148031",
+      "amount": 11.41,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-944e45be933c3baf",
+      "assetId": "plant-88",
+      "plantNumber": "88",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "FFP",
+      "description": "fuel filter spin on, air filter safety radialseal, air filter, primary radial seal, fuel filter, oil filter",
+      "hours": null,
+      "invoiceNumber": "VI004598",
+      "amount": 51.76,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 88",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-a7c69a2e49dba2df",
+      "assetId": "plant-77",
+      "plantNumber": "77",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "Katie workbook",
+      "description": "AIR FILTER SAFETY OBROUND, AIR FILTER, PRIMARY OBROUND POWERCORE",
+      "hours": null,
+      "invoiceNumber": "VI004600",
+      "amount": 115.49,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 77",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-e21e46e530aa6b8d",
+      "assetId": "plant-75",
+      "plantNumber": "75",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "Katie workbook",
+      "description": "air filter, primary radialseal",
+      "hours": null,
+      "invoiceNumber": "VI004599",
+      "amount": 24.4,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 75",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-38efb81d78abba94",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "Matt Gunson",
+      "description": "fuel filter cartridge metal, air filter safety obround, air filter, primary obround powercourse",
+      "hours": null,
+      "invoiceNumber": "VI004597",
+      "amount": 106.27,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 15
+      }
+    },
+    {
+      "id": "hist-1035dd054f5c3519",
+      "assetId": "plant-67",
+      "plantNumber": "67",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "J Whittake",
+      "description": "AIR FILTER & FUEL FILTER",
+      "hours": null,
+      "invoiceNumber": "VI004596",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 67",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-a332319b4274e67d",
+      "assetId": "plant-52",
+      "plantNumber": "52",
+      "date": "2026-06-22",
+      "category": "invoice",
+      "sourceName": "Red Rose Tyres",
+      "description": "1xvalve(core) and call out charge",
+      "hours": null,
+      "invoiceNumber": "2906",
+      "amount": 85.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 52",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-f14735de191758e7",
+      "assetId": "plant-15",
+      "plantNumber": "15",
+      "date": "2026-06-22",
+      "category": "service",
+      "sourceName": "J Whittaker",
+      "description": "FILTERS",
+      "hours": null,
+      "invoiceNumber": "VI004601",
+      "amount": 77.02,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 15",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-f36485cbc8f4c78b",
+      "assetId": "plant-23",
+      "plantNumber": "23",
+      "date": "2026-06-18",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "2xPro-Track sprocket",
+      "hours": null,
+      "invoiceNumber": "427343",
+      "amount": 254.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 23",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-46f1da942b0e4949",
+      "assetId": "plant-51",
+      "plantNumber": "51",
+      "date": "2026-06-16",
+      "category": "invoice",
+      "sourceName": "Matt Gunson",
+      "description": "fixed drive fault that was showing",
+      "hours": null,
+      "invoiceNumber": "312",
+      "amount": 180.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 51",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-530f02740480940a",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2026-06-16",
+      "category": "invoice",
+      "sourceName": "Matt Gunson",
+      "description": "plugged in to find fault",
+      "hours": null,
+      "invoiceNumber": "306",
+      "amount": 67.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 14
+      }
+    },
+    {
+      "id": "hist-db8891d19e4085b9",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2026-06-15",
+      "category": "invoice",
+      "sourceName": "Matt Gunson",
+      "description": "checked machine for faults but found none",
+      "hours": null,
+      "invoiceNumber": "306",
+      "amount": 112.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 13
+      }
+    },
+    {
+      "id": "hist-1e3924c42bf04931",
+      "assetId": "plant-21",
+      "plantNumber": "21",
+      "date": "2026-06-15",
+      "category": "repair",
+      "sourceName": "Matt Gunson",
+      "description": "Repaired the 'no start' condition and replaced fuse",
+      "hours": null,
+      "invoiceNumber": "306",
+      "amount": 90.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 21",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-c60afd2bdf7f71e4",
+      "assetId": "plant-23",
+      "plantNumber": "23",
+      "date": "2026-06-08",
+      "category": "service",
+      "sourceName": "EK's",
+      "description": "Mann oil filter",
+      "hours": null,
+      "invoiceNumber": "BLM2334737",
+      "amount": 4.65,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 23",
+        "row": 9
+      }
+    },
+    {
+      "id": "hist-c2f656755ee74479",
+      "assetId": "plant-22",
+      "plantNumber": "22",
+      "date": "2026-06-05",
+      "category": "invoice",
+      "sourceName": "Steve Woods Ltd",
+      "description": "2 x Track Adjuster Grease Valves",
+      "hours": null,
+      "invoiceNumber": "P57969",
+      "amount": 30.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 22",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-744ad9ffcc7180ee",
+      "assetId": "plant-23",
+      "plantNumber": "23",
+      "date": "2026-05-29",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "Rubber Track, Protrack Idler, Protrack track roller",
+      "hours": null,
+      "invoiceNumber": "614067",
+      "amount": 1090.8,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 23",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-b23bb9c46feafc46",
+      "assetId": "plant-10",
+      "plantNumber": "10",
+      "date": "2026-05-14",
+      "category": "invoice",
+      "sourceName": "Finning",
+      "description": "Greaser & carriage",
+      "hours": null,
+      "invoiceNumber": "C6C265512",
+      "amount": 51.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 10",
+        "row": 11
+      }
+    },
+    {
+      "id": "hist-d76b45562e19c103",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2026-04-30",
+      "category": "invoice",
+      "sourceName": "J Whittaker",
+      "description": "travel to site and fix machine",
+      "hours": null,
+      "invoiceNumber": "1461",
+      "amount": 580.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 11
+      }
+    },
+    {
+      "id": "hist-f60e2e4b66d32cd8",
+      "assetId": "plant-67",
+      "plantNumber": "67",
+      "date": "2026-04-30",
+      "category": "note",
+      "sourceName": "J Whittake",
+      "description": "refir gearstick.",
+      "hours": null,
+      "invoiceNumber": "1461",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 67",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-1a39311791e341e2",
+      "assetId": "plant-15",
+      "plantNumber": "15",
+      "date": "2026-04-30",
+      "category": "repair",
+      "sourceName": "J Whittaker",
+      "description": "repair over different dates",
+      "hours": null,
+      "invoiceNumber": "1461",
+      "amount": 620.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 15",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-d5854aa520e2179d",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "date": "2026-04-29",
+      "category": "note",
+      "sourceName": "Cornthwaite Holdings Ltd",
+      "description": "2026-04-29",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 5
+      }
+    },
+    {
+      "id": "hist-bddc24fec1d1a24a",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2026-04-29",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Plant inspection 29.04.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-8b17c402667a926b",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "date": "2026-04-28",
+      "category": "repair",
+      "sourceName": "Ribblesdale Auto 1992",
+      "description": "1 facet fuel pump. 2 x coupling",
+      "hours": null,
+      "invoiceNumber": "10888142",
+      "amount": 57.98,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 18
+      }
+    },
+    {
+      "id": "hist-9f5ca86581dacd3b",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "date": "2026-04-13",
+      "category": "repair",
+      "sourceName": "SJ&CW Wilkinson Ltd",
+      "description": "3 cyclinder flange pump",
+      "hours": null,
+      "invoiceNumber": "1136",
+      "amount": 180.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 16
+      }
+    },
+    {
+      "id": "hist-a1bdbb69512f954f",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2026-04-09",
+      "category": "service",
+      "sourceName": "A&P",
+      "description": "Dayco Belt",
+      "hours": null,
+      "invoiceNumber": "148709",
+      "amount": 27.09,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 9
+      }
+    },
+    {
+      "id": "hist-d219dbffc2e20216",
+      "assetId": "plant-27",
+      "plantNumber": "27",
+      "date": "2026-04-07",
+      "category": "service",
+      "sourceName": "A&P",
+      "description": "Fan Belt",
+      "hours": null,
+      "invoiceNumber": "148334",
+      "amount": 19.08,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 27",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-0bf6fcdd115a865d",
+      "assetId": "plant-52",
+      "plantNumber": "52",
+      "date": "2026-04-02",
+      "category": "repair",
+      "sourceName": "J Whittaker",
+      "description": "Stripped down. Wheel bearings replaced and checked fuel leak",
+      "hours": null,
+      "invoiceNumber": "1460",
+      "amount": 400.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 52",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-fb23d1e78cc64afb",
+      "assetId": "plant-27",
+      "plantNumber": "27",
+      "date": "2026-04-02",
+      "category": "service",
+      "sourceName": "Service off Tony",
+      "description": "Oil filter, air filters, fuel filters & alternator belt",
+      "hours": 3871,
+      "invoiceNumber": "3871 hours",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 27",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-bbdc6564a994df80",
+      "assetId": "plant-21",
+      "plantNumber": "21",
+      "date": "2026-04-01",
+      "category": "service",
+      "sourceName": "HTS Spares",
+      "description": "Seatbelt",
+      "hours": null,
+      "invoiceNumber": "758709",
+      "amount": 25.65,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 21",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-9d64b50d5c97528c",
+      "assetId": "plant-88",
+      "plantNumber": "88",
+      "date": "2026-03-27",
+      "category": "repair",
+      "sourceName": "FFP",
+      "description": "REPLACE AND FIT NEW HOSE",
+      "hours": null,
+      "invoiceNumber": "562654",
+      "amount": 153.38,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 88",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-4134d8b1c5e91ae6",
+      "assetId": "plant-80",
+      "plantNumber": "80",
+      "date": "2026-03-23",
+      "category": "service",
+      "sourceName": "Pirtek",
+      "description": "Replacement of burst hose from foot pedal to the boom. Topped oil up as requested too",
+      "hours": null,
+      "invoiceNumber": "185.59",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 80",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-4d1d4b1cdc026f29",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "date": "2026-03-20",
+      "category": "invoice",
+      "sourceName": "Ribblesdale",
+      "description": "Starter motor",
+      "hours": null,
+      "invoiceNumber": "20335618",
+      "amount": 150.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-6295701cf5208424",
+      "assetId": "plant-60",
+      "plantNumber": "60",
+      "date": "2026-03-19",
+      "category": "invoice",
+      "sourceName": "Ribblesdale",
+      "description": "Alternator",
+      "hours": null,
+      "invoiceNumber": "20335577",
+      "amount": 95.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 60",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-ae8a23553821e8a1",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2026-03-18",
+      "category": "invoice",
+      "sourceName": "EK's",
+      "description": "Batteries & brake cleaner",
+      "hours": null,
+      "invoiceNumber": "BLM2308730",
+      "amount": 244.01,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 14
+      }
+    },
+    {
+      "id": "hist-c71fc4b3bc247497",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "date": "2026-03-17",
+      "category": "repair",
+      "sourceName": "HTS Spares",
+      "description": "Round body fuel pump",
+      "hours": null,
+      "invoiceNumber": "624829",
+      "amount": 73.96,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 14
+      }
+    },
+    {
+      "id": "hist-5fe7b0bdb0e0c89c",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "date": "2026-03-06",
+      "category": "repair",
+      "sourceName": "J Whittaker",
+      "description": "replaced starter motor. relay shorted out. fitted new ignition barrel and replaced starter relay.",
+      "hours": null,
+      "invoiceNumber": "1458",
+      "amount": 425.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-98eef18b28d3402f",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "date": "2026-03-05",
+      "category": "service",
+      "sourceName": "Service",
+      "description": "5.3.26 | oil & filter + Activ 8",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-de34e60920652dbf",
+      "assetId": "plant-21",
+      "plantNumber": "21",
+      "date": "2026-02-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last plant inspection 28.02.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 21",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-9903f15fb2c78073",
+      "assetId": "plant-16",
+      "plantNumber": "16",
+      "date": "2026-02-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last plant inspection 28.02.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 16",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-23f6ef1d81a60263",
+      "assetId": "plant-15",
+      "plantNumber": "15",
+      "date": "2026-02-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last plant inspection 28.02.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 15",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-f55001c5fbfd4ca6",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2026-02-24",
+      "category": "repair",
+      "sourceName": "Pirtek",
+      "description": "Replace burst hose on boom",
+      "hours": null,
+      "invoiceNumber": "3294449",
+      "amount": 100.66,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 12
+      }
+    },
+    {
+      "id": "hist-d0aa508a1a95e3d2",
+      "assetId": "plant-10",
+      "plantNumber": "10",
+      "date": "2026-02-24",
+      "category": "service",
+      "sourceName": "Siteglass Services",
+      "description": "supply & fit front screen",
+      "hours": null,
+      "invoiceNumber": "80223",
+      "amount": 195.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 10",
+        "row": 9
+      }
+    },
+    {
+      "id": "hist-16556b64452e6af6",
+      "assetId": "plant-10",
+      "plantNumber": "10",
+      "date": "2026-02-09",
+      "category": "repair",
+      "sourceName": "EK'S",
+      "description": "Battery",
+      "hours": null,
+      "invoiceNumber": "BLM2295765",
+      "amount": 95.18,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 10",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-f73f237c0416b799",
+      "assetId": "plant-58",
+      "plantNumber": "58",
+      "date": "2026-01-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 28.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 58",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-247786cd9d7d247e",
+      "assetId": "plant-88",
+      "plantNumber": "88",
+      "date": "2026-01-26",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 26.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 88",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-f1a4944bf83583b7",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2026-01-26",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 26.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-70ddb096e5fd1b89",
+      "assetId": "plant-64",
+      "plantNumber": "64",
+      "date": "2026-01-26",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 26.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 64",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-78bbb8f9f693f5d1",
+      "assetId": "plant-56",
+      "plantNumber": "56",
+      "date": "2026-01-26",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 26.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 56",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-cab68cea11c33433",
+      "assetId": "plant-27",
+      "plantNumber": "27",
+      "date": "2026-01-26",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 26.01.2026",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 27",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-5dd0b9d2a0f9b813",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2026-01-22",
+      "category": "note",
+      "sourceName": "Astrak",
+      "description": "22.01.26 | Tony Tracked Idler",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 11
+      }
+    },
+    {
+      "id": "hist-7ea3db6b3aad8202",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "date": "2026-01-21",
+      "category": "note",
+      "sourceName": "Katie workbook",
+      "description": "21.01.26",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 5
+      }
+    },
+    {
+      "id": "hist-087428c8a789906e",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2026-01-21",
+      "category": "repair",
+      "sourceName": "FFP",
+      "description": "Went to site (ULV), checked on damaged hose & found dirverter block broken off. Removed broken bolts, retapped holes then reit of block. Damaged hose replaced and tested for leaks.",
+      "hours": null,
+      "invoiceNumber": "468264",
+      "amount": 164.4,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-c8e1d2ff66773961",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2026-01-13",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "Duratrack Idler",
+      "hours": null,
+      "invoiceNumber": "411983",
+      "amount": 337.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-3f41a24701aa56b9",
+      "assetId": "plant-70",
+      "plantNumber": "70",
+      "date": "2026-01-09",
+      "category": "invoice",
+      "sourceName": "EK's",
+      "description": "09.01.2026 | 2285302 | 95.83",
+      "hours": null,
+      "invoiceNumber": "2285302",
+      "amount": 95.83,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 70",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-eb8ea798ec8d4d1d",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2026-01-07",
+      "category": "repair",
+      "sourceName": "FFP",
+      "description": "Went to site (ULV) removed leaking hose, made new hose and fitted",
+      "hours": null,
+      "invoiceNumber": "468057",
+      "amount": 144.34,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-cc07f610cd2606f1",
+      "assetId": "plant-62",
+      "plantNumber": "62",
+      "date": "2025-12-19",
+      "category": "service",
+      "sourceName": "Pirtek Preston",
+      "description": "Air Filters & Fuel Filters fitted from stock already in yard",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 62",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-35569382a3e6d431",
+      "assetId": "plant-90",
+      "plantNumber": "90",
+      "date": "2025-12-18",
+      "category": "service",
+      "sourceName": "Katie workbook",
+      "description": "OIL FILTER & ACTIV8 | w2/es01c00",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 90",
+        "row": 5
+      }
+    },
+    {
+      "id": "hist-de166ca27477328e",
+      "assetId": "plant-1",
+      "plantNumber": "1",
+      "date": "2025-12-15",
+      "category": "service",
+      "sourceName": "EK's",
+      "description": "Air Filter",
+      "hours": null,
+      "invoiceNumber": "BLM2279780",
+      "amount": 17.77,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 1",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-d8a0745cbe7f743d",
+      "assetId": "plant-13",
+      "plantNumber": "13",
+      "date": "2025-12-04",
+      "category": "service",
+      "sourceName": "EK's",
+      "description": "FILTER",
+      "hours": null,
+      "invoiceNumber": "BL2276535",
+      "amount": 5.81,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 13",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-5d23c6750e442f0d",
+      "assetId": "plant-78",
+      "plantNumber": "78",
+      "date": "2025-11-28",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "12 x 3/4'' X 2 1/2'' Plough Bolt. 12 x 3/4'' Hex Nut. 1 x Astrak tin UK",
+      "hours": null,
+      "invoiceNumber": "UK-409229",
+      "amount": 43.12,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 78",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-677bf1f01f6719b4",
+      "assetId": "plant-56",
+      "plantNumber": "56",
+      "date": "2025-11-28",
+      "category": "invoice",
+      "sourceName": "HTS Spares",
+      "description": "2025-11-28 | 611594 | 131",
+      "hours": null,
+      "invoiceNumber": "611594",
+      "amount": 131.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 56",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-d1c176bc88d95285",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2025-11-28",
+      "category": "service",
+      "sourceName": "Merlin Diesel",
+      "description": "filter | 6383 hours on machine",
+      "hours": 6383,
+      "invoiceNumber": "11722733",
+      "amount": 52.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-a768183b7124573b",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2025-11-26",
+      "category": "service",
+      "sourceName": "Siteglass Services",
+      "description": "supplied and fitted lower front screen (6.4 laminated safety glass)",
+      "hours": null,
+      "invoiceNumber": "79484",
+      "amount": 120.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-aca15026191fb0e1",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2025-11-25",
+      "category": "repair",
+      "sourceName": "Finning (UK) Ltd",
+      "description": "Kit-Pump & Gasket",
+      "hours": null,
+      "invoiceNumber": "PINV9144993",
+      "amount": 571.71,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-e1bc1e9f0b209868",
+      "assetId": "plant-51",
+      "plantNumber": "51",
+      "date": "2025-11-21",
+      "category": "note",
+      "sourceName": "Katie workbook",
+      "description": "Last inspected 21.11.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 51",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-c463b6a2e760f80d",
+      "assetId": "plant-kubota-mower",
+      "plantNumber": "Kubota Mower",
+      "date": "2025-11-20",
+      "category": "repair",
+      "sourceName": "EKs",
+      "description": "12v battery",
+      "hours": null,
+      "invoiceNumber": "BLM2272229",
+      "amount": 53.33,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Kubota Mower",
+        "row": 4
+      }
+    },
+    {
+      "id": "hist-b49048f9f6a293e0",
+      "assetId": "plant-forklift",
+      "plantNumber": "Forklift",
+      "date": "2025-11-20",
+      "category": "invoice",
+      "sourceName": "EKs",
+      "description": "12v 1000AH 830A YUASA SILVER",
+      "hours": null,
+      "invoiceNumber": "BLM2271888",
+      "amount": 105.17,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Forklift",
+        "row": 4
+      }
+    },
+    {
+      "id": "hist-335954f7625bf2ed",
+      "assetId": "plant-62",
+      "plantNumber": "62",
+      "date": "2025-11-19",
+      "category": "repair",
+      "sourceName": "Pirtek Preston",
+      "description": "PFM 250 BAR BRAIDED HOSE SMOOTH, SWAGE FERRULE FOR HOSE & 801 SERIES (BSPP FEMALE)",
+      "hours": null,
+      "invoiceNumber": "PRE32743",
+      "amount": 93.92,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 62",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-c9ce4b88ee7240a8",
+      "assetId": "plant-63",
+      "plantNumber": "63",
+      "date": "2025-11-17",
+      "category": "invoice",
+      "sourceName": "Ribblesdale",
+      "description": "New alternator",
+      "hours": null,
+      "invoiceNumber": "20333229",
+      "amount": 75.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 63",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-d2d23278fa72d7fa",
+      "assetId": "plant-54",
+      "plantNumber": "54",
+      "date": "2025-11-12",
+      "category": "repair",
+      "sourceName": "Katie workbook",
+      "description": "12.11.25 | 3/8'' Hydraulic hose & 2 metric fittings",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 54",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-c9db3c7be7d9d8b1",
+      "assetId": "plant-70",
+      "plantNumber": "70",
+      "date": "2025-11-06",
+      "category": "invoice",
+      "sourceName": "J Whittaker",
+      "description": "New sleeve & new injecters",
+      "hours": null,
+      "invoiceNumber": "1430",
+      "amount": 1296.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 70",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-e1dc2af804205ecd",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2025-11-05",
+      "category": "repair",
+      "sourceName": "PIRTEK",
+      "description": "Quick hitch hose parts and labour for replacing",
+      "hours": null,
+      "invoiceNumber": "PRE32504",
+      "amount": 118.34,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-8f7de7ddecea29e6",
+      "assetId": "plant-89",
+      "plantNumber": "89",
+      "date": "2025-10-27",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 27.10.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 89",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-8edc8447ea7c463e",
+      "assetId": "plant-80",
+      "plantNumber": "80",
+      "date": "2025-10-27",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 27.10.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 80",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-3bc224f577bb0bce",
+      "assetId": "plant-61",
+      "plantNumber": "61",
+      "date": "2025-10-27",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 27.10.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 61",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-dae76431b73429d5",
+      "assetId": "plant-25",
+      "plantNumber": "25",
+      "date": "2025-10-27",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 27.10.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 25",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-6130431b97e22e2d",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2025-10-22",
+      "category": "repair",
+      "sourceName": "Red Rose Tyres",
+      "description": "puncture repair and call out to site",
+      "hours": null,
+      "invoiceNumber": "663",
+      "amount": 85.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-29dee99701fce5fd",
+      "assetId": "plant-90",
+      "plantNumber": "90",
+      "date": "2025-07-14",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 14.07.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 90",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-69613bbe563d76f3",
+      "assetId": "plant-76",
+      "plantNumber": "76",
+      "date": "2025-07-01",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 1.7.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 76",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-13b7001c2074a55b",
+      "assetId": "plant-67",
+      "plantNumber": "67",
+      "date": "2025-07-01",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 01.07.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 67",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-6a3bf50e6e3048fa",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "date": "2025-07-01",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 1.7.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-0259361913d782cb",
+      "assetId": "plant-57",
+      "plantNumber": "57",
+      "date": "2025-07-01",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 01.07.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 57",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-dd39e9a1677535de",
+      "assetId": "plant-22",
+      "plantNumber": "22",
+      "date": "2025-07-01",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last plant inspection 01.07.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 22",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-4fc328d8384170e6",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "date": "2025-06-10",
+      "category": "repair",
+      "sourceName": "Red Rose Tyres",
+      "description": "puncture repair",
+      "hours": null,
+      "invoiceNumber": "540",
+      "amount": 85.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-e18cd3a223febdb6",
+      "assetId": "plant-86",
+      "plantNumber": "86",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 86",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-c5934ad95e0bd604",
+      "assetId": "plant-77",
+      "plantNumber": "77",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 77",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-7fc36eb00ebd656a",
+      "assetId": "plant-75",
+      "plantNumber": "75",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 75",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-9157d9bf8328bd0d",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-004bb0218367de5d",
+      "assetId": "plant-69",
+      "plantNumber": "69",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 69",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-7619ab1bc927ffdd",
+      "assetId": "plant-60",
+      "plantNumber": "60",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12.05.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 60",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-5a67dae29d219abf",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "date": "2025-05-12",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 12/5/2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-af3429e025dfc25a",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "date": "2025-04-29",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 29.04.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-fef57be5582eb464",
+      "assetId": "plant-70",
+      "plantNumber": "70",
+      "date": "2025-04-29",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 29.04.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 70",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-ba216699299fa711",
+      "assetId": "plant-52",
+      "plantNumber": "52",
+      "date": "2025-04-29",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 29.04.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 52",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-e314d43bd1e21738",
+      "assetId": "plant-17",
+      "plantNumber": "17",
+      "date": "2025-04-29",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last plant inspection 29.04.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 17",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-139d63d6232e513d",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "date": "2025-03-14",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 14.03.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-ee25c05eafeefd69",
+      "assetId": "plant-23",
+      "plantNumber": "23",
+      "date": "2025-03-14",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection done 14.03.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 23",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-f5a6747e2c18b329",
+      "assetId": "plant-53",
+      "plantNumber": "53",
+      "date": "2025-02-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 28.02.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 53",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-c2d98e51f566418c",
+      "assetId": "plant-1",
+      "plantNumber": "1",
+      "date": "2025-02-28",
+      "category": "inspection",
+      "sourceName": "Katie workbook",
+      "description": "Last inspection 28.02.2025",
+      "hours": null,
+      "invoiceNumber": "",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 1",
+        "row": 3
+      }
+    },
+    {
+      "id": "hist-dbe85279bd1890cc",
+      "assetId": "plant-69",
+      "plantNumber": "69",
+      "date": "2025-01-16",
+      "category": "invoice",
+      "sourceName": "Red Rose Tyres",
+      "description": "16.01.25 | 1281 | 134.99",
+      "hours": null,
+      "invoiceNumber": "1281",
+      "amount": 134.99,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 69",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-779cd82bbcd51080",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "date": "2025-01-13",
+      "category": "repair",
+      "sourceName": "Red Rose Tyres",
+      "description": "puncture repair and call out to site",
+      "hours": null,
+      "invoiceNumber": "1258",
+      "amount": 85.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-4eb0958de26933ca",
+      "assetId": "plant-79",
+      "plantNumber": "79",
+      "date": "2025-01-12",
+      "category": "service",
+      "sourceName": "EK's",
+      "description": "Mann oil filter",
+      "hours": null,
+      "invoiceNumber": "BLM2275332",
+      "amount": 7.08,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 79",
+        "row": 6
+      }
+    }
+  ],
+  "filterParts": {
+    "plant-tractor": [],
+    "plant-1": [
+      {
+        "id": "part-b03fe86dfa5a5dc6",
+        "assetId": "plant-1",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Air Filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 1",
+          "row": 6
+        }
+      }
+    ],
+    "plant-10": [],
+    "plant-13": [
+      {
+        "id": "part-6473cb29199c3af0",
+        "assetId": "plant-13",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "FILTER",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 13",
+          "row": 6
+        }
+      }
+    ],
+    "plant-14": [
+      {
+        "id": "part-36871a3e700729cd",
+        "assetId": "plant-14",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 14",
+          "row": 8
+        }
+      }
+    ],
+    "plant-15": [
+      {
+        "id": "part-ffcbb26b33c41f5c",
+        "assetId": "plant-15",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 15",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-d5a66992b0477c7b",
+        "assetId": "plant-15",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "FILTERS",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 15",
+          "row": 8
+        }
+      }
+    ],
+    "plant-21": [
+      {
+        "id": "part-08f6a8f18d8fd27a",
+        "assetId": "plant-21",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Seatbelt",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 21",
+          "row": 6
+        }
+      }
+    ],
+    "plant-22": [
+      {
+        "id": "part-368720aaeb9004b6",
+        "assetId": "plant-22",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 22",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-73301a997294a5f4",
+        "assetId": "plant-22",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Air & Oil filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 22",
+          "row": 8
+        }
+      }
+    ],
+    "plant-23": [
+      {
+        "id": "part-ddbc424e78cfb04a",
+        "assetId": "plant-23",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Mann oil filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 23",
+          "row": 9
+        }
+      }
+    ],
+    "plant-24": [
+      {
+        "id": "part-8d32a48f5a59c718",
+        "assetId": "plant-24",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 24",
+          "row": 15
+        }
+      },
+      {
+        "id": "part-720a43b7df7c7e66",
+        "assetId": "plant-24",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "fuel seperator cartridge metal",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 24",
+          "row": 16
+        }
+      }
+    ],
+    "plant-27": [
+      {
+        "id": "part-a3f204424932389e",
+        "assetId": "plant-27",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Fan Belt",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 27",
+          "row": 6
+        }
+      },
+      {
+        "id": "part-b61b5e7c93bf7888",
+        "assetId": "plant-27",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Oil filter, air filters, fuel filters & alternator belt",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 27",
+          "row": 8
+        }
+      }
+    ],
+    "plant-51": [],
+    "plant-52": [
+      {
+        "id": "part-1d7089968734f871",
+        "assetId": "plant-52",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "400 | Stripped down. Wheel bearings replaced and checked fuel leak",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 52",
+          "row": 6
+        }
+      },
+      {
+        "id": "part-8ca281597a674c7d",
+        "assetId": "plant-52",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 52",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-f6fb5061cb01c6f7",
+        "assetId": "plant-52",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Oil filter cellulose spin on, air filter primary radial seal, air filter safety radial seal",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 52",
+          "row": 8
+        }
+      }
+    ],
+    "plant-54": [
+      {
+        "id": "part-10dd18678623db94",
+        "assetId": "plant-54",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "3/8'' Hydraulic hose & 2 metric fittings",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 54",
+          "row": 6
+        }
+      }
+    ],
+    "plant-56": [],
+    "plant-60": [],
+    "plant-62": [
+      {
+        "id": "part-cf5fc67ff805914a",
+        "assetId": "plant-62",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Air Filters & Fuel Filters fitted from stock already in yard",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 62",
+          "row": 8
+        }
+      }
+    ],
+    "plant-63": [],
+    "plant-65": [
+      {
+        "id": "part-9b272ecf68a201cc",
+        "assetId": "plant-65",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 65",
+          "row": 11
+        }
+      },
+      {
+        "id": "part-7f0df8de35182df1",
+        "assetId": "plant-65",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "fuel filter, oil filter, 2xair filters & fuel filter in line",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 65",
+          "row": 12
+        }
+      }
+    ],
+    "plant-67": [
+      {
+        "id": "part-8748bee1322c7d39",
+        "assetId": "plant-67",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 67",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-bfb0d6ca4c4590f4",
+        "assetId": "plant-67",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "AIR FILTER & FUEL FILTER",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 67",
+          "row": 8
+        }
+      }
+    ],
+    "plant-68": [
+      {
+        "id": "part-2868f7bb6fad4ab0",
+        "assetId": "plant-68",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Dayco Belt",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 68",
+          "row": 9
+        }
+      },
+      {
+        "id": "part-8a8f802d116ebc5f",
+        "assetId": "plant-68",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 68",
+          "row": 14
+        }
+      },
+      {
+        "id": "part-b9496a43f9b5cc2a",
+        "assetId": "plant-68",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "fuel filter cartridge metal, air filter safety obround, air filter, primary obround powercourse",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 68",
+          "row": 15
+        }
+      }
+    ],
+    "plant-69": [],
+    "plant-70": [],
+    "plant-74": [],
+    "plant-75": [
+      {
+        "id": "part-d957c0e6aebbeb3a",
+        "assetId": "plant-75",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 75",
+          "row": 5
+        }
+      },
+      {
+        "id": "part-41e42bcbf3b5577f",
+        "assetId": "plant-75",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "air filter, primary radialseal",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 75",
+          "row": 6
+        }
+      }
+    ],
+    "plant-77": [
+      {
+        "id": "part-9ca30c478d18c6ee",
+        "assetId": "plant-77",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 77",
+          "row": 5
+        }
+      },
+      {
+        "id": "part-f45f46961ee23333",
+        "assetId": "plant-77",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "AIR FILTER SAFETY OBROUND, AIR FILTER, PRIMARY OBROUND POWERCORE",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 77",
+          "row": 6
+        }
+      },
+      {
+        "id": "part-e789f5b2912df3bd",
+        "assetId": "plant-77",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Cable Door Latch, fuel cap plus delivery",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 77",
+          "row": 8
+        }
+      }
+    ],
+    "plant-78": [],
+    "plant-79": [
+      {
+        "id": "part-9e5430a7c69ffb67",
+        "assetId": "plant-79",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Mann oil filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 79",
+          "row": 6
+        }
+      }
+    ],
+    "plant-80": [
+      {
+        "id": "part-d78dd1fc0f4abadc",
+        "assetId": "plant-80",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Replacement of burst hose from foot pedal to the boom. Topped oil up as requested too",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 80",
+          "row": 6
+        }
+      }
+    ],
+    "plant-85": [
+      {
+        "id": "part-bad4f8fc1ce7c031",
+        "assetId": "plant-85",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "oil & filter + Activ 8",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 6
+        }
+      },
+      {
+        "id": "part-76352b93c616e0dd",
+        "assetId": "plant-85",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Fuel Filter & In Line Filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-fd07ac4fee369435",
+        "assetId": "plant-85",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Drain fuel tank & flus/clean lines",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 8
+        }
+      },
+      {
+        "id": "part-8c34defa1f711815",
+        "assetId": "plant-85",
+        "type": "Oil Filter",
+        "code": "HOLM L10-0131-HOL",
+        "notes": "Oil Filter | HOLM L10-0131-HOL",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 9
+        }
+      },
+      {
+        "id": "part-49a7e889e0eebbdc",
+        "assetId": "plant-85",
+        "type": "Fuel Filter",
+        "code": "F10-0021-HOL",
+        "notes": "Fuel Filter | F10-0021-HOL",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 11
+        }
+      },
+      {
+        "id": "part-689f8ed477406612",
+        "assetId": "plant-85",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Round body fuel pump",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 14
+        }
+      },
+      {
+        "id": "part-e556ed6b37064050",
+        "assetId": "plant-85",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "1 facet fuel pump. 2 x coupling",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 85",
+          "row": 18
+        }
+      }
+    ],
+    "plant-87": [
+      {
+        "id": "part-3d79559fc1e2dcbe",
+        "assetId": "plant-87",
+        "type": "Oil Filter",
+        "code": "W21ES01600",
+        "notes": "Oil Filter | W21ES01600",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 9
+        }
+      },
+      {
+        "id": "part-bf2fe0a0a6725b9a",
+        "assetId": "plant-87",
+        "type": "Fuel Filter",
+        "code": "15221-43170",
+        "notes": "Fuel Filter | 15221-43170",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 10
+        }
+      },
+      {
+        "id": "part-f8c0c36576bdc413",
+        "assetId": "plant-87",
+        "type": "Fuel Filter",
+        "code": "RD819-51280",
+        "notes": "Fuel Filter | RD819-51280",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 11
+        }
+      },
+      {
+        "id": "part-dbb22fda107abbaa",
+        "assetId": "plant-87",
+        "type": "Air Filter (OUTER)",
+        "code": "TC020-16324",
+        "notes": "Air Filter (OUTER) | TC020-16324",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 12
+        }
+      },
+      {
+        "id": "part-4a4e99ea943301f5",
+        "assetId": "plant-87",
+        "type": "Air Filter (Inner)",
+        "code": "T0270-93220",
+        "notes": "Air Filter (Inner)",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 13
+        }
+      },
+      {
+        "id": "part-1fc80d37d648279d",
+        "assetId": "plant-87",
+        "type": "Hydraulic Filter",
+        "code": "RG268/62180",
+        "notes": "Hydraulic Filter | RG268/62180",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 14
+        }
+      },
+      {
+        "id": "part-35561c9c03d2293e",
+        "assetId": "plant-87",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Engine Oil + Activ 8",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "plant 87",
+          "row": 15
+        }
+      }
+    ],
+    "plant-88": [
+      {
+        "id": "part-95c0fde69ed983a7",
+        "assetId": "plant-88",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Commercial Filters",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 88",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-b9230cbc3fd1a9ef",
+        "assetId": "plant-88",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "fuel filter spin on, air filter safety radialseal, air filter, primary radial seal, fuel filter, oil filter",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 88",
+          "row": 8
+        }
+      }
+    ],
+    "plant-90": [
+      {
+        "id": "part-ea8405ccfadfc87f",
+        "assetId": "plant-90",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "OIL FILTER & ACTIV8 | w2/es01c00",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 90",
+          "row": 5
+        }
+      },
+      {
+        "id": "part-aa56b8a5a1a8eb43",
+        "assetId": "plant-90",
+        "type": "AIR FILTERS",
+        "code": "Donalldson P-822769 & P-822768",
+        "notes": "AIR FILTERS | Donalldson P-822769 & P-822768",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 90",
+          "row": 6
+        }
+      },
+      {
+        "id": "part-5e7f024ffd0326d7",
+        "assetId": "plant-90",
+        "type": "FUEL FILTERS",
+        "code": "v631-51880 1j521-43172",
+        "notes": "FUEL FILTERS | v631-51880 1j521-43172",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 90",
+          "row": 7
+        }
+      },
+      {
+        "id": "part-48c4cfbb378d4f6e",
+        "assetId": "plant-90",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "TRACK MOTOR OIL/ACTIV8",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 90",
+          "row": 8
+        }
+      }
+    ],
+    "plant-kubota-mower": [],
+    "plant-forklift": []
+  },
+  "reviewItems": [
+    {
+      "id": "review-8feeda98b1e7c211",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "message": "22.01.26 | Tony Tracked Idler",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 11
+      }
+    },
+    {
+      "id": "review-26b91e4908e1c226",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-51",
+      "plantNumber": "51",
+      "message": "Last inspected 21.11.2025",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 51",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-d380bf49c5d30d08",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-54",
+      "plantNumber": "54",
+      "message": "12.11.25 | 3/8'' Hydraulic hose & 2 metric fittings",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 54",
+        "row": 6
+      }
+    },
+    {
+      "id": "review-c46db141379cbb89",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "message": "5.3.26 | oil & filter + Activ 8",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 6
+      }
+    },
+    {
+      "id": "review-a39c740a858ef102",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "21.01.26",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 5
+      }
+    },
+    {
+      "id": "review-76450ec1d1b3dd2f",
+      "type": "dated_row_needs_description",
+      "severity": "review",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "message": "2026-04-29",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 5
+      }
+    },
+    {
+      "id": "review-91a67ba027ee7531",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-10",
+      "plantNumber": "10",
+      "message": "No inspection sheet as kept at yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 10",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-0e2a3590337bcd2f",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-12",
+      "plantNumber": "12",
+      "message": "No inspection sheet as kept at yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 12",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-5df8fd4acb914601",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-54",
+      "plantNumber": "54",
+      "message": "No valid inspection sheet as kept at yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 54",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-d4e693d2a9b66d5f",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-55",
+      "plantNumber": "55",
+      "message": "No valid inspection sheet as kept at yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 55",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-36491d15ecea4d16",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-59",
+      "plantNumber": "59",
+      "message": "No valid inspection sheet as plant kept at yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 59",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-562cd58b62e62042",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-62",
+      "plantNumber": "62",
+      "message": "No valid inspection sheet as plany kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 62",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-48fb7dd55f5cd294",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-63",
+      "plantNumber": "63",
+      "message": "No valid inspection sheet as plant kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 63",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-81d0601d6be31aa5",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-71",
+      "plantNumber": "71",
+      "message": "No valid inspection sheet as plant kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 71",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-1de230859e9551ec",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-72",
+      "plantNumber": "72",
+      "message": "No valid inspection sheet as plant kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 72",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-81d2ab1de8a32674",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-73",
+      "plantNumber": "73",
+      "message": "No valid inspection sheet as plant kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 73",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-7784456509fa135b",
+      "type": "inspection_date_unclear",
+      "severity": "review",
+      "assetId": "plant-78",
+      "plantNumber": "78",
+      "message": "No valid inspection sheet as plant kept on yard",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 78",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-d58f4c355828ee39",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 56
+      },
+      "raw": [
+        "",
+        "",
+        "Kassboher trailer",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-e785707422e9095f",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 57
+      },
+      "raw": [
+        "",
+        "",
+        "Low Loader trailer",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-7458a0ec7fbd34a6",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 58
+      },
+      "raw": [
+        "",
+        "",
+        "John Deere Tractor",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-2462b718c6ef91fe",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 59
+      },
+      "raw": [
+        "",
+        "",
+        "Silo",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-6f1b5cd8605419b3",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 60
+      },
+      "raw": [
+        "",
+        "",
+        "Tractor trailer",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-d65b6f7409572326",
+      "type": "schedule_row_unmatched",
+      "severity": "review",
+      "message": "Plant schedule row does not have a numeric plant number.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 61
+      },
+      "raw": [
+        "",
+        "",
+        "Tractor low loader",
+        "",
+        "Yard",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": "review-195dcaf92279ab44",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-15",
+      "plantNumber": "15",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 15",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-8c18bf90a6cee995",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-22",
+      "plantNumber": "22",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 22",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-6d0db52f1f71d652",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-24",
+      "plantNumber": "24",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 24",
+        "row": 15
+      }
+    },
+    {
+      "id": "review-173b97e8f4a98707",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-52",
+      "plantNumber": "52",
+      "message": "Commercial filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 52",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-2b11fbbdcb992f63",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-65",
+      "plantNumber": "65",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 65",
+        "row": 11
+      }
+    },
+    {
+      "id": "review-a46bc4597ed58ff4",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-67",
+      "plantNumber": "67",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 67",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-b82de2cd052535a1",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-68",
+      "plantNumber": "68",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 68",
+        "row": 14
+      }
+    },
+    {
+      "id": "review-a94404338ad585ae",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-75",
+      "plantNumber": "75",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 75",
+        "row": 5
+      }
+    },
+    {
+      "id": "review-efed69d34cb61642",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-77",
+      "plantNumber": "77",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 77",
+        "row": 5
+      }
+    },
+    {
+      "id": "review-a2a5c19b9649c944",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "message": "997 HOURS | Fuel Filter & In Line Filter",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-2e237c12b4427f45",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "message": "Oil Filter | HOLM L10-0131-HOL",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 9
+      }
+    },
+    {
+      "id": "review-942e164c2caa65d1",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-85",
+      "plantNumber": "85",
+      "message": "Fuel Filter | F10-0021-HOL",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 85",
+        "row": 11
+      }
+    },
+    {
+      "id": "review-c58c61844678e867",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Oil Filter | W21ES01600",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 9
+      }
+    },
+    {
+      "id": "review-c5123a994fc59b18",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Fuel Filter | 15221-43170",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 10
+      }
+    },
+    {
+      "id": "review-cf3384149839068c",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Fuel Filter | RD819-51280",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 11
+      }
+    },
+    {
+      "id": "review-03b6d648bdabbf0b",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Air Filter (OUTER) | TC020-16324",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 12
+      }
+    },
+    {
+      "id": "review-d11264514f8c2e3d",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Air Filter (Inner) | T0270-93220",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 13
+      }
+    },
+    {
+      "id": "review-b58fd4e9ed5360c2",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Hydraulic Filter | RG268/62180",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 14
+      }
+    },
+    {
+      "id": "review-f063af925ee30d67",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "Engine Oil + Activ 8",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 15
+      }
+    },
+    {
+      "id": "review-3b93442cccbaf283",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-87",
+      "plantNumber": "87",
+      "message": "1139 Hours",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "plant 87",
+        "row": 16
+      }
+    },
+    {
+      "id": "review-907e53e5b28b1d87",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-88",
+      "plantNumber": "88",
+      "message": "Commercial Filters",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 88",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-604400bf863cfb77",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-90",
+      "plantNumber": "90",
+      "message": "AIR FILTERS | Donalldson P-822769 & P-822768",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 90",
+        "row": 6
+      }
+    },
+    {
+      "id": "review-8ca285797a454f75",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-90",
+      "plantNumber": "90",
+      "message": "FUEL FILTERS | v631-51880 1j521-43172",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 90",
+        "row": 7
+      }
+    },
+    {
+      "id": "review-68c6a9f1e44340cb",
+      "type": "service_row_needs_date",
+      "severity": "review",
+      "assetId": "plant-90",
+      "plantNumber": "90",
+      "message": "TRACK MOTOR OIL/ACTIV8",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 90",
+        "row": 8
+      }
+    },
+    {
+      "id": "review-901f31fbc6b68db7",
+      "type": "service_tab_no_schedule_asset",
+      "severity": "review",
+      "assetId": "plant-forklift",
+      "plantNumber": "Forklift",
+      "message": "Forklift exists in the service workbook but is not on the plant schedule.",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Forklift"
+      }
+    },
+    {
+      "id": "review-fb423e3ce5f36810",
+      "type": "service_tab_no_schedule_asset",
+      "severity": "review",
+      "assetId": "plant-kubota-mower",
+      "plantNumber": "Kubota Mower",
+      "message": "Kubota Mower exists in the service workbook but is not on the plant schedule.",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Kubota Mower"
+      }
+    },
+    {
+      "id": "review-2e884a544cef3e0e",
+      "type": "service_tab_no_schedule_asset",
+      "severity": "review",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "message": "Tractor exists in the service workbook but is not on the plant schedule.",
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor"
+      }
+    },
+    {
+      "id": "review-b724694d46aef233",
+      "type": "schedule_asset_no_service_tab",
+      "severity": "note",
+      "assetId": "plant-50",
+      "plantNumber": "50",
+      "message": "Plant 50 is on the plant schedule but has no plant tab in Katie's service workbook.",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx"
+      }
+    },
+    {
+      "id": "review-bb9920542bb510e4",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-10",
+      "plantNumber": "10",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 3
+      }
+    },
+    {
+      "id": "review-50352b265ac665b9",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-12",
+      "plantNumber": "12",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 5
+      }
+    },
+    {
+      "id": "review-473cfb74a2f2d8fc",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-13",
+      "plantNumber": "13",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 6
+      }
+    },
+    {
+      "id": "review-0eb9b154bab46115",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-50",
+      "plantNumber": "50",
+      "message": "sold???",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 19
+      }
+    },
+    {
+      "id": "review-5c82d87b81aaf7f3",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-54",
+      "plantNumber": "54",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 23
+      }
+    },
+    {
+      "id": "review-2750ec7a092eb66d",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-55",
+      "plantNumber": "55",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 24
+      }
+    },
+    {
+      "id": "review-71e86ad9450c152b",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-59",
+      "plantNumber": "59",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 28
+      }
+    },
+    {
+      "id": "review-62e74a93df87458c",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-62",
+      "plantNumber": "62",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 31
+      }
+    },
+    {
+      "id": "review-c6daca70ddd28760",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-63",
+      "plantNumber": "63",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 32
+      }
+    },
+    {
+      "id": "review-cbd3353b44896afa",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-71",
+      "plantNumber": "71",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 40
+      }
+    },
+    {
+      "id": "review-1afcb1ec5cae2f9d",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-72",
+      "plantNumber": "72",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 41
+      }
+    },
+    {
+      "id": "review-b9a28544b26fc3b1",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-73",
+      "plantNumber": "73",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 42
+      }
+    },
+    {
+      "id": "review-94766c6621276abb",
+      "type": "schedule_note",
+      "severity": "note",
+      "assetId": "plant-78",
+      "plantNumber": "78",
+      "message": "No cert as not going back on site",
+      "source": {
+        "workbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
+        "row": 47
+      }
+    }
+  ],
+  "stats": {
+    "assetCount": 53,
+    "historyEventCount": 112,
+    "filterPartCount": 52,
+    "reviewItemCount": 64,
+    "ignoredSheetCount": 34,
+    "serviceDateScheduleCount": 21,
+    "unusedSchedulePlantNumberCount": 4
+  }
+}

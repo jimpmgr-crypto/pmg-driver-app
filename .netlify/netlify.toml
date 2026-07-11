@@ -7,7 +7,7 @@ redirects = []
 [functions."*"]
 
 [build]
-publish = "/Users/bill/.openclaw/workspace/projects/pmg-driver-app"
+publish = "."
 publishOrigin = "default"
 
 [build.environment]
