@@ -1,4 +1,6 @@
 const API_KEY = 'pmg2026driver';
+const WORKER_BUILD_ID = '20260711-driver-reliability-worker-v1';
+const DRIVER_API_CONTRACT = 'pmg-driver-api-v1';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
 const PLANT_SNAPSHOT_KEY = 'plant:snapshot:v1';
@@ -1922,6 +1924,17 @@ export default {
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    // Public, read-only liveness/compatibility check. It exposes no tokens,
+    // customer data or KV contents and lets monitoring detect split releases.
+    if (path === '/health' && request.method === 'GET') {
+      return corsResponse(JSON.stringify({
+        ok: true,
+        service: 'pmg-driver-sync',
+        workerBuildId: WORKER_BUILD_ID,
+        driverApiContract: DRIVER_API_CONTRACT,
+      }), 200, { 'Cache-Control': 'no-store' });
     }
 
     // GET /customers-public?pin=2312 — customer names for the PMG yard ticket picker.

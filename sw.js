@@ -1,25 +1,18 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20260702-carter-washed-labels-v65';
+const CACHE_NAME = 'pmg-driver-live-v20260711-driver-reliability-v66';
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/john',
-  '/richard',
-  '/andrew',
-  '/neil',
-  '/ian',
-  '/plant',
-  '/tony',
-  '/plant-seed.json',
   '/app-version.json',
   '/manifest.json',
-  '/plant-manifest.json',
   '/icon.png',
   '/icon-192.png',
   '/icon-512.png',
 ];
 
-// Install — warm the new app shell before replacing the previous worker/cache.
+// Install only the critical driver shell before replacing the previous cache.
+// Named driver routes fall back to / offline. Plant/Tony remain network-first
+// and no longer get a vote on whether a driver update can install.
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)

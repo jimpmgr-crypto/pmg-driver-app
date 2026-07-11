@@ -82,7 +82,15 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
 }
 
 (async () => {
-  let resp = await upsertRequest({}, { customerReference: 'PUBLIC-ONLY' });
+  let resp = await worker.fetch(new Request('https://pmg-driver-sync.test/health'), env());
+  assert.strictEqual(resp.status, 200, 'health check must be public and read-only');
+  const health = await resp.json();
+  assert.strictEqual(health.ok, true);
+  assert.strictEqual(health.service, 'pmg-driver-sync');
+  assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v1');
+  assert.match(health.workerBuildId, /^20260711-driver-reliability-worker-v1$/);
+
+  resp = await upsertRequest({}, { customerReference: 'PUBLIC-ONLY' });
   assert.strictEqual(resp.status, 403);
   assert.deepStrictEqual(await resp.json(), { error: 'admin_key_required' });
   assert.strictEqual(sandbox.__fetches.length, 0, 'public key must not reach Haultech');

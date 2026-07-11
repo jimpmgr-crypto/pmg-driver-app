@@ -33,8 +33,8 @@ assert(
   'failed writebacks must keep the sync banner/dot in an attention state'
 );
 assert(
-  syncUi.includes('Haultech writeback has failed items'),
-  'drivers should see a clear failed-writeback warning'
+  syncUi.includes('Something did not send. Your work is saved'),
+  'drivers should see a clear plain-English failed-writeback warning'
 );
 
 console.log('writeback failure visibility regression checks passed');

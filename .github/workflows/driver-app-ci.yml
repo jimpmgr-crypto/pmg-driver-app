@@ -1,0 +1,24 @@
+name: Driver app release checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  regression-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:unit
+      - run: node --check worker/index.js
+      - run: node --check sw.js
+      - run: npx wrangler deploy --dry-run --cwd worker
+      - run: npm run test:browser

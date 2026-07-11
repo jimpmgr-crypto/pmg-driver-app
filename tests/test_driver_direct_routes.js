@@ -22,10 +22,15 @@ for (const driver of driverRoutes) {
     `/${driver} wildcard rewrites to /index.html are ignored by Pages dev and should not be kept as fake coverage`
   );
   assert(
-    serviceWorker.includes(`'/${driver}'`),
-    `service worker shell should include /${driver} for installed driver shortcuts`
+    !serviceWorker.includes(`'/${driver}'`),
+    `/${driver} must not be a critical install dependency; offline navigation falls back to the cached root`
   );
 }
+
+assert(
+  serviceWorker.includes("if (e.request.mode === 'navigate') return caches.match('/')"),
+  'named driver shortcuts must retain an offline root fallback'
+);
 
 for (const asset of ['sw.js', 'manifest.json', 'app-version.json', 'icon-192.png']) {
   assert(

@@ -1,6 +1,9 @@
 {
-  "buildId": "20260702-carter-washed-labels-v65",
-  "updatedAt": "2026-07-02T16:45:00+01:00",
+  "buildId": "20260711-driver-reliability-v66",
+  "updatedAt": "2026-07-11T10:11:44+01:00",
+  "baselineCommit": "07e3824",
+  "expectedWorkerBuildId": "20260711-driver-reliability-worker-v1",
+  "driverApiContract": "pmg-driver-api-v1",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "carter-washed-labels: Ian Carter and Carter's Landscapes now resolve to the same customer, and washed stone options explicitly state Recycled or Quarried. Keeps concrete-type-required, pipe-30-markup, live torque-only prestart behaviour and walkaround draft restore. prestart-fleet-torque-source lineage preserved. Lane split: Fleet Live is the Gary/Richard vehicle, torque and walkaround source; Tony's plant app remains only for plant/tools."
+  "notes": "Driver reliability release: all walkaround photos are required, daily checks are simplified, reference and notes stay prominent for invoicing, driver sync wording is plain English, app-problem reports include safe diagnostics, driver cache installation is isolated from plant pages, and frontend/worker compatibility is monitored. Keeps Carter aliases, pricing rules, live Fleet torque reads, walkaround draft restore, prestart-fleet-torque-source lineage and all existing Haultech writeback protections. Lane split: Fleet Live is the Gary/Richard vehicle, torque and walkaround source; Tony's plant app remains only for plant/tools."
 }

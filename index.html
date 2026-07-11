@@ -546,6 +546,8 @@
       box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
       transition: background 0.3s;
     }
+    .sync-status-wrap { display: inline-flex; align-items: center; gap: 6px; }
+    .sync-status-label { color: white; font-size: 11px; font-weight: 800; white-space: nowrap; }
 
     /* Action buttons (used in manager view etc) */
     .action-row { display: flex; gap: 8px; margin-top: 12px; }
@@ -698,6 +700,20 @@
       border-top: 1px solid var(--border); padding: 10px 0;
     }
     .walkaround-check-row:first-child { border-top: none; }
+    .walkaround-check-list.hidden { display: none; }
+    .walkaround-check-summary {
+      margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+      background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+      font-size: 14px; font-weight: 800;
+    }
+    .walkaround-photo-progress {
+      margin: 10px 0; padding: 10px 12px; border-radius: 10px;
+      background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+      font-size: 14px; font-weight: 900;
+    }
+    .walkaround-photo-progress.complete {
+      background: #ecfdf5; border-color: #a7f3d0; color: #065f46;
+    }
     .walkaround-check-title { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
     .walkaround-toggle-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .walkaround-toggle-row.two { grid-template-columns: repeat(2, 1fr); }
@@ -731,6 +747,7 @@
       background: #f9fafb; border: 1px solid var(--border); border-radius: 12px;
       padding: 10px 12px; margin: 10px 0 14px; font-size: 13px; color: var(--muted);
     }
+    .queue-strip summary { cursor: pointer; color: #374151; font-weight: 800; }
     .queue-pill {
       display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
       border-radius: 999px; background: white; border: 1px solid var(--border);
@@ -905,7 +922,7 @@
 </main>
 
 <!-- Add Job FAB -->
-<button class="feedback-btn hidden" id="feedback-btn">Driver feedback</button>
+<button class="feedback-btn hidden" id="feedback-btn">Report an app problem</button>
 <button class="fab hidden" id="add-job-btn">＋ Add day-sheet row</button>
 
 <!-- ══ ADD JOB MODAL ══ -->
@@ -997,8 +1014,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Reference</label>
-        <input type="text" id="f-ref" placeholder="Ticket/ref/name, e.g. Phil Smith">
+        <label>Reference / name / ticket number — required</label>
+        <input type="text" id="f-ref" placeholder="Needed by the office for payment, e.g. Phil Smith" required>
       </div>
       <div class="form-group hidden" id="a1-payment-fields">
         <label>A1 payment</label>
@@ -1008,9 +1025,11 @@
         </label>
       </div>
       <div class="form-group">
-        <label>Notes</label>
-        <textarea id="f-notes" placeholder="Any extra info…"></textarea>
+        <label>Notes for office / invoicing — required</label>
+        <textarea id="f-notes" placeholder="What was done and anything the office needs to know" required></textarea>
       </div>
+      <details class="form-group" id="add-row-more-details">
+        <summary style="font-weight:800;cursor:pointer;padding:10px 0;">More details — waste, signature or photo</summary>
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="f-waste-transfer" style="width:auto;min-height:auto;">
@@ -1066,6 +1085,7 @@
           <img id="f-photo-preview" style="display:none;width:100%;border-radius:6px;margin-top:8px;">
         </div>
       </div>
+      </details>
       <button type="submit" class="btn-submit" id="add-job-submit">Save row</button>
     </form>
   </div>
@@ -1102,12 +1122,15 @@
 <div class="modal-overlay hidden" id="feedback-modal">
   <div class="modal">
     <div class="modal-title">
-      John trial feedback
+      Report an app problem
       <button class="modal-close" id="feedback-close">✕</button>
     </div>
     <div class="quick-grid" id="feedback-tags">
       <button type="button" data-tag="Too much typing">Too much typing</button>
       <button type="button" data-tag="Could not find job">Could not find job</button>
+      <button type="button" data-tag="Could not take photo">Could not take photo</button>
+      <button type="button" data-tag="Walkaround would not finish">Walkaround would not finish</button>
+      <button type="button" data-tag="Jobs did not update">Jobs did not update</button>
       <button type="button" data-tag="Map awkward">Map awkward</button>
       <button type="button" data-tag="Proof awkward">Proof awkward</button>
       <button type="button" data-tag="Missing option">Missing option</button>
@@ -1117,7 +1140,7 @@
       <label>What was awkward or missing?</label>
       <textarea id="feedback-text" placeholder="Short note"></textarea>
     </div>
-    <button class="btn-submit" id="feedback-submit">Save feedback</button>
+    <button class="btn-submit" id="feedback-submit">Send problem to office</button>
   </div>
 </div>
 
@@ -1531,7 +1554,7 @@ const COMMON_PLACES = [
 ];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260702-carter-washed-labels-v65';
+const APP_BUILD_ID = '20260711-driver-reliability-v66';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1583,6 +1606,7 @@ let trialMode = false;
 let selectedProblemReason = '';
 let selectedFeedbackTags = [];
 let dayReviewOpen = false;
+let lastJobsUpdatedAt = null;
 let suppressAutoFinishForDay = false;
 let walkaroundState = null;
 let walkaroundSigCtx = null;
@@ -2293,19 +2317,35 @@ function updateJobStatusLocal(job, status) {
   job.status = status;
 }
 
-function renderQueueSummary() {
+function queueCounts() {
   markDriverFailedWritebacksSavedLocally();
   const queue = getWritebackQueue();
-  const counts = queue.reduce((acc, item) => {
+  return queue.reduce((acc, item) => {
     acc[item.state] = (acc[item.state] || 0) + 1;
     return acc;
   }, {});
+}
+
+function renderQueueSummary(options = {}) {
+  const counts = queueCounts();
   const states = ['pending Haultech', 'written', 'saved locally', 'failed'];
-  const pills = states.map(s => `<span class="queue-pill">${esc(s)}: ${counts[s] || 0}</span>`).join('');
-  const note = LIVE_WRITE
-    ? 'Completed jobs go to Haultech. Blank pricing is allowed. Saved-local items do not stop the driver finishing the day.'
-    : 'Missing price is allowed in this trial. Events are saved locally and to the PMG worker.';
-  return `<div class="queue-strip"><strong>Writeback queue:</strong><br>${pills}<div style="margin-top:6px">${esc(note)}</div></div>`;
+  const driverLabels = {
+    'pending Haultech': 'waiting to send',
+    written: 'sent',
+    'saved locally': 'saved on this phone',
+    failed: 'needs help',
+  };
+  const labels = options.technical ? Object.fromEntries(states.map(state => [state, state])) : driverLabels;
+  const pills = states.map(state => `<span class="queue-pill">${esc(labels[state])}: ${counts[state] || 0}</span>`).join('');
+  const waiting = (counts['pending Haultech'] || 0) + (counts['saved locally'] || 0);
+  const failed = counts.failed || 0;
+  const summary = failed
+    ? `${failed} item${failed === 1 ? '' : 's'} need office help`
+    : (waiting ? `${waiting} item${waiting === 1 ? '' : 's'} saved and waiting to send` : 'Everything sent');
+  const note = options.technical
+    ? 'Completed jobs write to Haultech after proof is protected. Local backups remain available for retry.'
+    : 'You can carry on if signal drops. Anything waiting will retry automatically.';
+  return `<details class="queue-strip"><summary>${esc(options.technical ? 'Technical sync details' : `Sync details — ${summary}`)}</summary><div style="margin-top:8px">${pills}<div style="margin-top:6px">${esc(note)}</div></div></details>`;
 }
 
 function addToRetryQueue(date, jobs) {
@@ -2353,8 +2393,8 @@ function updateSyncUI() {
     const label = banner.querySelector('span');
     if (label) {
       label.textContent = writebackFailed
-        ? '⚠️ Haultech writeback has failed items'
-        : (LIVE_WRITE ? '⚠️ Haultech writeback has pending items' : '⚠️ Trial queue saved - Haultech writes disabled');
+        ? '⚠️ Something did not send. Your work is saved — tap Retry or tell the office.'
+        : 'Saved on this phone. It will send automatically when the signal returns.';
     }
   } else {
     banner.classList.add('hidden');
@@ -2364,10 +2404,17 @@ function updateSyncUI() {
 }
 
 function updateSyncDot(state) {
+  const updatedLabel = lastJobsUpdatedAt
+    ? `Updated ${lastJobsUpdatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Ready';
+  const labels = { green: updatedLabel, red: 'Needs help', grey: 'Waiting to send' };
   document.querySelectorAll('.sync-dot').forEach(dot => {
     const colors = { green: '#10b981', red: '#ef4444', grey: '#6b7280' };
     dot.style.background = colors[state] || '#6b7280';
-    dot.title = { green: 'Synced', red: 'Haultech writeback needs attention', grey: 'Cloud backup retry pending' }[state] || '';
+    dot.title = labels[state] || '';
+  });
+  document.querySelectorAll('.sync-status-label').forEach(label => {
+    label.textContent = labels[state] || 'Ready';
   });
 }
 
@@ -2592,7 +2639,7 @@ function setHeaderForList() {
       </div>
     </div>
     <div class="header-right">
-      <span class="sync-dot" id="sync-dot" title="Synced"></span>
+      <span class="sync-status-wrap"><span class="sync-dot" title="Ready"></span><span class="sync-status-label">Ready</span></span>
       <button class="icon-btn" id="gear-btn" title="Manager view">⚙️</button>
       <button class="icon-btn" id="logout-btn" title="Log out">🚪</button>
     </div>`;
@@ -2619,7 +2666,7 @@ function setHeaderForDetail(jobNum) {
     </div>
     <div class="header-center">Job: #${esc(String(jobNum))}</div>
     <div class="header-right">
-      <span class="sync-dot" id="sync-dot" title="Synced"></span>
+      <span class="sync-status-wrap"><span class="sync-dot" title="Ready"></span><span class="sync-status-label">Ready</span></span>
       <button class="icon-btn" id="detail-header-gear">⚙️</button>
     </div>`;
   $('detail-header-back').addEventListener('click', showJobList);
@@ -2634,7 +2681,7 @@ function setHeaderForSign(jobNum) {
     </div>
     <div class="header-center">Job: #${esc(String(jobNum))}</div>
     <div class="header-right">
-      <span class="sync-dot" id="sync-dot" title="Synced"></span>
+      <span class="sync-status-wrap"><span class="sync-dot" title="Ready"></span><span class="sync-status-label">Ready</span></span>
       <button class="icon-btn" id="sign-header-gear">⚙️</button>
     </div>`;
   $('sign-header-back').addEventListener('click', () => showJobDetail(activeJob));
@@ -2649,7 +2696,7 @@ function setHeaderForWalkaround() {
     </div>
     <div class="header-center">Walkaround</div>
     <div class="header-right">
-      <span class="sync-dot" id="sync-dot" title="Synced"></span>
+      <span class="sync-status-wrap"><span class="sync-dot" title="Ready"></span><span class="sync-status-label">Ready</span></span>
       <button class="icon-btn" id="walkaround-header-gear">⚙️</button>
     </div>`;
   $('walkaround-header-back').addEventListener('click', showJobList);
@@ -2855,6 +2902,7 @@ async function loadJobs(options = {}) {
     jobs = jobs.map(j => ({ ...j, savedAt: j.savedAt || now }));
     jobs = mergeWithLocal(date, jobs);
     allJobs = jobs;
+    lastJobsUpdatedAt = new Date();
     renderJobs();
     saveJobsToCloud(date, allJobs); // non-blocking backup
   } catch (e) {
@@ -3379,10 +3427,10 @@ function renderDriverView(container) {
   const walkaroundPanel = renderWalkaroundPanel();
   const trialBanner = trialMode ? `
     <div class="trial-banner">
-      <strong>${esc(currentUser.name)} ${LIVE_WRITE ? 'live-write proof transfer' : 'driver mode'}</strong><br>
+      <strong>${esc(currentUser.name)} — jobs connected to the office</strong><br>
       ${LIVE_WRITE
-        ? 'Live Haultech jobs complete to Haultech after proof is protected. Blank pricing is allowed.'
-        : 'Live Haultech jobs are read-only. Starts, proof, day-sheet rows and feedback are saved locally and to the safe worker queue only.'}
+        ? 'Your jobs, proof and day-sheet rows send back automatically. If the signal drops, the app keeps what you have entered so you can continue when it returns.'
+        : 'Your jobs are visible and anything you enter is saved safely for the office.'}
     </div>` : '';
   const summary = `
     ${trialBanner}
@@ -3393,21 +3441,19 @@ function renderDriverView(container) {
         <span>${jobs.length} jobs today</span>
         <span>${openJobs.length} still to review</span>
         <span>${selectedVehicle ? `Truck / wagon ${esc(selectedVehicle)}` : 'Truck / wagon not selected'}</span>
-        <span>Live from Haultech</span>
-        <span>${LIVE_WRITE ? 'Live write enabled' : 'Trial shadow mode'}</span>
         <span>${finished ? 'Finished for the day' : (canFinishDay ? 'Ready to finish day' : 'Day still open')}</span>
       </div>
       <div class="form-group ${isWalkaroundVisible() ? 'hidden' : ''}" style="margin:12px 0 0">
         <label for="driver-vehicle-select">Truck / Wagon today</label>
         <select id="driver-vehicle-select" class="driver-vehicle-select">${vehicleOptionsHTML(selectedVehicle)}</select>
       </div>
-      <div class="driver-summary-actions">
+      <div class="driver-summary-actions ${jobs.length ? '' : 'hidden'}">
         <button class="btn ${finished ? 'btn-secondary' : (canFinishDay ? 'btn-complete' : 'btn-secondary')}" id="complete-day-btn" type="button">${finished ? 'Re-open / check day' : (canFinishDay ? 'Finished for the day' : 'Complete day')}</button>
         ${finished ? '<button class="btn btn-complete" id="finished-add-row-btn" type="button">Add another day-sheet row</button>' : ''}
       </div>
       ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Saved-local items do not stop this day being finished.</div>` : ''}
     </div>
-    <div class="driver-update">Office changes will appear here when the Haultech feed refreshes. The app refreshes every ${esc(JOB_REFRESH_LABEL)}.</div>
+    <div class="driver-update">Office changes appear automatically. Last successful update is shown at the top.</div>
     ${renderDayReviewPanel(jobs)}
     ${queue}`;
   if (jobs.length === 0) {
@@ -3837,6 +3883,7 @@ function resetWalkaroundState() {
     }, {}),
     photos: {},
     photoDataUrls: {},
+    checksExpanded: false,
     defectNotes: '',
     startedAt: new Date().toISOString(),
   };
@@ -3871,6 +3918,7 @@ function saveWalkaroundDraft() {
       active: true,
       checks: walkaroundState.checks || {},
       torqueConfirmations: walkaroundState.torqueConfirmations || {},
+      checksExpanded: walkaroundState.checksExpanded === true,
       defectNotes: walkaroundState.defectNotes || '',
       startedAt: walkaroundState.startedAt || new Date().toISOString(),
       photoDataUrls: walkaroundState.photoDataUrls || {},
@@ -3890,6 +3938,7 @@ function restoreWalkaroundDraftIfMatching() {
     if (!walkaroundDraftMatches(draft)) return false;
     walkaroundState.checks = { ...defaultWalkaroundChecks(), ...(draft.checks || {}) };
     walkaroundState.torqueConfirmations = { ...walkaroundState.torqueConfirmations, ...(draft.torqueConfirmations || {}) };
+    walkaroundState.checksExpanded = draft.checksExpanded === true || Object.values(draft.checks || {}).includes('no');
     walkaroundState.defectNotes = draft.defectNotes || '';
     walkaroundState.startedAt = draft.startedAt || walkaroundState.startedAt;
     walkaroundState.photoDataUrls = draft.photoDataUrls || {};
@@ -3929,7 +3978,7 @@ function renderWalkaroundPanel() {
     ? 'Pre-start walkaround is saved against this selected unit for today.'
     : 'Jobs stay visible, but Start / In Transit and job completion are held here until the selected wagon pre-start is complete.';
   const selectorRows = fullyClear ? '' : `
-      <div class="form-row">
+      <div class="form-row ${vehicle ? 'hidden' : ''}" id="walkaround-unit-selectors">
         <div class="form-group">
           <label>Truck / Wagon</label>
           <select class="driver-vehicle-select" data-source="walkaround">${vehicleOptionsHTML(vehicle)}</select>
@@ -3945,15 +3994,21 @@ function renderWalkaroundPanel() {
       <h2>${esc(title)}</h2>
       <p>${esc(detail)}</p>
       ${renderTorqueGateStatus(saved)}
+      ${!fullyClear && vehicle ? `<p><strong>Using ${esc(selectedUnit)} today?</strong></p>` : ''}
       ${selectorRows}
       <div class="walkaround-actions">
-        <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${fullyClear ? 'Review / do another walkaround' : 'Start pre-start now'}</button>
+        <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${fullyClear ? 'Review / do another walkaround' : (vehicle ? 'Yes — start pre-start' : 'Start pre-start')}</button>
+        ${!fullyClear && vehicle ? '<button class="btn btn-secondary" id="change-walkaround-vehicle-btn" type="button">Change wagon / trailer</button>' : ''}
       </div>
     </div>`;
 }
 
 function attachWalkaroundPanelListeners(container) {
   container.querySelector('#start-walkaround-btn')?.addEventListener('click', () => showWalkaroundScreen());
+  container.querySelector('#change-walkaround-vehicle-btn')?.addEventListener('click', () => {
+    container.querySelector('#walkaround-unit-selectors')?.classList.remove('hidden');
+    container.querySelector('#change-walkaround-vehicle-btn')?.classList.add('hidden');
+  });
   container.querySelectorAll('.driver-trailer-select').forEach(select => {
     select.addEventListener('change', e => {
       setSelectedDriverTrailer(e.target.value);
@@ -3981,7 +4036,6 @@ function showWalkaroundScreen() {
   saveWalkaroundDraft();
   if (restoredDraft) toast('Walkaround draft restored');
   window.scrollTo({ top: 0, behavior: 'auto' });
-  setTimeout(initWalkaroundSignatureCanvas, 50);
 }
 
 function renderWalkaroundScreen() {
@@ -3994,12 +4048,13 @@ function renderWalkaroundScreen() {
     <div class="walkaround-card">
       <div class="walkaround-status">Start here</div>
       <h2>${esc(vehicle)}${trailer ? ' + ' + esc(trailer) : ''}</h2>
-      <p>Take the truck photos, do the quick checks${torqueTasks.length ? ', then confirm the live wheel-torque re-check' : ''}, then Complete pre-start.</p>
+      <p>Take every required truck photo, confirm the daily checks${torqueTasks.length ? ', then confirm the wheel-torque re-check' : ''}, and complete the pre-start.</p>
     </div>
 
     <div class="walkaround-form-card">
       <h3>1. Truck photos</h3>
-      <div class="walkaround-help">Take each picture in order. After one saves, the next photo box is highlighted.</div>
+      <div class="walkaround-help">Every photo is required. Take them in order; after one saves, the next box is highlighted.</div>
+      <div class="walkaround-photo-progress" id="walkaround-photo-progress">0 of ${photoSlots.length} required photos saved</div>
       <div class="walkaround-photo-grid">
         ${photoSlots.map(slot => `
           <div class="walkaround-photo ${walkaroundState.photos?.[slot.id] ? 'captured' : ''}" data-photo-slot="${esc(slot.id)}">
@@ -4014,9 +4069,11 @@ function renderWalkaroundScreen() {
 
     <div class="walkaround-form-card">
       <h3>2. Daily checks</h3>
-      <div class="walkaround-help">Use Checked all if there are no defects. If there is a defect, press No on that item and add notes.</div>
-      <button class="btn btn-complete" id="walkaround-check-all" type="button">Checked all / no defects</button>
-      <div id="walkaround-check-list" style="margin-top:10px">
+      <div class="walkaround-help">If everything is safe, use the green button. If anything is wrong, report the defect and add a note.</div>
+      <button class="btn btn-complete" id="walkaround-check-all" type="button">Everything checked — no defects</button>
+      <button class="btn btn-secondary" id="walkaround-expand-checks" type="button">Report a defect / check individually</button>
+      <div class="walkaround-check-summary hidden" id="walkaround-check-summary">✓ All daily checks confirmed</div>
+      <div id="walkaround-check-list" class="walkaround-check-list ${walkaroundState.checksExpanded ? '' : 'hidden'}" style="margin-top:10px">
         ${WALKAROUND_CHECKS.map(check => {
           const buttons = check.conditional
             ? `<button class="walkaround-toggle yes" data-check="${esc(check.id)}" data-value="yes" type="button">Yes</button>
@@ -4030,10 +4087,10 @@ function renderWalkaroundScreen() {
               <div class="walkaround-toggle-row ${check.conditional ? '' : 'two'}">${buttons}</div>
             </div>`;
         }).join('')}
-      </div>
-      <div class="form-group" style="margin-top:12px">
-        <label>Defect notes</label>
-        <textarea id="walkaround-defect-notes" placeholder="Only needed if anything is marked No"></textarea>
+        <div class="form-group" style="margin-top:12px">
+          <label>Defect notes</label>
+          <textarea id="walkaround-defect-notes" placeholder="Required if anything is marked No"></textarea>
+        </div>
       </div>
     </div>
 
@@ -4056,34 +4113,47 @@ function renderWalkaroundScreen() {
       </div>
     ` : ''}
 
-    <div class="walkaround-form-card">
-      <h3>${signatureStep}. Driver signature</h3>
-      <div class="walkaround-help">Optional. The checked items above are enough to clear the pre-start.</div>
+    <details class="walkaround-form-card" id="walkaround-signature-details">
+      <summary><strong>${signatureStep}. Optional driver signature</strong></summary>
+      <div class="walkaround-help">Optional. The required photos and checks above are enough to clear the pre-start.</div>
       <div class="walkaround-sig-wrap">
         <canvas id="walkaround-sig-canvas"></canvas>
         <button type="button" class="walkaround-sig-clear" id="walkaround-sig-clear">Clear</button>
       </div>
-    </div>
+    </details>
 
     <button class="btn-submit" id="walkaround-complete-btn" type="button">Complete pre-start</button>
   `;
   if ($('walkaround-defect-notes')) $('walkaround-defect-notes').value = walkaroundState.defectNotes || '';
   attachWalkaroundScreenListeners();
   updateWalkaroundCheckButtons();
+  updateWalkaroundCheckSection();
+  updateWalkaroundPhotoProgress();
   updateWalkaroundTorqueButtons();
   focusNextWalkaroundPhoto('', { announce: false, scroll: false });
 }
 
 function attachWalkaroundScreenListeners() {
+  $('walkaround-signature-details')?.addEventListener('toggle', event => {
+    if (event.target.open) setTimeout(initWalkaroundSignatureCanvas, 0);
+  });
   $('walkaround-check-all')?.addEventListener('click', () => {
     WALKAROUND_CHECKS.forEach(check => {
       walkaroundState.checks[check.id] = check.conditional && !getSelectedDriverTrailer() ? 'na' : 'yes';
     });
     $('walkaround-defect-notes').value = '';
     walkaroundState.defectNotes = '';
+    walkaroundState.checksExpanded = false;
     updateWalkaroundCheckButtons();
+    updateWalkaroundCheckSection();
     saveWalkaroundDraft();
-    toast('Checks marked clear');
+    toast('All daily checks confirmed');
+  });
+
+  $('walkaround-expand-checks')?.addEventListener('click', () => {
+    walkaroundState.checksExpanded = true;
+    updateWalkaroundCheckSection();
+    saveWalkaroundDraft();
   });
 
   document.querySelectorAll('.walkaround-toggle').forEach(btn => {
@@ -4094,8 +4164,10 @@ function attachWalkaroundScreenListeners() {
         saveWalkaroundDraft();
         return;
       }
+      walkaroundState.checksExpanded = true;
       walkaroundState.checks[btn.dataset.check] = btn.dataset.value;
       updateWalkaroundCheckButtons();
+      updateWalkaroundCheckSection();
       saveWalkaroundDraft();
     });
   });
@@ -4131,6 +4203,7 @@ function attachWalkaroundScreenListeners() {
           const button = wrap.querySelector('.walk-photo-btn');
           if (button) button.textContent = 'Retake photo';
         }
+        updateWalkaroundPhotoProgress();
         saveWalkaroundDraft();
         focusNextWalkaroundPhoto(slot.id);
       } catch (err) {
@@ -4170,6 +4243,29 @@ function updateWalkaroundCheckButtons() {
   });
 }
 
+function updateWalkaroundCheckSection() {
+  const values = WALKAROUND_CHECKS.map(check => walkaroundState?.checks?.[check.id]);
+  const allComplete = values.every(Boolean);
+  const allClear = allComplete && values.every(value => value === 'yes' || value === 'na');
+  const list = $('walkaround-check-list');
+  const summary = $('walkaround-check-summary');
+  list?.classList.toggle('hidden', !walkaroundState?.checksExpanded);
+  summary?.classList.toggle('hidden', !allClear || walkaroundState?.checksExpanded);
+  const expand = $('walkaround-expand-checks');
+  if (expand) expand.textContent = walkaroundState?.checksExpanded ? 'Individual checks shown below' : 'Report a defect / check individually';
+}
+
+function updateWalkaroundPhotoProgress() {
+  const slots = requiredWalkaroundPhotoSlots();
+  const saved = slots.filter(slot => !!walkaroundState?.photos?.[slot.id]).length;
+  const progress = $('walkaround-photo-progress');
+  if (!progress) return;
+  progress.textContent = saved === slots.length
+    ? `✓ All ${slots.length} required photos saved`
+    : `${saved} of ${slots.length} required photos saved`;
+  progress.classList.toggle('complete', saved === slots.length);
+}
+
 function updateWalkaroundTorqueButtons() {
   document.querySelectorAll('.walkaround-torque-confirm').forEach(btn => {
     const active = walkaroundState?.torqueConfirmations?.[btn.dataset.torqueTask] === true;
@@ -4196,6 +4292,8 @@ async function closeConfirmedFleetTorqueTasks(torqueChecks) {
 function initWalkaroundSignatureCanvas() {
   const canvas = $('walkaround-sig-canvas');
   if (!canvas) return;
+  if (canvas.dataset.ready === '1') return;
+  canvas.dataset.ready = '1';
   const rect = canvas.parentElement.getBoundingClientRect();
   canvas.width = Math.max(280, Math.floor(rect.width));
   canvas.height = 170;
@@ -4262,14 +4360,16 @@ function compressImageFile(file) {
     const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
-      const maxSide = 1280;
+      // Keep four mandatory phone photos small enough for draft restore on iOS
+      // while retaining enough detail for office/compliance review.
+      const maxSide = 960;
       const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.width * scale));
       canvas.height = Math.max(1, Math.round(img.height * scale));
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.72);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.62);
     };
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
@@ -4294,6 +4394,9 @@ function validateWalkaroundBeforeComplete() {
   const missing = [];
   const vehicle = getSelectedDriverVehicle();
   if (!vehicle) missing.push('select truck / wagon');
+  requiredWalkaroundPhotoSlots().forEach(slot => {
+    if (!walkaroundState.photos?.[slot.id]) missing.push(`${slot.label} photo`);
+  });
   WALKAROUND_CHECKS.forEach(check => {
     if (!walkaroundState.checks[check.id]) missing.push(check.label);
   });
@@ -4356,14 +4459,14 @@ async function completeWalkaround() {
     defects: failedChecks,
     defectNotes: $('walkaround-defect-notes')?.value.trim() || '',
     photoSlotsExpected: requiredWalkaroundPhotoSlots().map(slot => slot.id),
-    photoSlots: Object.keys(walkaroundState.photos),
-    photoEvidenceRequired: false,
+    photoSlots: requiredWalkaroundPhotoSlots().map(slot => slot.id),
+    photoEvidenceRequired: true,
     signatureProvided: !!signatureBlob,
     signatureOptional: true,
     startedAt: walkaroundState.startedAt,
     completedAt: new Date().toISOString(),
-    mode: 'non_blocking_prompt',
-    jobsLocked: false,
+    mode: 'required_prestart_gate',
+    jobsLocked: true,
   };
 
   try {
@@ -4413,7 +4516,7 @@ async function completeWalkaround() {
 
 
 function renderManagerView(container) {
-  let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops and safe queue state.</div>${renderQueueSummary()}`;
+  let html = `<div class="trial-banner"><strong>Manager view</strong><br>Driver costs/profit stay hidden from drivers. This view shows driver ops and safe queue state.</div>${renderQueueSummary({ technical: true })}`;
   const driverList = Object.entries(INCAB_USERS);
 
   // Unassigned (shown FIRST for visibility)
@@ -5488,6 +5591,7 @@ function isBlankCanvas(canvas) {
 
 function openAddJobModal() {
   $('add-job-modal').classList.remove('hidden');
+  $('add-row-more-details').open = false;
   loadCustomers();
   populateMaterialList();
   $('f-vehicle').innerHTML = vehicleOptionsHTML(getSelectedDriverVehicle());
@@ -5626,19 +5730,33 @@ $('add-job-form').addEventListener('submit', async (e) => {
   if (!vehicle) {
     toast('Select truck / wagon');
     btn.disabled = false;
-    btn.textContent = 'Save row for office';
+    btn.textContent = 'Save row';
+    return;
+  }
+  if (!ref) {
+    toast('Enter the reference / name / ticket number for the office');
+    btn.disabled = false;
+    btn.textContent = 'Save row';
+    $('f-ref').focus();
+    return;
+  }
+  if (!notes) {
+    toast('Enter notes so the office knows what was done');
+    btn.disabled = false;
+    btn.textContent = 'Save row';
+    $('f-notes').focus();
     return;
   }
   if (isA1Customer && !ref) {
     toast('Enter A1 customer name / reference');
     btn.disabled = false;
-    btn.textContent = 'Save row for office';
+    btn.textContent = 'Save row';
     return;
   }
   if (concreteEntry && !concreteType) {
     toast('Choose quarried or recycled');
     btn.disabled = false;
-    btn.textContent = 'Save row for office';
+    btn.textContent = 'Save row';
     return;
   }
   setSelectedDriverVehicle(vehicle);
@@ -5894,6 +6012,18 @@ $('feedback-submit').addEventListener('click', () => {
   queueTrialEvent(`${currentUser.username}_feedback`, { id: 'feedback', jobId: 'feedback' }, {
     tags: selectedFeedbackTags,
     text,
+    diagnostics: {
+      appBuildId: APP_BUILD_ID,
+      route: window.location.pathname,
+      screen: currentScreen,
+      online: navigator.onLine,
+      phone: navigator.userAgent,
+      selectedVehicle: getSelectedDriverVehicle(),
+      lastJobsUpdatedAt: lastJobsUpdatedAt?.toISOString() || '',
+      queueCounts: queueCounts(),
+      pendingWalkaroundTickets: getPendingWalkaroundTickets().length,
+      capturedAt: new Date().toISOString(),
+    },
     state: 'written',
     haultechWriteState: 'written',
   });

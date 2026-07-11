@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const version = JSON.parse(fs.readFileSync(path.join(root, 'app-version.json'), 'utf8'));
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const appShell = sw.slice(sw.indexOf('const APP_SHELL'), sw.indexOf('// Install'));
 
 assert(index.includes(`const APP_BUILD_ID = '${version.buildId}'`), 'driver app build id must match app-version.json');
 assert(sw.includes(`pmg-driver-live-v${version.buildId}`), 'service-worker cache must match app-version.json');
@@ -24,16 +25,16 @@ assert(index.includes("const FLEET_LIVE_URL = 'https://pmg-fleet-live.jimpmgr.wo
 assert(index.includes('/api/driver-torque?vehicle='), 'driver app must read open wheel torque checks from Fleet Live');
 assert(index.includes('Wheel torque check due'), 'pre-start gate must show wheel torque checks when required');
 assert(index.includes('torqueChecks'), 'saved walkaround record must include torque confirmation evidence');
-assert(index.includes('Take each picture in order'), 'walkaround photo flow must guide drivers through the truck photos');
+assert(index.includes('Every photo is required'), 'walkaround photo flow must clearly state every photo is mandatory');
 assert(index.includes('Saved on this phone'), 'photo capture must clearly tell drivers the photo has been saved');
 assert(index.includes('function saveWalkaroundDraft'), 'walkaround work must be persisted while the camera app is open');
 assert(index.includes('function restoreWalkaroundDraftIfMatching'), 'walkaround draft must restore after an Android camera/app restart');
 assert(index.includes('function resumeWalkaroundDraftAfterEnter'), 'driver route must reopen an unfinished walkaround draft instead of returning to loads');
 assert(index.includes('function focusNextWalkaroundPhoto'), 'photo flow must move/highlight the next truck picture after capture');
-assert(index.includes('photoEvidenceRequired: false'), 'walkaround record must state photo proof is optional');
+assert(index.includes('photoEvidenceRequired: true'), 'walkaround record must state photo proof is required');
 assert(index.includes('signatureOptional: true'), 'walkaround record must state signature is optional');
 assert(index.includes('const signatureBlob = signatureData ? dataURLToBlob(signatureData) : null;'), 'signature upload must not be attempted when the driver has not signed');
-assert(!index.includes('missing.push(`${slot.label} photo`)'), 'walkaround completion must not block on missing camera photos');
+assert(index.includes('missing.push(`${slot.label} photo`)'), 'walkaround completion must block on every missing required camera photo');
 assert(!index.includes("missing.push('driver signature')"), 'walkaround completion must not block on missing signature');
 assert(!index.includes('No wheel-off torque re-check is open for this wagon.'), 'driver app must not show wheel torque wording when no live re-check exists');
 assert(index.includes("writeCachedTorqueTasks(vehicleRef, []);"), 'failed live torque checks must clear stale cached torque tasks instead of blocking drivers');
@@ -48,8 +49,12 @@ assert(index.includes("finished ? 'Re-open / check day'"), 'finished drivers mus
 assert(index.includes('id="finished-add-row-btn"'), 'finished drivers must be able to add another day-sheet row from the completed screen');
 assert(index.includes('currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };'), 'saved driver sessions must reopen directly instead of bouncing back to PIN');
 assert(index.includes("$('pin-screen').classList.add('hidden');"), 'entering jobs must always hide the PIN screen');
-assert(sw.includes("'/andrew'"), 'service worker app shell must include Andrew route');
-assert(sw.includes("'/neil'"), 'service worker app shell must include Neil route');
-assert(sw.includes("'/ian'"), 'service worker app shell must include Ian route');
+assert(!appShell.includes("'/plant'"), 'plant route must not be able to block installation of a driver update');
+assert(!appShell.includes("'/tony'"), 'Tony route must not be able to block installation of a driver update');
+assert(!appShell.includes("'/plant-seed.json'"), 'plant snapshot must not be in the critical driver app shell');
+assert(index.includes('Everything checked — no defects'), 'walkaround must offer a one-tap all-clear action');
+assert(index.includes('Report a defect / check individually'), 'walkaround must retain an obvious individual defect route');
+assert(index.includes('Reference / name / ticket number — required'), 'manual rows must keep the invoicing reference prominent');
+assert(index.includes('Notes for office / invoicing — required'), 'manual rows must keep invoicing notes prominent');
 
 console.log('pre-start safety gate regression checks passed');

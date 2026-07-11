@@ -7,7 +7,7 @@ const indexHtml = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
 const workerSource = fs.readFileSync(path.join(projectRoot, 'worker', 'index.js'), 'utf8');
 
 assert(
-  indexHtml.includes('placeholder="Ticket/ref/name, e.g. Phil Smith"'),
+  indexHtml.includes('placeholder="Needed by the office for payment, e.g. Phil Smith"'),
   'reference field should make clear that a typed person/site name is valid'
 );
 

@@ -158,6 +158,24 @@ test.describe('driver app route audit', () => {
     await expect(page.locator('[data-photo-slot="front_left"] .walkaround-photo-state')).toHaveText('Take this next');
   });
 
+  test('walkaround cannot complete until every required truck photo is captured', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+    await stubExternalApis(page, { captured });
+    await page.goto(`${APP_URL}/?driver=john`);
+    await page.evaluate(() => localStorage.setItem('pmg_driver_vehicle_f5c31070-2945-408a-bc7a-0245159a191a', 'PN25AMU'));
+    await page.reload();
+    await page.locator('#start-walkaround-btn').click();
+    await page.locator('#walkaround-check-all').click();
+    await expect(page.locator('#walkaround-check-list')).toBeHidden();
+    await expect(page.locator('#walkaround-check-summary')).toContainText('All daily checks confirmed');
+    await expect(page.locator('#walkaround-sig-canvas')).toBeHidden();
+    await page.locator('#walkaround-complete-btn').click();
+    await expect(page.locator('#walkaround-screen')).toBeVisible();
+    await expect(page.locator('#walkaround-photo-progress')).toHaveText('0 of 4 required photos saved');
+    expect(captured.photoUploads).toHaveLength(0);
+    expect(captured.ticketSaves).toHaveLength(0);
+  });
+
   test('full fake John walkaround stores photos in round-the-wagon order and returns to loads clear', async ({ page }) => {
     const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
     await stubExternalApis(page, { captured });
@@ -210,6 +228,8 @@ test.describe('driver app route audit', () => {
     await expect(page.locator('#jobs-screen')).toBeVisible();
 
     await page.locator('#add-job-btn').click();
+    await expect(page.locator('#add-row-more-details')).not.toHaveAttribute('open', '');
+    await expect(page.locator('#f-sig-canvas')).toBeHidden();
     await expect(page.locator('#add-job-modal')).toBeVisible();
     await page.locator('#f-vehicle').selectOption('EY15BOV');
     await page.locator('#f-customer').fill('A1');
@@ -231,6 +251,24 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests[0].body.reference).toBe('Phil Smith');
     expect(captured.driverAddRequests[0].body.a1PaymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.notes).toBe('Leave cones by the gate');
+  });
+
+  test('manual day-sheet row keeps reference and office notes required', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+    await stubExternalApis(page, { captured });
+    await page.goto(`${APP_URL}/?driver=john`);
+    await page.locator('#add-job-btn').click();
+    await page.locator('#f-vehicle').selectOption('EY15BOV');
+    await page.locator('#f-customer').fill('Test Customer');
+    await page.locator('#f-material').fill('MOT');
+    await page.locator('#f-from').fill('Yard');
+    await page.locator('#f-to').fill('Site');
+    await page.locator('#f-qty').fill('2');
+    await expect(page.locator('#f-ref')).toHaveAttribute('required', '');
+    await expect(page.locator('#f-notes')).toHaveAttribute('required', '');
+    await page.locator('#add-job-submit').click();
+    await expect(page.locator('#add-job-modal')).toBeVisible();
+    expect(captured.driverAddRequests).toHaveLength(0);
   });
 
   test('open Fleet Live torque task has an obvious tick action', async ({ page }) => {
