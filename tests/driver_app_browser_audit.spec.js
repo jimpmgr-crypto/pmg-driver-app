@@ -5,7 +5,7 @@ const FLEET_URL = 'https://pmg-fleet-live.jimpmgr.workers.dev';
 const APP_URL = process.env.PMG_DRIVER_APP_BASE_URL || 'http://127.0.0.1:4179';
 const TEST_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64');
 
-async function stubExternalApis(page, { torqueTasks = [], captured = null } = {}) {
+async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null } = {}) {
   await page.route(`${WORKER_URL}/**`, async route => {
     const url = route.request().url();
     if (captured) {
@@ -23,6 +23,13 @@ async function stubExternalApis(page, { torqueTasks = [], captured = null } = {}
           body: JSON.parse(route.request().postData() || '{}'),
         });
       }
+      if (url.includes('/ht/payment/')) {
+        captured.paymentUpdates = captured.paymentUpdates || [];
+        captured.paymentUpdates.push({
+          url,
+          body: JSON.parse(route.request().postData() || '{}'),
+        });
+      }
     }
     if (url.includes('/customers')) {
       return route.fulfill({
@@ -35,7 +42,7 @@ async function stubExternalApis(page, { torqueTasks = [], captured = null } = {}
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: [] }),
+        body: JSON.stringify({ items: haultechJobs }),
       });
     }
     if (url.includes('/ht/driver-add')) {
@@ -43,6 +50,14 @@ async function stubExternalApis(page, { torqueTasks = [], captured = null } = {}
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ ok: true, ref: 'Phil Smith', jobId: 'Phil Smith' }),
+      });
+    }
+    if (url.includes('/ht/payment/')) {
+      const paymentStatus = JSON.parse(route.request().postData() || '{}').paymentStatus || 'not_paid';
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, paymentStatus, storedUpdated: true }),
       });
     }
     if (url.includes('/jobs/')) {
@@ -234,7 +249,7 @@ test.describe('driver app route audit', () => {
     await page.locator('#f-vehicle').selectOption('EY15BOV');
     await page.locator('#f-customer').fill('A1');
     await expect(page.locator('#a1-payment-fields')).toBeVisible();
-    await page.locator('#f-a1-paid').check();
+    await page.locator('#f-payment-paid').check();
     await page.locator('#f-material').fill('MOT');
     await page.locator('#f-from').fill('Yard');
     await page.locator('#f-to').fill('Nottend');
@@ -250,7 +265,43 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests[0].body.customer).toBe('A1');
     expect(captured.driverAddRequests[0].body.reference).toBe('Phil Smith');
     expect(captured.driverAddRequests[0].body.a1PaymentStatus).toBe('paid');
+    expect(captured.driverAddRequests[0].body.paymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.notes).toBe('Leave cones by the gate');
+  });
+
+  test('driver can change a saved driver row between Paid and Not paid', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [], paymentUpdates: [] };
+    const jobId = '8549ee7f-4def-466e-84d3-3267d2b9fe5c';
+    await stubExternalApis(page, {
+      captured,
+      haultechJobs: [{
+        jobId: 9555,
+        id: jobId,
+        customerId: 'cust-1',
+        customerReference: 'Cleveleys landscapes',
+        deliveryStatus: 'Completed',
+        trafficNotes: 'Not paid | 10mm no fines Paid £355 cash',
+        accountNotes: 'Added by John Bowman / EY15BOV | Driver app source: John Bowman / EY15BOV / 2.8m3 / Yard to Thornton | A1 payment: Not paid',
+        consignments: [{
+          id: '11111111-2222-4333-8444-555555555556',
+          jobId,
+          delivery: true,
+          goodsDescription: 'Concrete',
+          weight: 2.8,
+          deliveryAddressLine1: 'Thornton',
+        }],
+      }],
+    });
+    await page.goto(`${APP_URL}/?driver=john`);
+    await expect(page.locator('.job-card')).toHaveCount(1);
+    await page.locator('.job-card').click();
+    await expect(page.locator('#job-payment-panel')).toBeVisible();
+    await expect(page.locator('.job-payment-option[data-status="not_paid"]')).toHaveClass(/active/);
+    await page.locator('.job-payment-option[data-status="paid"]').click();
+    await expect.poll(() => captured.paymentUpdates.length).toBe(1);
+    expect(captured.paymentUpdates[0].url).toContain(`/ht/payment/${jobId}`);
+    expect(captured.paymentUpdates[0].body.paymentStatus).toBe('paid');
+    await expect(page.locator('.job-payment-option[data-status="paid"]')).toHaveClass(/active/);
   });
 
   test('manual day-sheet row keeps reference and office notes required', async ({ page }) => {

@@ -551,6 +551,19 @@
 
     /* Action buttons (used in manager view etc) */
     .action-row { display: flex; gap: 8px; margin-top: 12px; }
+    .payment-panel {
+      margin: 16px 0; padding: 14px; border: 1.5px solid var(--border);
+      border-radius: 12px; background: #f9fafb;
+    }
+    .payment-panel-title { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
+    .payment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .payment-option {
+      min-height: 50px; border: 2px solid var(--border); border-radius: 10px;
+      background: white; color: var(--text); font: inherit; font-weight: 800; cursor: pointer;
+    }
+    .payment-option[data-status="paid"].active { background: #d1fae5; border-color: #059669; color: #065f46; }
+    .payment-option[data-status="not_paid"].active { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+    .payment-option:disabled { opacity: 0.65; cursor: wait; }
     .btn {
       flex: 1; padding: 14px; border: none; border-radius: 12px;
       font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
@@ -1017,12 +1030,18 @@
         <label>Reference / name / ticket number — required</label>
         <input type="text" id="f-ref" placeholder="Needed by the office for payment, e.g. Phil Smith" required>
       </div>
-      <div class="form-group hidden" id="a1-payment-fields">
-        <label>A1 payment</label>
-        <label style="display:flex;align-items:center;gap:8px;">
-          <input type="checkbox" id="f-a1-paid" style="width:auto;min-height:auto;">
-          Paid
-        </label>
+      <div class="form-group" id="a1-payment-fields">
+        <label>Customer payment</label>
+        <div class="payment-options" role="radiogroup" aria-label="Customer payment">
+          <label class="payment-option" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <input type="radio" id="f-payment-paid" name="f-payment-status" value="paid" style="width:auto;min-height:auto;">
+            Paid
+          </label>
+          <label class="payment-option active" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <input type="radio" id="f-payment-not-paid" name="f-payment-status" value="not_paid" checked style="width:auto;min-height:auto;">
+            Not paid
+          </label>
+        </div>
       </div>
       <div class="form-group">
         <label>Notes for office / invoicing — required</label>
@@ -1554,7 +1573,7 @@ const COMMON_PLACES = [
 ];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260711-driver-reliability-v66';
+const APP_BUILD_ID = '20260720-driver-payment-status-v68';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1904,6 +1923,7 @@ function api(path, opts = {}) {
   const unsafeLiveWrite =
     path.startsWith('/ht/complete') ||
     path.startsWith('/ht/note') ||
+    path.startsWith('/ht/payment') ||
     path.startsWith('/ht/driver-add') ||
     path.startsWith('/ht/upsert') ||
     path.startsWith('/ht/mpod') ||
@@ -2102,6 +2122,8 @@ function jobToLocal(j) {
     status: getJobStatus(j),
     reference: getJobRef(j),
     notes: getJobNotes(j),
+    paymentStatus: getJobPaymentStatus(j),
+    a1PaymentStatus: getJobPaymentStatus(j),
     savedAt: j.savedAt || new Date().toISOString(),
     ticketNo: j.ticketNo || j.jobNumber || j.id || j.jobId || '',
     routeOrder: getJobRouteOrder(j),
@@ -2922,6 +2944,8 @@ async function loadJobsFallback(date) {
       _material: j.material, _from: j.from, _to: j.to,
       _vehicle: j.vehicle,
       _quantity: j.quantity, _price: j.price, _status: j.status,
+      _paymentStatus: j.paymentStatus || j.a1PaymentStatus || '',
+      _a1PaymentStatus: j.a1PaymentStatus || j.paymentStatus || '',
       savedAt: j.savedAt,
     }));
     try {
@@ -2944,6 +2968,8 @@ async function loadJobsFallback(date) {
           _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
           _reference: lj.reference || lj.ticketNo || '',
           _notes: lj.notes || '',
+          _paymentStatus: lj.paymentStatus || lj.a1PaymentStatus || '',
+          _a1PaymentStatus: lj.a1PaymentStatus || lj.paymentStatus || '',
           _wtn: lj.wtn || lj.wasteTransferNote || null,
           _ewcCode: lj.ewcCode || '',
           _sicCode: lj.sicCode || '',
@@ -2966,6 +2992,8 @@ async function loadJobsFallback(date) {
       _material: lj.material, _from: lj.from, _to: lj.to,
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
+      _paymentStatus: lj.paymentStatus || lj.a1PaymentStatus || '',
+      _a1PaymentStatus: lj.a1PaymentStatus || lj.paymentStatus || '',
       savedAt: lj.savedAt,
     }));
     renderJobs();
@@ -3021,7 +3049,7 @@ function getHaultechJobId(job) {
   const c = getJobConsignment(job);
   // Haultech complete expects the job GUID, not the visible numeric
   // job/consignment number returned as jobId/consignmentId.
-  const id = [job.id, job._id, c?.id].find(isGuidId);
+  const id = [job.id, job._id, job.jobId, c?.id].find(isGuidId);
   return id || null;
 }
 
@@ -3126,6 +3154,59 @@ function getJobPrice(job) {
 function hasDisplayPrice(price) {
   if (price === undefined || price === null || String(price).trim() === '') return false;
   return Number.isFinite(Number(price));
+}
+
+function normalisePaymentStatus(value) {
+  const raw = String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (['paid', 'yes', 'true', '1'].includes(raw)) return 'paid';
+  if (['not_paid', 'unpaid', 'no', 'false', '0'].includes(raw)) return 'not_paid';
+  return '';
+}
+
+function getJobPaymentStatus(job) {
+  const direct = normalisePaymentStatus(
+    job?._paymentStatus || job?._a1PaymentStatus || job?.paymentStatus || job?.a1PaymentStatus
+  );
+  if (direct) return direct;
+  const noteParts = [job?.trafficNotes, job?.trafficnotes, job?.notes, job?._notes]
+    .filter(Boolean)
+    .flatMap(value => String(value).split('|'))
+    .map(value => value.trim());
+  const exact = noteParts.find(value => /^(?:paid|not paid)$/i.test(value));
+  if (exact) return /^paid$/i.test(exact) ? 'paid' : 'not_paid';
+  const accountParts = [job?.accountNotes, job?.accountnotes]
+    .filter(Boolean)
+    .flatMap(value => String(value).split('|'))
+    .map(value => value.trim());
+  const account = accountParts.find(value => /^(?:A1|Customer)\s+payment\s*:/i.test(value));
+  if (account) return /:\s*paid\s*$/i.test(account) ? 'paid' : 'not_paid';
+  return 'not_paid';
+}
+
+function replacePaymentToken(value, paymentStatus) {
+  const label = paymentStatus === 'paid' ? 'Paid' : 'Not paid';
+  const parts = String(value || '')
+    .split('|')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => !/^(?:paid|not paid)$/i.test(part));
+  return [label, ...parts].join(' | ');
+}
+
+function setJobPaymentStatus(job, paymentStatus) {
+  const status = normalisePaymentStatus(paymentStatus) || 'not_paid';
+  job.paymentStatus = status;
+  job.a1PaymentStatus = status;
+  job._paymentStatus = status;
+  job._a1PaymentStatus = status;
+  if (Object.prototype.hasOwnProperty.call(job, 'trafficNotes')) {
+    job.trafficNotes = replacePaymentToken(job.trafficNotes, status);
+  }
+  if (Object.prototype.hasOwnProperty.call(job, 'trafficnotes')) {
+    job.trafficnotes = replacePaymentToken(job.trafficnotes, status);
+  }
+  if (Object.prototype.hasOwnProperty.call(job, 'notes')) job.notes = replacePaymentToken(job.notes, status);
+  if (Object.prototype.hasOwnProperty.call(job, '_notes')) job._notes = replacePaymentToken(job._notes, status);
 }
 
 function getJobStatus(job) {
@@ -4693,6 +4774,64 @@ function renderJobDetail(job, tab) {
   }
 }
 
+function renderPaymentStatusPanel(job) {
+  if (!isDriverAddedJob(job)) return '';
+  const status = getJobPaymentStatus(job);
+  return `
+    <div class="payment-panel" id="job-payment-panel">
+      <div class="payment-panel-title">Customer payment</div>
+      <div class="payment-options">
+        <button type="button" class="payment-option job-payment-option ${status === 'paid' ? 'active' : ''}" data-status="paid" aria-pressed="${status === 'paid'}">Paid</button>
+        <button type="button" class="payment-option job-payment-option ${status === 'not_paid' ? 'active' : ''}" data-status="not_paid" aria-pressed="${status === 'not_paid'}">Not paid</button>
+      </div>
+    </div>`;
+}
+
+async function updateDriverJobPaymentStatus(job, paymentStatus, container) {
+  const status = normalisePaymentStatus(paymentStatus);
+  const jobId = getHaultechJobId(job);
+  if (!status || !jobId || !isDriverAddedJob(job)) {
+    toast('Payment can only be changed on a saved driver row');
+    return;
+  }
+  const buttons = Array.from(container.querySelectorAll('.job-payment-option'));
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    const resp = await api(`/ht/payment/${encodeURIComponent(jobId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: getHaultechJobDate(job),
+        lookupDates: driverNoteLookupDates(job),
+        paymentStatus: status,
+      }),
+    });
+    if (!resp.ok) throw new Error(await responseError(resp, 'Payment update failed'));
+    const result = await resp.json().catch(() => ({}));
+    const savedStatus = normalisePaymentStatus(result.paymentStatus) || status;
+    setJobPaymentStatus(job, savedStatus);
+    const localDate = getHaultechJobDate(job);
+    const localJobs = localGetJobs(localDate).map(localJob => {
+      const ids = [localJob.id, localJob.jobId, localJob.ticketNo].filter(Boolean).map(String);
+      if (ids.includes(String(jobId))) setJobPaymentStatus(localJob, savedStatus);
+      return localJob;
+    });
+    localSaveJobs(localDate, localJobs);
+    const activeTab = document.querySelector('.detail-tab.active')?.dataset.tab || 'delivery';
+    renderJobDetail(job, activeTab);
+    toast(savedStatus === 'paid' ? 'Payment marked Paid' : 'Payment marked Not paid');
+  } catch (error) {
+    toast('Payment update failed: ' + (error.message || 'Unknown error'));
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+
+function attachPaymentStatusListeners(container, job) {
+  container.querySelectorAll('.job-payment-option').forEach(button => {
+    button.addEventListener('click', () => updateDriverJobPaymentStatus(job, button.dataset.status, container));
+  });
+}
+
 function renderDeliveryTab(container, job) {
   const customer = getJobCustomer(job);
   const addr = getDeliveryAddress(job);
@@ -4758,6 +4897,8 @@ function renderDeliveryTab(container, job) {
     <div class="instructions-heading">Special Instructions</div>
     <div class="instructions-text">${esc(notes) || '<span style="color:var(--muted)">None</span>'}</div>
 
+    ${renderPaymentStatusPanel(job)}
+
     ${renderWasteTransferPanel(job)}
 
     <div class="proof-checklist">
@@ -4788,6 +4929,7 @@ function renderDeliveryTab(container, job) {
   $('detail-start-btn')?.addEventListener('click', e => departJob(job, e.target));
   $('detail-complete-btn')?.addEventListener('click', () => { if (!terminal) showSignScreen(job); });
   $('detail-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
+  attachPaymentStatusListeners(container, job);
 }
 
 function renderCollectionTab(container, job) {
@@ -4826,6 +4968,7 @@ function renderCollectionTab(container, job) {
         <div class="detail-value">${weight ? esc(String(weight)) : 'N/A'}</div>
       </div>
     </div>
+    ${renderPaymentStatusPanel(job)}
     ${renderWasteTransferPanel(job)}
     <div class="action-row">
       <button class="btn btn-depart" id="collection-arrived-btn" ${terminal ? 'disabled' : ''}>I'm here / started</button>
@@ -4839,6 +4982,7 @@ function renderCollectionTab(container, job) {
   $('collection-arrived-btn')?.addEventListener('click', e => { if (!terminal) departJob(job, e.target); });
   $('collection-proof-btn')?.addEventListener('click', () => { if (!terminal) showSignScreen(job); });
   $('collection-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
+  attachPaymentStatusListeners(container, job);
 }
 
 function renderStdTab(container, job) {
@@ -4864,6 +5008,8 @@ function renderStdTab(container, job) {
     <div class="detail-label">Reference</div>
     <div class="detail-value">${esc(ref || 'N/A')}</div>
 
+    ${renderPaymentStatusPanel(job)}
+
     ${renderWasteTransferPanel(job)}
 
     ${isManager ? `
@@ -4883,6 +5029,7 @@ function renderStdTab(container, job) {
     if (!terminal) await departJob(job, e.target);
   });
   $('std-problem-btn')?.addEventListener('click', () => { if (!terminal) showProblemModal(job); });
+  attachPaymentStatusListeners(container, job);
 }
 
 // Detail bottom bar listeners
@@ -5605,6 +5752,7 @@ function openAddJobModal() {
   $('f-sic-code').value = WTN_DEFAULTS.sicCode;
   $('f-containment').value = WTN_DEFAULTS.containment;
   $('f-waste-hierarchy').checked = true;
+  $('f-payment-not-paid').checked = true;
   updateWasteFieldsVisibility();
   updateA1PaymentFields();
   updateRichardPriceFields();
@@ -5656,10 +5804,16 @@ function isA1DriverCustomer(value) {
 }
 
 function updateA1PaymentFields() {
-  const isA1 = isA1DriverCustomer($('f-customer').value);
-  $('a1-payment-fields').classList.toggle('hidden', !isA1);
-  if (!isA1) $('f-a1-paid').checked = false;
+  $('a1-payment-fields').classList.remove('hidden');
+  document.querySelectorAll('#a1-payment-fields .payment-option').forEach(label => {
+    const input = label.querySelector('input[name="f-payment-status"]');
+    label.classList.toggle('active', !!input?.checked);
+  });
 }
+
+document.querySelectorAll('input[name="f-payment-status"]').forEach(input => {
+  input.addEventListener('change', updateA1PaymentFields);
+});
 
 $('f-customer').addEventListener('input', (e) => {
   clearTimeout(customerSearchTimeout);
@@ -5719,7 +5873,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const ref = $('f-ref').value.trim();
   const notes = $('f-notes').value.trim();
   const isA1Customer = isA1DriverCustomer(customerName);
-  const a1PaymentStatus = isA1Customer ? ($('f-a1-paid').checked ? 'paid' : 'not_paid') : '';
+  const a1PaymentStatus = document.querySelector('input[name="f-payment-status"]:checked')?.value || 'not_paid';
   const from = $('f-from').value.trim();
   const to = $('f-to').value.trim();
   const vehicle = $('f-vehicle').value;
@@ -5865,6 +6019,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       _reference: localJob.reference,
       _notes: localJob.notes,
       _a1PaymentStatus: localJob.a1PaymentStatus,
+      _paymentStatus: localJob.paymentStatus,
       _wtn: localJob.wtn,
       _ewcCode: localJob.ewcCode,
       _sicCode: localJob.sicCode,

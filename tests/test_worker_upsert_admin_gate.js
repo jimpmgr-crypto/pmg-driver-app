@@ -88,7 +88,7 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v1');
-  assert.match(health.workerBuildId, /^20260711-driver-reliability-worker-v1$/);
+  assert.match(health.workerBuildId, /^20260720-driver-payment-status-worker-v2$/);
 
   resp = await upsertRequest({}, { customerReference: 'PUBLIC-ONLY' });
   assert.strictEqual(resp.status, 403);
@@ -186,6 +186,72 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert(notePayload.trafficNotes.includes('Existing traffic note'), 'existing traffic notes should be preserved');
   assert(notePayload.trafficNotes.includes('Leave cones by the gate'), 'driver notes should be written to Haultech traffic notes');
   assert(!notePayload.trafficNotes.includes('Driver note:'), 'traffic notes should stay plain and not gain a Driver note prefix');
+  sandbox.__haultechJobs = [];
+
+  const paymentEnv = env();
+  paymentEnv.__store.set('jobs:2026-07-20', JSON.stringify([
+    {
+      id: '8549ee7f-4def-466e-84d3-3267d2b9fe5c',
+      reference: 'Cleveleys landscapes',
+      notes: 'Not paid | 10mm no fines Paid £355 cash',
+      paymentStatus: 'not_paid',
+      a1PaymentStatus: 'not_paid',
+      _driverAdded: true,
+    },
+    {
+      id: '979a47c0-2c41-466f-8245-c65c975d356b',
+      reference: 'Hosk',
+      notes: 'Not paid | Hosk resin 10mm no fines not paid',
+      paymentStatus: 'not_paid',
+      a1PaymentStatus: 'not_paid',
+      _driverAdded: true,
+    },
+  ]));
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [{
+    jobId: 9555,
+    id: '8549ee7f-4def-466e-84d3-3267d2b9fe5c',
+    customerReference: 'Cleveleys landscapes',
+    trafficNotes: 'Not paid | 10mm no fines Paid £355 cash',
+    accountNotes: 'Added by Richard Whittaker / PN25FLF | Driver app source: Richard Whittaker / PN25FLF / 2.8m3 / Yard to Thornton | A1 payment: Not paid',
+    consignments: [{ consignmentId: 9550, jobId: '8549ee7f-4def-466e-84d3-3267d2b9fe5c' }],
+  }];
+  resp = await workerRequest('/ht/payment/8549ee7f-4def-466e-84d3-3267d2b9fe5c', {
+    method: 'PATCH',
+    body: JSON.stringify({ date: '2026-07-20', paymentStatus: 'paid' }),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 200);
+  const paymentResult = await resp.json();
+  assert.strictEqual(paymentResult.paymentStatus, 'Paid');
+  assert.strictEqual(paymentResult.storedUpdated, true);
+  const paymentUpsert = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  assert(paymentUpsert, 'payment update should upsert the exact matched Haultech job');
+  const paymentPayload = JSON.parse(paymentUpsert.options.body);
+  assert.strictEqual(paymentPayload.trafficNotes, 'Paid | 10mm no fines Paid £355 cash', 'free text containing Paid must be preserved');
+  assert(paymentPayload.accountNotes.includes('A1 payment: Paid'));
+  const storedPaymentRows = JSON.parse(paymentEnv.__store.get('jobs:2026-07-20'));
+  assert.strictEqual(storedPaymentRows[0].paymentStatus, 'paid');
+  assert.strictEqual(storedPaymentRows[0].a1PaymentStatus, 'paid');
+  assert.strictEqual(storedPaymentRows[0].notes, 'Paid | 10mm no fines Paid £355 cash');
+  assert.strictEqual(storedPaymentRows[1].paymentStatus, 'not_paid', 'another 10mm no-fines job must not be changed');
+  assert.strictEqual(storedPaymentRows[1].notes, 'Not paid | Hosk resin 10mm no fines not paid');
+
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [{
+    jobId: 9556,
+    id: '11111111-2222-4333-8444-555555555555',
+    customerReference: 'Office-created job',
+    trafficNotes: 'Not paid',
+    accountNotes: 'Office entry',
+    consignments: [{ consignmentId: 9556, jobId: '11111111-2222-4333-8444-555555555555' }],
+  }];
+  resp = await workerRequest('/ht/payment/11111111-2222-4333-8444-555555555555', {
+    method: 'PATCH',
+    body: JSON.stringify({ date: '2026-07-20', paymentStatus: 'paid' }),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 403, 'payment endpoint must reject office-created jobs');
+  assert.strictEqual((await resp.json()).error, 'payment_update_not_driver_added');
+  assert(!sandbox.__fetches.some(call => call.url.endsWith('/api/Job/UpsertJob?formId=')), 'rejected job must not be upserted');
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;

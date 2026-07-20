@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260711-driver-reliability-worker-v1';
+const WORKER_BUILD_ID = '20260720-driver-payment-status-worker-v2';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v1';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -534,7 +534,7 @@ async function buildDriverAddedHaultechPayload(env, body) {
   }
   if (sourceId && sourceId !== ref && !isLocalPhoneRowId(sourceId)) accountParts.push(`Phone source: ${sourceId}`);
   if (notes) accountParts.push(`Driver note: ${notes}`);
-  if (a1PaymentStatus) accountParts.push(`A1 payment: ${a1PaymentStatus}`);
+  if (a1PaymentStatus) accountParts.push(`${exactA1Customer ? 'A1' : 'Customer'} payment: ${a1PaymentStatus}`);
   if (a1PaymentStatus) trafficParts.push(a1PaymentStatus);
   if (notes) trafficParts.push(notes);
   if (pricing.note) accountParts.push(pricing.note);
@@ -1754,6 +1754,105 @@ function driverAddedJobHasPhoneSource(job) {
   return notes.includes('phone source:') || notes.includes('driver app source:') || notes.includes('added by ');
 }
 
+function mergePaymentTrafficNotes(existing, paymentStatus) {
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  const parts = cleanText(existing, 4000)
+    .split('|')
+    .map(part => cleanText(part, 1200))
+    .filter(Boolean)
+    .filter(part => !/^(?:paid|not paid)$/i.test(part));
+  return status ? [status, ...parts].join(' | ') : parts.join(' | ');
+}
+
+function mergePaymentAccountNotes(existing, paymentStatus) {
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  const parts = cleanText(existing, 4000)
+    .split('|')
+    .map(part => cleanText(part, 1200))
+    .filter(Boolean);
+  let replaced = false;
+  const updated = parts.map(part => {
+    const match = part.match(/^(A1|Customer)\s+payment\s*:/i);
+    if (!match) return part;
+    replaced = true;
+    return `${match[1].toUpperCase() === 'A1' ? 'A1' : 'Customer'} payment: ${status}`;
+  });
+  if (status && !replaced) updated.push(`Customer payment: ${status}`);
+  return updated.join(' | ');
+}
+
+function applyDriverPaymentStatusToHaultechJob(job, paymentStatus) {
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  if (!status) return { job, changed: false, error: 'bad_payment_status' };
+  if (!driverAddedJobHasPhoneSource(job)) {
+    return { job, changed: false, error: 'payment_update_not_driver_added' };
+  }
+  const trafficNotes = mergePaymentTrafficNotes(job.trafficNotes || job.trafficnotes || '', status);
+  const accountNotes = mergePaymentAccountNotes(job.accountNotes || job.accountnotes || '', status);
+  const changed = trafficNotes !== cleanText(job.trafficNotes || job.trafficnotes || '', 4000)
+    || accountNotes !== cleanText(job.accountNotes || job.accountnotes || '', 4000);
+  return {
+    job: { ...job, trafficNotes, accountNotes },
+    changed,
+    paymentStatus: status,
+  };
+}
+
+function storedDriverJobIds(job) {
+  return [job?.id, job?.jobId, job?.ticketNo, job?.jobNumber]
+    .filter(Boolean)
+    .map(String);
+}
+
+function updateStoredDriverJobPaymentPayload(payload, jobId, paymentStatus) {
+  const target = String(jobId || '');
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  let found = false;
+  const updateRow = row => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+    if (!storedDriverJobIds(row).includes(target)) return row;
+    found = true;
+    const storedStatus = status === 'Paid' ? 'paid' : 'not_paid';
+    const next = {
+      ...row,
+      paymentStatus: storedStatus,
+      a1PaymentStatus: storedStatus,
+    };
+    if (Object.prototype.hasOwnProperty.call(row, 'notes')) {
+      next.notes = mergePaymentTrafficNotes(row.notes, status);
+    }
+    if (Object.prototype.hasOwnProperty.call(row, '_notes')) {
+      next._notes = mergePaymentTrafficNotes(row._notes, status);
+    }
+    return next;
+  };
+  let updated = payload;
+  if (Array.isArray(payload)) {
+    updated = payload.map(updateRow);
+  } else if (payload && typeof payload === 'object') {
+    updated = updateRow(payload);
+    if (!found) {
+      updated = { ...payload };
+      for (const [key, value] of Object.entries(payload)) {
+        if (Array.isArray(value)) updated[key] = value.map(updateRow);
+      }
+    }
+  }
+  return { payload: updated, found, paymentStatus: status };
+}
+
+async function updateStoredDriverJobPaymentStatus(env, date, jobId, paymentStatus) {
+  const key = `jobs:${date}`;
+  const raw = await env.PMG_DATA.get(key);
+  if (!raw) return { found: false, updated: false };
+  const payload = safeJsonParse(raw);
+  if (!payload) return { found: false, updated: false, error: 'bad_jobs_data' };
+  const result = updateStoredDriverJobPaymentPayload(payload, jobId, paymentStatus);
+  if (!result.found) return { found: false, updated: false };
+  await env.PMG_DATA.put(key, JSON.stringify(result.payload));
+  return { found: true, updated: true, paymentStatus: result.paymentStatus };
+}
+
 function applyTypedCustomerToDriverAddedReference(job, typedCustomerName, originalReference) {
   const typedName = titleCaseTypedCustomerName(typedCustomerName);
   if (!typedName || !driverAddedJobHasPhoneSource(job)) return { job, changed: false, reference: '' };
@@ -1812,11 +1911,12 @@ async function fetchHaultechJobsByDate(env, date) {
   return { ok: true, jobs };
 }
 
-async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes = '', quantity = null, consigneeName = '', originalReference = '' } = {}) {
+async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes = '', quantity = null, consigneeName = '', originalReference = '', paymentStatus = '' } = {}) {
   const note = cleanText(driverNotes, 1200);
   const numericQuantity = Number(quantity);
   const typedCustomer = cleanText(consigneeName, 120);
-  if (!note && !typedCustomer && (!Number.isFinite(numericQuantity) || numericQuantity <= 0)) {
+  const normalizedPaymentStatus = normaliseA1PaymentStatus({ paymentStatus });
+  if (!note && !typedCustomer && !normalizedPaymentStatus && (!Number.isFinite(numericQuantity) || numericQuantity <= 0)) {
     return { ok: true, skipped: true };
   }
   const requestedDates = uniqueIsoDates(Array.isArray(dateOrDates) ? dateOrDates : [dateOrDates]);
@@ -1860,8 +1960,15 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   const customerUpdate = applyTypedCustomerToDriverAddedReference(updatedJob, typedCustomer, originalReference);
   updatedJob = customerUpdate.job;
   changed = changed || customerUpdate.changed;
+  let paymentUpdate = { job: updatedJob, changed: false, paymentStatus: '' };
+  if (normalizedPaymentStatus) {
+    paymentUpdate = applyDriverPaymentStatusToHaultechJob(updatedJob, normalizedPaymentStatus);
+    if (paymentUpdate.error) return { ok: false, error: paymentUpdate.error };
+    updatedJob = paymentUpdate.job;
+    changed = changed || paymentUpdate.changed;
+  }
 
-  if (!changed) return { ok: true, notes: mergedNotes, unchanged: true };
+  if (!changed) return { ok: true, notes: mergedNotes, paymentStatus: paymentUpdate.paymentStatus, unchanged: true };
 
   const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {
     method: 'POST',
@@ -1876,6 +1983,7 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
     notes: updatedJob.trafficNotes || mergedNotes,
     quantity: quantityUpdate.changed ? numericQuantity : undefined,
     reference: customerUpdate.changed ? customerUpdate.reference : undefined,
+    paymentStatus: paymentUpdate.paymentStatus || undefined,
   };
 }
 
@@ -2029,6 +2137,41 @@ export default {
         }), 502);
       }
       return corsResponse(JSON.stringify({ ok: true, notes: noteResult.notes || '', unchanged: !!noteResult.unchanged }));
+    }
+
+    // PATCH /ht/payment/{jobId} — set Paid / Not paid on a driver-added job.
+    // Haultech is updated first; the driver-app KV copy follows only after that succeeds.
+    const paymentMatch = path.match(/^\/ht\/payment\/([^/]+)$/);
+    if (paymentMatch && request.method === 'PATCH') {
+      const jobId = safePathParam(paymentMatch[1]);
+      if (!jobId) return corsResponse(JSON.stringify({ error: 'bad_job_id' }), 400);
+      const body = safeJsonParse(await request.text(), {}) || {};
+      const paymentStatus = normaliseA1PaymentStatus(body);
+      if (!paymentStatus) return corsResponse(JSON.stringify({ error: 'bad_payment_status' }), 400);
+      const requestedDates = uniqueIsoDates(Array.isArray(body.lookupDates) ? body.lookupDates : []);
+      const paymentDate = maybeIsoDate(body.date) || requestedDates[0] || new Date().toISOString().slice(0, 10);
+      const paymentResult = await applyDriverCompletionUpdateToHaultechJob(
+        env,
+        jobId,
+        [paymentDate, ...requestedDates].filter(Boolean),
+        { paymentStatus }
+      );
+      if (!paymentResult.ok) {
+        const status = paymentResult.error === 'payment_update_not_driver_added' ? 403 : 502;
+        return corsResponse(JSON.stringify({
+          error: paymentResult.error || 'driver_payment_write_failed',
+          message: paymentResult.error === 'payment_update_not_driver_added'
+            ? 'Payment can only be changed on rows added through the driver app'
+            : 'Could not update payment in Haultech',
+        }), status);
+      }
+      const stored = await updateStoredDriverJobPaymentStatus(env, paymentDate, jobId, paymentStatus);
+      return corsResponse(JSON.stringify({
+        ok: true,
+        paymentStatus,
+        unchanged: !!paymentResult.unchanged,
+        storedUpdated: !!stored.updated,
+      }));
     }
 
     // PATCH /ht/complete/{jobId} — QuickCompleteJob (Complete)

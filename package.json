@@ -1,7 +1,7 @@
 {
   "name": "pmg-driver-app",
   "private": true,
-  "version": "66.0.0",
+  "version": "68.0.0",
   "scripts": {
     "test:unit": "for f in tests/test_*.js; do node \"$f\" || exit 1; done",
     "test:browser": "playwright test tests/driver_app_browser_audit.spec.js --reporter=line",
