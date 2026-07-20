@@ -5,5 +5,5 @@
   "expectedWorkerBuildId": "20260720-driver-payment-status-worker-v2",
   "driverApiContract": "pmg-driver-api-v1",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Driver payment release: every driver-added row has large Paid and Not paid controls when entered and after saving, including completed rows. Payment updates are restricted to driver-added jobs, write the exact Haultech row plus its driver-app backup, preserve free-text notes, and never alter another job. Keeps the v66 driver reliability, pricing, Fleet torque, walkaround, cache and Haultech protections."
+  "notes": "Driver payment release: every driver-added row has large Paid and Not paid controls when entered and after saving, including completed rows. Payment updates are restricted to driver-added jobs, write the exact Haultech row plus its driver-app backup, preserve free-text notes, and never alter another job. Keeps the v66 driver reliability, pricing, prestart-fleet-torque-source lineage, walkaround, cache and Haultech protections. Lane split remains explicit: Fleet Live is the Gary/Richard vehicle, torque and walkaround source; Tony's plant app remains only for plant/tools."
 }
