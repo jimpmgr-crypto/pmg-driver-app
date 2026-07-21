@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -36,6 +37,7 @@ def fetch(url: str, headers: dict[str, str] | None = None) -> tuple[bytes, str, 
 
 def check() -> dict[str, Any]:
     checked_at = datetime.now(timezone.utc).isoformat()
+    cache_buster = time.time_ns()
     errors: list[str] = []
     warnings: list[str] = []
     routes: dict[str, Any] = {}
@@ -43,7 +45,7 @@ def check() -> dict[str, Any]:
     worker_health: dict[str, Any] = {}
 
     try:
-        version = json.loads(fetch(f"{APP}/app-version.json?runtime_check=1")[0])
+        version = json.loads(fetch(f"{APP}/app-version.json?runtime_check={cache_buster}")[0])
         if not version.get("buildId"):
             errors.append("app-version has no buildId")
     except Exception as exc:
@@ -51,7 +53,7 @@ def check() -> dict[str, Any]:
 
     for route in DRIVERS:
         try:
-            body, final_url, status = fetch(f"{APP}/{route}?runtime_check=1")
+            body, final_url, status = fetch(f"{APP}/{route}?runtime_check={cache_buster}")
             ok = status == 200 and b"PMG Driver" in body and f"/{route}" in final_url
             routes[route] = {"ok": ok, "status": status, "finalUrl": final_url}
             if not ok:
@@ -63,7 +65,7 @@ def check() -> dict[str, Any]:
     expected_worker = str(version.get("expectedWorkerBuildId") or "")
     expected_contract = str(version.get("driverApiContract") or "")
     try:
-        worker_health = json.loads(fetch(f"{WORKER}/health?runtime_check=1")[0])
+        worker_health = json.loads(fetch(f"{WORKER}/health?runtime_check={cache_buster}")[0])
         if not worker_health.get("ok"):
             errors.append("worker health did not return ok")
         if expected_worker and worker_health.get("workerBuildId") != expected_worker:

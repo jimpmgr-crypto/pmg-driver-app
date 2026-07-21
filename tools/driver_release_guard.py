@@ -149,11 +149,13 @@ def fetch(url: str) -> tuple[bytes, str]:
 def verify_live(version: dict, hashes: dict[str, str]) -> None:
     expected_build = version["buildId"]
     expected_worker = version["expectedWorkerBuildId"]
+    release_token = time.time_ns()
     last_error = "live verification timed out"
     for attempt in range(12):
         try:
-            live_version = json.loads(fetch(f"{LIVE_URL}/app-version.json?release_check={attempt}")[0])
-            worker_health = json.loads(fetch(f"{WORKER_HEALTH_URL}?release_check={attempt}")[0])
+            check_token = f"{release_token}-{attempt}"
+            live_version = json.loads(fetch(f"{LIVE_URL}/app-version.json?release_check={check_token}")[0])
+            worker_health = json.loads(fetch(f"{WORKER_HEALTH_URL}?release_check={check_token}")[0])
             require(live_version.get("buildId") == expected_build, "live frontend build mismatch")
             require(worker_health.get("workerBuildId") == expected_worker, "live worker build mismatch")
             require(worker_health.get("driverApiContract") == version.get("driverApiContract"), "live API contract mismatch")
@@ -162,11 +164,11 @@ def verify_live(version: dict, hashes: dict[str, str]) -> None:
                 # Hash the canonical root response instead of treating that
                 # healthy clean-URL redirect as a failed deployment.
                 live_path = "" if relative == "index.html" else relative
-                live_bytes, _ = fetch(f"{LIVE_URL}/{live_path}?release_check={attempt}")
+                live_bytes, _ = fetch(f"{LIVE_URL}/{live_path}?release_check={check_token}")
                 live_hash = hashlib.sha256(live_bytes).hexdigest()
                 require(live_hash == hashes[relative], f"live {relative} hash mismatch")
             for route in ("john", "andrew", "neil", "ian", "richard"):
-                body, final_url = fetch(f"{LIVE_URL}/{route}?release_check={attempt}")
+                body, final_url = fetch(f"{LIVE_URL}/{route}?release_check={check_token}")
                 require(b"PMG Driver" in body, f"/{route} did not serve driver app")
                 require(f"/{route}" in final_url, f"/{route} redirected away from its driver path")
             print(f"LIVE_OK frontend={expected_build} worker={expected_worker}")

@@ -12,6 +12,7 @@ import importlib.util
 import json
 import re
 import sys
+import time
 import urllib.request
 from datetime import date, datetime
 from pathlib import Path
@@ -78,8 +79,9 @@ def job_id(job: dict[str, Any]) -> str:
 
 
 def app_build_id() -> str:
+    cache_buster = time.time_ns()
     req = urllib.request.Request(
-        "https://pmg-driver-app.pages.dev/app-version.json?post_change_check=1",
+        f"https://pmg-driver-app.pages.dev/app-version.json?post_change_check={cache_buster}",
         headers={
             "Cache-Control": "no-cache",
             "User-Agent": "Mozilla/5.0 PMGDriverPostChangeCheck/1.0",
