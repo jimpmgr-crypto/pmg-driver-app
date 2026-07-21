@@ -709,6 +709,22 @@
     .walkaround-photo-state { font-size: 12px; color: var(--muted); font-weight: 700; }
     .walkaround-photo.captured { border-color: #10b981; background: #ecfdf5; }
     .walkaround-photo.next { border-color: var(--primary); background: #fff7ed; box-shadow: 0 0 0 2px rgba(249,115,22,0.18); }
+    .walkaround-inline-camera {
+      border: 2px solid #111827; border-radius: 14px; padding: 10px; margin: 10px 0 12px;
+      background: #111827; color: white;
+    }
+    .walkaround-camera-title { font-size: 15px; font-weight: 900; margin-bottom: 8px; }
+    .walkaround-camera-status { font-size: 12px; line-height: 1.35; color: #d1d5db; margin-bottom: 8px; }
+    .walkaround-inline-camera video {
+      display: block; width: 100%; min-height: 220px; max-height: 55vh; object-fit: cover;
+      border-radius: 10px; background: black;
+    }
+    .walkaround-camera-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+    .walkaround-camera-actions .btn { min-height: 52px; font-size: 15px; font-weight: 900; }
+    .walkaround-native-camera-input {
+      position: fixed; left: -10000px; top: 0; width: 1px; height: 1px;
+      opacity: 0.01; pointer-events: none;
+    }
     .walkaround-check-row {
       border-top: 1px solid var(--border); padding: 10px 0;
     }
@@ -1573,7 +1589,7 @@ const COMMON_PLACES = [
 ];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260720-driver-payment-status-v68';
+const APP_BUILD_ID = '20260721-walkaround-inline-camera-v69';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1632,6 +1648,10 @@ let walkaroundSigCtx = null;
 let walkaroundSigDrawing = false;
 let walkaroundSigHasData = false;
 let walkaroundActivationTimer = null;
+let walkaroundCameraStream = null;
+let walkaroundCameraSlotId = '';
+let walkaroundCameraStarting = false;
+let walkaroundInlineCameraUnavailable = false;
 let torqueCheckState = {
   vehicle: '',
   loading: false,
@@ -2727,6 +2747,7 @@ function setHeaderForWalkaround() {
 }
 
 function hideAllScreens() {
+  if (currentScreen === 'walkaround') stopWalkaroundCamera();
   $('login-screen').classList.add('hidden');
   $('jobs-screen').classList.add('hidden');
   $('walkaround-screen').classList.add('hidden');
@@ -3964,6 +3985,7 @@ function resetWalkaroundState() {
     }, {}),
     photos: {},
     photoDataUrls: {},
+    photoCaptureModes: {},
     checksExpanded: false,
     defectNotes: '',
     startedAt: new Date().toISOString(),
@@ -4003,6 +4025,7 @@ function saveWalkaroundDraft() {
       defectNotes: walkaroundState.defectNotes || '',
       startedAt: walkaroundState.startedAt || new Date().toISOString(),
       photoDataUrls: walkaroundState.photoDataUrls || {},
+      photoCaptureModes: walkaroundState.photoCaptureModes || {},
       photoNames: Object.fromEntries(Object.entries(walkaroundState.photos || {}).map(([slot, photo]) => [slot, photo.name || `${slot}.jpg`])),
       updatedAt: new Date().toISOString(),
     }));
@@ -4023,6 +4046,7 @@ function restoreWalkaroundDraftIfMatching() {
     walkaroundState.defectNotes = draft.defectNotes || '';
     walkaroundState.startedAt = draft.startedAt || walkaroundState.startedAt;
     walkaroundState.photoDataUrls = draft.photoDataUrls || {};
+    walkaroundState.photoCaptureModes = draft.photoCaptureModes || {};
     Object.entries(walkaroundState.photoDataUrls).forEach(([slot, dataUrl]) => {
       const blob = dataURLToBlob(dataUrl);
       walkaroundState.photos[slot] = {
@@ -4134,14 +4158,24 @@ function renderWalkaroundScreen() {
 
     <div class="walkaround-form-card">
       <h3>1. Truck photos</h3>
-      <div class="walkaround-help">Every photo is required. Take them in order; after one saves, the next box is highlighted.</div>
+      <div class="walkaround-help">Every photo is required. The camera stays open while you walk round the wagon and moves to the next photo after each save.</div>
       <div class="walkaround-photo-progress" id="walkaround-photo-progress">0 of ${photoSlots.length} required photos saved</div>
+      <div class="walkaround-inline-camera hidden" id="walkaround-inline-camera">
+        <div class="walkaround-camera-title" id="walkaround-camera-title">Starting camera...</div>
+        <div class="walkaround-camera-status" id="walkaround-camera-status">Keep this screen open and walk round the wagon.</div>
+        <video id="walkaround-camera-video" autoplay playsinline muted></video>
+        <div class="walkaround-camera-actions">
+          <button class="btn btn-complete" id="walkaround-camera-capture" type="button" disabled>Take photo</button>
+          <button class="btn btn-secondary" id="walkaround-native-camera-btn" type="button">Use phone camera instead</button>
+          <button class="btn btn-secondary" id="walkaround-camera-close" type="button">Close camera</button>
+        </div>
+      </div>
+      <input class="walkaround-native-camera-input" type="file" id="walkaround-native-photo-input" accept="image/*" capture="environment" aria-label="Take walkaround photo">
       <div class="walkaround-photo-grid">
         ${photoSlots.map(slot => `
           <div class="walkaround-photo ${walkaroundState.photos?.[slot.id] ? 'captured' : ''}" data-photo-slot="${esc(slot.id)}">
             <div class="walkaround-photo-title">${esc(slot.label)}</div>
-            <input type="file" id="walk-photo-${esc(slot.id)}" accept="image/*" capture="environment" style="display:none">
-            <button type="button" class="walk-photo-btn" data-photo-slot="${esc(slot.id)}">${walkaroundState.photos?.[slot.id] ? 'Retake photo' : 'Take photo'}</button>
+            <button type="button" class="walk-photo-btn" data-photo-slot="${esc(slot.id)}">${walkaroundState.photos?.[slot.id] ? 'Retake photo' : 'Open camera'}</button>
             <div class="walkaround-photo-state">${walkaroundState.photos?.[slot.id] ? 'Saved on this phone' : 'Next photo'}</div>
           </div>
         `).join('')}
@@ -4260,52 +4294,236 @@ function attachWalkaroundScreenListeners() {
 
   document.querySelectorAll('.walk-photo-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      saveWalkaroundDraft();
-      const input = $(`walk-photo-${btn.dataset.photoSlot}`);
-      input?.click();
+      startWalkaroundCamera(btn.dataset.photoSlot);
     });
   });
 
-  requiredWalkaroundPhotoSlots().forEach(slot => {
-    const input = $(`walk-photo-${slot.id}`);
-    input?.addEventListener('change', async e => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        const blob = await compressImageFile(file);
-        const dataUrl = await blobToDataURL(blob);
-        walkaroundState.photos[slot.id] = { blob, name: file.name || `${slot.id}.jpg`, type: blob.type || 'image/jpeg' };
-        walkaroundState.photoDataUrls[slot.id] = dataUrl;
-        const wrap = document.querySelector(`.walkaround-photo[data-photo-slot="${slot.id}"]`);
-        if (wrap) {
-          wrap.classList.add('captured');
-          const state = wrap.querySelector('.walkaround-photo-state');
-          if (state) state.textContent = 'Saved on this phone';
-          const button = wrap.querySelector('.walk-photo-btn');
-          if (button) button.textContent = 'Retake photo';
-        }
-        updateWalkaroundPhotoProgress();
-        saveWalkaroundDraft();
-        focusNextWalkaroundPhoto(slot.id);
-      } catch (err) {
-        toast('Photo could not be read');
-      }
-    });
-  });
+  $('walkaround-camera-capture')?.addEventListener('click', captureInlineWalkaroundPhoto);
+  $('walkaround-native-camera-btn')?.addEventListener('click', launchNativeWalkaroundCamera);
+  $('walkaround-camera-close')?.addEventListener('click', stopWalkaroundCamera);
+  $('walkaround-native-photo-input')?.addEventListener('change', handleNativeWalkaroundPhoto);
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    const status = $('walkaround-camera-status');
+    if (status) status.textContent = 'Built-in camera is unavailable on this phone. Use the phone camera button.';
+  }
 
   $('walkaround-complete-btn')?.addEventListener('click', completeWalkaround);
+}
+
+function walkaroundPhotoSlot(slotId) {
+  return requiredWalkaroundPhotoSlots().find(slot => slot.id === slotId) || null;
+}
+
+function nextMissingWalkaroundPhoto(currentSlotId = '') {
+  const slots = requiredWalkaroundPhotoSlots();
+  const currentIndex = slots.findIndex(slot => slot.id === currentSlotId);
+  for (let offset = 1; offset <= slots.length; offset += 1) {
+    const slot = slots[(Math.max(currentIndex, -1) + offset) % slots.length];
+    if (slot && !walkaroundState?.photos?.[slot.id]) return slot;
+  }
+  return null;
+}
+
+function setInlineWalkaroundCameraTarget(slotId) {
+  const slot = walkaroundPhotoSlot(slotId) || nextMissingWalkaroundPhoto('');
+  if (!slot) return null;
+  walkaroundCameraSlotId = slot.id;
+  const title = $('walkaround-camera-title');
+  const capture = $('walkaround-camera-capture');
+  if (title) title.textContent = `${slot.label} photo`;
+  if (capture) capture.textContent = `Take ${slot.label} photo`;
+  return slot;
+}
+
+function stopWalkaroundCamera(options = {}) {
+  const stream = walkaroundCameraStream;
+  walkaroundCameraStream = null;
+  walkaroundCameraStarting = false;
+  try { stream?.getTracks?.().forEach(track => track.stop()); } catch {}
+  const video = $('walkaround-camera-video');
+  if (video) {
+    try { video.pause(); } catch {}
+    video.srcObject = null;
+  }
+  $('walkaround-inline-camera')?.classList.add('hidden');
+  const capture = $('walkaround-camera-capture');
+  if (capture) capture.disabled = true;
+  if (!options.preserveSlot) walkaroundCameraSlotId = '';
+}
+
+function launchNativeWalkaroundCamera() {
+  const slot = walkaroundPhotoSlot(walkaroundCameraSlotId) || nextMissingWalkaroundPhoto('');
+  if (!slot) {
+    toast('All truck photos saved');
+    return;
+  }
+  walkaroundCameraSlotId = slot.id;
+  saveWalkaroundDraft();
+  stopWalkaroundCamera({ preserveSlot: true });
+  const input = $('walkaround-native-photo-input');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+async function startWalkaroundCamera(slotId) {
+  const slot = walkaroundPhotoSlot(slotId) || nextMissingWalkaroundPhoto('');
+  if (!slot) {
+    toast('All truck photos saved');
+    return;
+  }
+  walkaroundCameraSlotId = slot.id;
+  saveWalkaroundDraft();
+
+  if (walkaroundInlineCameraUnavailable || !navigator.mediaDevices?.getUserMedia) {
+    launchNativeWalkaroundCamera();
+    return;
+  }
+
+  const panel = $('walkaround-inline-camera');
+  panel?.classList.remove('hidden');
+  setInlineWalkaroundCameraTarget(slot.id);
+  panel?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+  const cameraTracks = walkaroundCameraStream?.getTracks?.() || [];
+  if (walkaroundCameraStream && cameraTracks.some(track => !track.readyState || track.readyState === 'live')) {
+    const capture = $('walkaround-camera-capture');
+    if (capture) capture.disabled = false;
+    return;
+  }
+  if (walkaroundCameraStream) {
+    stopWalkaroundCamera({ preserveSlot: true });
+    panel?.classList.remove('hidden');
+    setInlineWalkaroundCameraTarget(slot.id);
+  }
+  if (walkaroundCameraStarting) return;
+
+  walkaroundCameraStarting = true;
+  const status = $('walkaround-camera-status');
+  if (status) status.textContent = 'Starting rear camera...';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+    if (currentScreen !== 'walkaround') {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    walkaroundCameraStream = stream;
+    const video = $('walkaround-camera-video');
+    if (video) {
+      video.srcObject = stream;
+      await video.play().catch(() => {});
+    }
+    if (status) status.textContent = 'Camera stays open. Walk round the wagon after each photo.';
+    const capture = $('walkaround-camera-capture');
+    if (capture) capture.disabled = false;
+  } catch {
+    walkaroundInlineCameraUnavailable = true;
+    if (status) status.textContent = 'Built-in camera could not open. Tap “Use phone camera instead”.';
+    toast('Use phone camera instead');
+  } finally {
+    walkaroundCameraStarting = false;
+  }
+}
+
+function inlineWalkaroundCameraBlob() {
+  return new Promise((resolve, reject) => {
+    const video = $('walkaround-camera-video');
+    const width = Number(video?.videoWidth || 0);
+    const height = Number(video?.videoHeight || 0);
+    if (!video || !width || !height) {
+      reject(new Error('Camera is not ready'));
+      return;
+    }
+    const maxSide = 960;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Camera photo could not be saved'));
+    }, 'image/jpeg', 0.68);
+  });
+}
+
+async function storeWalkaroundPhoto(slotId, blob, name, captureMode, options = {}) {
+  const slot = walkaroundPhotoSlot(slotId);
+  if (!slot || !blob) throw new Error('Walkaround photo slot is unavailable');
+  const dataUrl = await blobToDataURL(blob);
+  walkaroundState.photos[slot.id] = { blob, name: name || `${slot.id}.jpg`, type: blob.type || 'image/jpeg' };
+  walkaroundState.photoDataUrls[slot.id] = dataUrl;
+  walkaroundState.photoCaptureModes[slot.id] = captureMode;
+  const wrap = document.querySelector(`.walkaround-photo[data-photo-slot="${slot.id}"]`);
+  if (wrap) {
+    wrap.classList.add('captured');
+    const state = wrap.querySelector('.walkaround-photo-state');
+    if (state) state.textContent = 'Saved on this phone';
+    const button = wrap.querySelector('.walk-photo-btn');
+    if (button) button.textContent = 'Retake photo';
+  }
+  updateWalkaroundPhotoProgress();
+  saveWalkaroundDraft();
+  return focusNextWalkaroundPhoto(slot.id, options);
+}
+
+async function captureInlineWalkaroundPhoto() {
+  const slot = walkaroundPhotoSlot(walkaroundCameraSlotId);
+  const capture = $('walkaround-camera-capture');
+  if (!slot || !walkaroundCameraStream || !capture) return;
+  capture.disabled = true;
+  capture.textContent = 'Saving photo...';
+  try {
+    const blob = await inlineWalkaroundCameraBlob();
+    const nextSlot = await storeWalkaroundPhoto(slot.id, blob, `${slot.id}.jpg`, 'inline_camera', { announce: false, scroll: false });
+    if (nextSlot) {
+      setInlineWalkaroundCameraTarget(nextSlot.id);
+      toast(`${nextSlot.label} next — camera stays open`);
+      capture.disabled = false;
+    } else {
+      stopWalkaroundCamera();
+      toast('All truck photos saved');
+    }
+  } catch {
+    capture.disabled = false;
+    setInlineWalkaroundCameraTarget(slot.id);
+    toast('Camera photo could not be saved - try again');
+  }
+}
+
+async function handleNativeWalkaroundPhoto(event) {
+  const input = event.target;
+  const file = input.files?.[0];
+  const slot = walkaroundPhotoSlot(walkaroundCameraSlotId) || nextMissingWalkaroundPhoto('');
+  input.value = '';
+  if (!file || !slot) return;
+  try {
+    const blob = await compressImageFile(file);
+    const nextSlot = await storeWalkaroundPhoto(slot.id, blob, file.name || `${slot.id}.jpg`, 'native_camera');
+    walkaroundCameraSlotId = nextSlot?.id || '';
+  } catch {
+    toast('Photo could not be read');
+  }
 }
 
 function focusNextWalkaroundPhoto(currentSlotId, options = {}) {
   const announce = options.announce !== false;
   const scroll = options.scroll !== false;
-  const slots = requiredWalkaroundPhotoSlots();
-  const nextSlot = slots.find(slot => !walkaroundState.photos?.[slot.id] && slot.id !== currentSlotId);
+  const nextSlot = nextMissingWalkaroundPhoto(currentSlotId);
+  document.querySelectorAll('.walkaround-photo').forEach(card => card.classList.remove('next'));
   if (!nextSlot) {
     if (announce) toast('All truck photos saved');
-    return;
+    return null;
   }
-  document.querySelectorAll('.walkaround-photo').forEach(card => card.classList.remove('next'));
   const nextCard = document.querySelector(`.walkaround-photo[data-photo-slot="${nextSlot.id}"]`);
   if (nextCard) {
     nextCard.classList.add('next');
@@ -4314,6 +4532,7 @@ function focusNextWalkaroundPhoto(currentSlotId, options = {}) {
     if (scroll) nextCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
   if (announce) toast(`${nextSlot.label} next`);
+  return nextSlot;
 }
 
 function updateWalkaroundCheckButtons() {
@@ -4499,6 +4718,8 @@ async function completeWalkaround() {
     return;
   }
 
+  stopWalkaroundCamera();
+
   const btn = $('walkaround-complete-btn');
   btn.disabled = true;
   btn.textContent = 'Saving walkaround...';
@@ -4541,11 +4762,15 @@ async function completeWalkaround() {
     defectNotes: $('walkaround-defect-notes')?.value.trim() || '',
     photoSlotsExpected: requiredWalkaroundPhotoSlots().map(slot => slot.id),
     photoSlots: requiredWalkaroundPhotoSlots().map(slot => slot.id),
+    photoCaptureModes: { ...walkaroundState.photoCaptureModes },
     photoEvidenceRequired: true,
     signatureProvided: !!signatureBlob,
     signatureOptional: true,
     startedAt: walkaroundState.startedAt,
     completedAt: new Date().toISOString(),
+    appBuildId: APP_BUILD_ID,
+    devicePlatform: navigator.userAgentData?.platform || navigator.platform || '',
+    installedDisplayMode: window.matchMedia?.('(display-mode: standalone)')?.matches ? 'standalone' : 'browser',
     mode: 'required_prestart_gate',
     jobsLocked: true,
   };

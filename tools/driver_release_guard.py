@@ -73,6 +73,7 @@ def validate_source() -> dict:
     require(Path.cwd().resolve() == PROJECT, f"Run only from canonical project: {PROJECT}")
     version = json.loads((PROJECT / "app-version.json").read_text())
     index = (PROJECT / "index.html").read_text()
+    browser_audit = (PROJECT / "tests" / "driver_app_browser_audit.spec.js").read_text()
     worker = (PROJECT / "worker/index.js").read_text()
     service_worker = (PROJECT / "sw.js").read_text()
     app_shell = service_worker[service_worker.index("const APP_SHELL"):service_worker.index("// Install")]
@@ -87,6 +88,12 @@ def validate_source() -> dict:
     require(contract and f"const DRIVER_API_CONTRACT = '{contract}'" in worker, "worker API contract mismatch")
     require("photoEvidenceRequired: true" in index, "walkaround photos are not marked required")
     require("missing.push(`${slot.label} photo`)" in index, "missing walkaround photo gate")
+    require("navigator.mediaDevices.getUserMedia" in index, "inline walkaround camera is missing")
+    require("function captureInlineWalkaroundPhoto" in index, "sequential inline camera capture is missing")
+    require("function launchNativeWalkaroundCamera" in index, "native camera fallback is missing")
+    require("input.value = '';" in index, "native camera input reset is missing")
+    require("one inline camera session advances through consecutive walkaround photos" in browser_audit, "consecutive camera regression test is missing")
+    require("camera permission denial leaves a reusable native camera fallback" in browser_audit, "camera permission fallback regression test is missing")
     require("Reference / name / ticket number — required" in index, "manual reference is not prominent/required")
     require("Notes for office / invoicing — required" in index, "manual notes are not prominent/required")
     for forbidden in ("'/plant'", "'/tony'", "'/plant-seed.json'", "'/plant-manifest.json'"):

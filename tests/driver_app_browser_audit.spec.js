@@ -5,6 +5,31 @@ const FLEET_URL = 'https://pmg-fleet-live.jimpmgr.workers.dev';
 const APP_URL = process.env.PMG_DRIVER_APP_BASE_URL || 'http://127.0.0.1:4179';
 const TEST_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64');
 
+async function installInlineCameraStub(page) {
+  await page.addInitScript(() => {
+    window.__inlineCameraStarts = 0;
+    window.__inlineCameraStops = 0;
+    const stream = new MediaStream();
+    stream.getTracks = () => [{ stop: () => { window.__inlineCameraStops += 1; } }];
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          window.__inlineCameraStarts += 1;
+          return stream;
+        },
+      },
+    });
+    Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 });
+    Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 });
+    HTMLMediaElement.prototype.play = async () => {};
+    CanvasRenderingContext2D.prototype.drawImage = () => {};
+    HTMLCanvasElement.prototype.toBlob = function toBlob(callback) {
+      callback(new Blob(['walkaround-camera-test'], { type: 'image/jpeg' }));
+    };
+  });
+}
+
 async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null } = {}) {
   await page.route(`${WORKER_URL}/**`, async route => {
     const url = route.request().url();
@@ -137,6 +162,70 @@ test.describe('driver app route audit', () => {
     await expect(page.getByText(/Wheel torque/i)).toHaveCount(0);
   });
 
+  test('one inline camera session advances through consecutive walkaround photos', async ({ page }) => {
+    await installInlineCameraStub(page);
+    await stubExternalApis(page);
+    await page.goto(`${APP_URL}/?driver=john`);
+    await page.evaluate(() => localStorage.setItem('pmg_driver_vehicle_f5c31070-2945-408a-bc7a-0245159a191a', 'PN25AMU'));
+    await page.reload();
+    await page.locator('#start-walkaround-btn').click();
+    await page.locator('.walk-photo-btn[data-photo-slot="front_left"]').click();
+    await expect(page.locator('#walkaround-inline-camera')).toBeVisible();
+    await expect(page.locator('#walkaround-camera-capture')).toHaveText(/Front left/);
+    await page.locator('#walkaround-camera-capture').click();
+    await expect(page.locator('[data-photo-slot="front_left"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    await expect(page.locator('#walkaround-camera-capture')).toHaveText(/Rear left/);
+    await page.locator('#walkaround-camera-capture').click();
+    await expect(page.locator('[data-photo-slot="rear_left"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    await expect(page.locator('#walkaround-camera-capture')).toHaveText(/Rear right/);
+    await page.locator('#walkaround-camera-capture').click();
+    await expect(page.locator('[data-photo-slot="rear_right"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    await expect(page.locator('#walkaround-camera-capture')).toHaveText(/Front right/);
+    await page.locator('#walkaround-camera-capture').click();
+    await expect(page.locator('[data-photo-slot="front_right"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    await expect(page.locator('#walkaround-inline-camera')).toBeHidden();
+    await expect(page.locator('#walkaround-screen')).toBeVisible();
+    expect(await page.evaluate(() => window.__inlineCameraStarts)).toBe(1);
+    expect(await page.evaluate(() => window.__inlineCameraStops)).toBe(1);
+  });
+
+  test('camera permission denial leaves a reusable native camera fallback', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__inlineCameraFailures = 0;
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async () => {
+            window.__inlineCameraFailures += 1;
+            throw new DOMException('Camera permission denied', 'NotAllowedError');
+          },
+        },
+      });
+    });
+    await stubExternalApis(page);
+    await page.goto(`${APP_URL}/?driver=john`);
+    await page.evaluate(() => localStorage.setItem('pmg_driver_vehicle_f5c31070-2945-408a-bc7a-0245159a191a', 'PN25AMU'));
+    await page.reload();
+    await page.locator('#start-walkaround-btn').click();
+    await page.locator('.walk-photo-btn[data-photo-slot="front_left"]').click();
+    await expect(page.locator('#walkaround-camera-status')).toContainText('Use phone camera');
+    await page.locator('#walkaround-native-camera-btn').click();
+    await page.locator('#walkaround-native-photo-input').setInputFiles({
+      name: 'camera.jpg',
+      mimeType: 'image/png',
+      buffer: TEST_PNG,
+    });
+    await expect(page.locator('[data-photo-slot="front_left"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    await page.locator('.walk-photo-btn[data-photo-slot="rear_left"]').click();
+    await page.locator('#walkaround-native-photo-input').setInputFiles({
+      name: 'camera.jpg',
+      mimeType: 'image/png',
+      buffer: TEST_PNG,
+    });
+    await expect(page.locator('[data-photo-slot="rear_left"] .walkaround-photo-state')).toHaveText('Saved on this phone');
+    expect(await page.evaluate(() => window.__inlineCameraFailures)).toBe(1);
+  });
+
   test('walkaround photo capture stays in the walkaround and resumes from draft', async ({ page }) => {
     await stubExternalApis(page);
     await page.goto(`${APP_URL}/?driver=john`);
@@ -144,7 +233,8 @@ test.describe('driver app route audit', () => {
     await page.reload();
     await page.locator('#start-walkaround-btn').click();
     await expect(page.locator('#walkaround-screen')).toBeVisible();
-    await page.locator('#walk-photo-front_left').setInputFiles({
+    await page.locator('.walk-photo-btn[data-photo-slot="front_left"]').click();
+    await page.locator('#walkaround-native-photo-input').setInputFiles({
       name: 'front-left.png',
       mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64'),
@@ -207,8 +297,9 @@ test.describe('driver app route audit', () => {
     for (let i = 0; i < order.length; i += 1) {
       const slot = order[i];
       await expect(page.locator(`.walkaround-photo[data-photo-slot="${slot}"]`)).toHaveClass(/next/);
-      await page.locator(`#walk-photo-${slot}`).setInputFiles({
-        name: `${slot}.png`,
+      await page.locator(`.walk-photo-btn[data-photo-slot="${slot}"]`).click();
+      await page.locator('#walkaround-native-photo-input').setInputFiles({
+        name: 'camera.jpg',
         mimeType: 'image/png',
         buffer: TEST_PNG,
       });
@@ -232,6 +323,8 @@ test.describe('driver app route audit', () => {
     expect(captured.ticketSaves).toHaveLength(1);
     expect(captured.ticketSaves[0].body.photoSlots).toEqual(order);
     expect(captured.ticketSaves[0].body.photoSlotsExpected).toEqual(order);
+    expect(captured.ticketSaves[0].body.photoCaptureModes).toEqual(Object.fromEntries(order.map(slot => [slot, 'native_camera'])));
+    expect(captured.ticketSaves[0].body.appBuildId).toBeTruthy();
     expect(captured.ticketSaves[0].body.torqueChecks).toEqual([]);
     expect(captured.ticketSaves[0].body.vehicle).toBe('PN25AMU');
   });

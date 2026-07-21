@@ -31,6 +31,13 @@ assert(index.includes('function saveWalkaroundDraft'), 'walkaround work must be 
 assert(index.includes('function restoreWalkaroundDraftIfMatching'), 'walkaround draft must restore after an Android camera/app restart');
 assert(index.includes('function resumeWalkaroundDraftAfterEnter'), 'driver route must reopen an unfinished walkaround draft instead of returning to loads');
 assert(index.includes('function focusNextWalkaroundPhoto'), 'photo flow must move/highlight the next truck picture after capture');
+assert(index.includes('navigator.mediaDevices.getUserMedia'), 'walkaround must prefer an inline camera instead of leaving the Android app for every photo');
+assert(index.includes('function captureInlineWalkaroundPhoto'), 'walkaround must capture consecutive photos inside one camera session');
+assert(index.includes('camera stays open'), 'walkaround must tell the driver that the same camera session advances to the next photo');
+assert(index.includes('function launchNativeWalkaroundCamera'), 'walkaround must retain a native phone-camera fallback');
+assert(index.includes("input.value = '';"), 'native camera fallback must reset its file input before repeated Android captures');
+assert(index.includes('function stopWalkaroundCamera'), 'walkaround must release the camera when the driver leaves the screen');
+assert(index.includes('photoCaptureModes:'), 'walkaround evidence must record which camera path captured each photo');
 assert(index.includes('photoEvidenceRequired: true'), 'walkaround record must state photo proof is required');
 assert(index.includes('signatureOptional: true'), 'walkaround record must state signature is optional');
 assert(index.includes('const signatureBlob = signatureData ? dataURLToBlob(signatureData) : null;'), 'signature upload must not be attempted when the driver has not signed');

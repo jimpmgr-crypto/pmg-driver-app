@@ -1,9 +1,9 @@
 {
-  "buildId": "20260720-driver-payment-status-v68",
-  "updatedAt": "2026-07-20T16:20:00+01:00",
-  "baselineCommit": "394744e",
+  "buildId": "20260721-walkaround-inline-camera-v69",
+  "updatedAt": "2026-07-21T17:15:00+01:00",
+  "baselineCommit": "658f10e",
   "expectedWorkerBuildId": "20260720-driver-payment-status-worker-v2",
   "driverApiContract": "pmg-driver-api-v1",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Driver payment release: every driver-added row has large Paid and Not paid controls when entered and after saving, including completed rows. Payment updates are restricted to driver-added jobs, write the exact Haultech row plus its driver-app backup, preserve free-text notes, and never alter another job. Keeps the v66 driver reliability, pricing, prestart-fleet-torque-source lineage, walkaround, cache and Haultech protections. Lane split remains explicit: Fleet Live is the Gary/Richard vehicle, torque and walkaround source; Tony's plant app remains only for plant/tools."
+  "notes": "Walkaround camera reliability release: Android drivers now take the full round-the-wagon sequence inside one rear-camera session, so the app no longer depends on leaving the PWA and receiving a file back after every photo. Each save advances the live capture target to the next required view; the native phone camera remains a reset-safe fallback. Draft recovery, required-photo gates, prestart-fleet-torque-source reads from Fleet Live, driver payment controls and Haultech protections remain in place. Walkaround evidence now records capture mode and app build for diagnosis. Lane split remains explicit: the Driver App owns driver jobs/walkarounds, Fleet Live supplies Gary/Richard torque state, and Tony's plant app remains plant/tools only."
 }
