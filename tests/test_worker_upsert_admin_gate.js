@@ -26,6 +26,47 @@ const sandbox = {
   },
   fetch: async (url, options = {}) => {
     sandbox.__fetches.push({ url: String(url), options });
+    if (String(url).includes('places.googleapis.com/v1/places:autocomplete')) {
+      return new Response(JSON.stringify({
+        suggestions: [{
+          placePrediction: {
+            placeId: 'ChIJ-test-place',
+            text: { text: 'High View, Sower Carr Lane, Hambleton, Poulton-le-Fylde FY6 9DJ, UK' },
+            structuredFormat: {
+              mainText: { text: 'High View' },
+              secondaryText: { text: 'Sower Carr Lane, Hambleton, FY6 9DJ' },
+            },
+          },
+        }],
+      }), { status: 200 });
+    }
+    if (String(url).includes('places.googleapis.com/v1/places/ChIJ-test-place')) {
+      return new Response(JSON.stringify({
+        id: 'ChIJ-test-place',
+        displayName: { text: 'High View' },
+        formattedAddress: 'High View, Sower Carr Lane, Hambleton, Poulton-le-Fylde FY6 9DJ, UK',
+        addressComponents: [
+          { longText: 'Sower Carr Lane', types: ['route'] },
+          { longText: 'Hambleton', types: ['postal_town'] },
+          { longText: 'Lancashire', types: ['administrative_area_level_2'] },
+          { longText: 'FY6 9DJ', types: ['postal_code'] },
+          { longText: 'United Kingdom', shortText: 'GB', types: ['country'] },
+        ],
+        location: { latitude: 53.8854, longitude: -2.9488 },
+      }), { status: 200 });
+    }
+    if (String(url).includes('pmg-concrete-price.jimpmgr.workers.dev/api/quote')) {
+      return new Response(JSON.stringify({
+        postcode: 'FY6 9DJ',
+        route: { oneWayMinutes: 8.2, oneWayMiles: 3.1 },
+        pricingVersion: '29 July 2026',
+        calculation: {
+          deliveryBand: { label: '0-15 minutes', supplementPerVisit: -25 },
+          totalExVat: 555,
+          officeReviewRequired: false,
+        },
+      }), { status: 200 });
+    }
     if (String(url).includes('/api/Display/GetJobsByDatePaginated')) {
       return new Response(JSON.stringify({ items: sandbox.__haultechJobs || [] }), { status: 200 });
     }
@@ -52,6 +93,7 @@ function env(adminKey = 'admin-key') {
   ]);
   return {
     PMG_DRIVER_SYNC_ADMIN_KEY: adminKey,
+    GOOGLE_PLACES_API_KEY: 'test-google-key',
     PMG_DATA: {
       get: async key => {
         return store.has(key) ? store.get(key) : null;
@@ -87,8 +129,47 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   const health = await resp.json();
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
-  assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v1');
-  assert.match(health.workerBuildId, /^20260720-driver-payment-status-worker-v2$/);
+  assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
+  assert.match(health.workerBuildId, /^20260730-address-autocomplete-pricing-worker-v3$/);
+
+  const addressEnv = env();
+  resp = await workerRequest('/address/autocomplete', {
+    method: 'POST',
+    body: JSON.stringify({
+      input: 'High View Sow',
+      sessionToken: '00000000-0000-4000-8000-000000000000',
+    }),
+  }, addressEnv);
+  assert.strictEqual(resp.status, 200);
+  const addressSuggestions = await resp.json();
+  assert.strictEqual(addressSuggestions.suggestions[0].placeId, 'ChIJ-test-place');
+  assert.strictEqual(addressSuggestions.suggestions[0].mainText, 'High View');
+
+  resp = await workerRequest('/address/details', {
+    method: 'POST',
+    body: JSON.stringify({
+      placeId: 'ChIJ-test-place',
+      sessionToken: '00000000-0000-4000-8000-000000000000',
+    }),
+  }, addressEnv);
+  assert.strictEqual(resp.status, 200);
+  const selectedAddress = (await resp.json()).address;
+  assert.strictEqual(selectedAddress.line1, 'High View');
+  assert.strictEqual(selectedAddress.line2, 'Sower Carr Lane');
+  assert.strictEqual(selectedAddress.postcode, 'FY6 9DJ');
+  sandbox.__fetches.length = 0;
+  const noGoogleEnv = env();
+  delete noGoogleEnv.GOOGLE_PLACES_API_KEY;
+  resp = await workerRequest('/address/autocomplete', {
+    method: 'POST',
+    body: JSON.stringify({
+      input: 'High View Sow',
+      sessionToken: '00000000-0000-4000-8000-000000000000',
+    }),
+  }, noGoogleEnv);
+  assert.strictEqual(resp.status, 503);
+  assert.strictEqual((await resp.json()).error, 'address_search_not_configured');
+  assert.strictEqual(sandbox.__fetches.length, 0, 'missing Google secret must fail before any external request');
 
   resp = await upsertRequest({}, { customerReference: 'PUBLIC-ONLY' });
   assert.strictEqual(resp.status, 403);
@@ -498,6 +579,76 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert.strictEqual(concretePayload.consignments[0].goodsDescription, 'C35pmg Qu');
   assert(concretePayload.accountNotes.includes('Driver app source: Ian Slater / PN25FLF / 0.91m3 / Yard to Nottend'));
   assert(concretePayload.accountNotes.includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £150.15'));
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'driver-concrete-addressed-1',
+      date: '2026-07-30',
+      customer: 'Customer One',
+      driver: 'Ian Slater',
+      vehicle: 'PN25FLF',
+      material: 'Concrete',
+      concreteType: 'quarried',
+      quantity: 4,
+      unit: 'm3',
+      from: 'PM Groundworks Yard',
+      to: 'High View, Hambleton',
+      deliveryAddress: {
+        line1: 'High View',
+        line2: 'Sower Carr Lane',
+        line3: 'Hambleton',
+        line4: 'Lancashire',
+        postcode: 'fy69dj',
+        country: 'United Kingdom',
+        formattedAddress: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
+        placeId: 'ChIJ-test-place',
+      },
+      wagonVisits: 1,
+      chargeableWaitingMinutes: 0,
+      specialAccess: false,
+      ticketNo: 'ROUTE-PRICE',
+    }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const routePriceCall = sandbox.__fetches.find(call => call.url.includes('/api/quote'));
+  assert(routePriceCall, 'structured concrete delivery must use the shared concrete pricing API');
+  const routePriceInput = JSON.parse(routePriceCall.options.body);
+  assert.strictEqual(routePriceInput.postcode, 'FY6 9DJ');
+  assert.strictEqual(routePriceInput.concreteSource, 'quarried');
+  const addressedPayloadCall = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  const addressedPayload = JSON.parse(addressedPayloadCall.options.body);
+  assert.strictEqual(addressedPayload.quotedPrice, 555);
+  assert.strictEqual(addressedPayload.consignments[0].deliveryAddressLine1, 'High View');
+  assert.strictEqual(addressedPayload.consignments[0].deliveryAddressLine2, 'Sower Carr Lane');
+  assert.strictEqual(addressedPayload.consignments[0].deliveryPostcode, 'FY6 9DJ');
+  assert(addressedPayload.accountNotes.includes('Auto-priced quarried concrete to FY6 9DJ'));
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'driver-concrete-internal-pmg',
+      date: '2026-07-30',
+      customer: 'Customer One',
+      driver: 'Richard Whittaker',
+      vehicle: 'PN25FLF',
+      material: 'Concrete',
+      concreteType: 'recycled',
+      quantity: 4,
+      unit: 'm3',
+      to: 'PMG Bispham site',
+      reference: 'PMG INTERNAL BISPHAM',
+    }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const internalConcretePayloadCall = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  const internalConcretePayload = JSON.parse(internalConcretePayloadCall.options.body);
+  assert.strictEqual(internalConcretePayload.quotedPrice, 160);
+  assert.strictEqual(internalConcretePayload.useQuotedPrice, true);
+  assert(internalConcretePayload.accountNotes.includes('internal PM Groundworks concrete saving'));
+  assert(!sandbox.__fetches.some(call => call.url.includes('/api/quote')), 'PMG own-site concrete must not use external route pricing');
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {

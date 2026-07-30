@@ -1,9 +1,9 @@
 {
-  "buildId": "20260721-walkaround-inline-camera-v69",
-  "updatedAt": "2026-07-21T17:15:00+01:00",
-  "baselineCommit": "658f10e",
-  "expectedWorkerBuildId": "20260720-driver-payment-status-worker-v2",
-  "driverApiContract": "pmg-driver-api-v1",
+  "buildId": "20260730-address-autocomplete-pricing-v70",
+  "updatedAt": "2026-07-30T11:10:00+01:00",
+  "baselineCommit": "43f1f5c",
+  "expectedWorkerBuildId": "20260730-address-autocomplete-pricing-worker-v3",
+  "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Walkaround camera reliability release: Android drivers now take the full round-the-wagon sequence inside one rear-camera session, so the app no longer depends on leaving the PWA and receiving a file back after every photo. Each save advances the live capture target to the next required view; the native phone camera remains a reset-safe fallback. Draft recovery, required-photo gates, prestart-fleet-torque-source reads from Fleet Live, driver payment controls and Haultech protections remain in place. Walkaround evidence now records capture mode and app build for diagnosis. Lane split remains explicit: the Driver App owns driver jobs/walkarounds, Fleet Live supplies Gary/Richard torque state, and Tony's plant app remains plant/tools only."
+  "notes": "Driver address and concrete pricing release: collection and delivery inputs now support saved PMG locations plus server-side Google Places suggestions, store structured UK address lines and postcode in Haultech, and pass verified delivery postcodes to the existing PMG concrete calculator. Quarried/recycled, wagon visits, waiting and restricted-access inputs are retained at the driver end. Existing manual address entry, Richard price overrides, Wyre manual pricing, proof, walkaround and completion protections remain in place; Google lookup fails closed when billing/key setup is unavailable."
 }

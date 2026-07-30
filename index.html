@@ -494,6 +494,21 @@
     }
     .autocomplete-item:hover, .autocomplete-item.active { background: #fff7ed; }
     .autocomplete-item .ac-code { font-size: 12px; color: var(--muted); }
+    .address-autocomplete-wrap { position: relative; }
+    .address-autocomplete-list {
+      position: absolute; left: 0; right: 0; top: calc(100% - 4px); z-index: 1200;
+      max-height: 260px; overflow-y: auto; background: white; border: 1.5px solid var(--border);
+      border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    }
+    .address-suggestion {
+      width: 100%; border: 0; border-bottom: 1px solid var(--border); background: transparent;
+      color: var(--text); padding: 11px 12px; text-align: left; cursor: pointer;
+    }
+    .address-suggestion:last-child { border-bottom: 0; }
+    .address-suggestion strong, .address-suggestion span { display: block; }
+    .address-suggestion span { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .address-status { display: block; min-height: 16px; margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .address-status.verified { color: #10b981; font-weight: 700; }
     .customer-picker-actions { display: flex; gap: 8px; margin-top: 8px; }
     .customer-picker-actions .btn {
       flex: 1;
@@ -997,16 +1012,34 @@
           <option value="quarried">Quarried</option>
           <option value="recycled">Recycled</option>
         </select>
+        <div class="form-row" style="margin-top:10px">
+          <div class="form-group">
+            <label>Wagon visits</label>
+            <input type="number" id="f-wagon-visits" min="1" max="20" step="1" value="1" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>Chargeable waiting (minutes)</label>
+            <input type="number" id="f-waiting-minutes" min="0" max="600" step="5" value="0" inputmode="numeric">
+          </div>
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:8px;text-transform:none;letter-spacing:0">
+          <input type="checkbox" id="f-special-access" style="width:auto;margin-top:2px">
+          Difficult or restricted access — office price check
+        </label>
       </div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group address-autocomplete-wrap">
           <label>Collected From</label>
-          <input type="text" id="f-from" placeholder="e.g. Hanson">
+          <input type="text" id="f-from" placeholder="Start typing a place or postcode…" autocomplete="off">
+          <div id="f-from-address-dropdown" class="address-autocomplete-list hidden"></div>
+          <span id="f-from-address-status" class="address-status"></span>
           <div class="place-chips" data-target="f-from"></div>
         </div>
-        <div class="form-group">
+        <div class="form-group address-autocomplete-wrap">
           <label>Delivered To</label>
-          <input type="text" id="f-to" placeholder="e.g. Site name">
+          <input type="text" id="f-to" placeholder="Start typing a place or postcode…" autocomplete="off">
+          <div id="f-to-address-dropdown" class="address-autocomplete-list hidden"></div>
+          <span id="f-to-address-status" class="address-status"></span>
           <div class="place-chips" data-target="f-to"></div>
         </div>
       </div>
@@ -1587,9 +1620,23 @@ const COMMON_PLACES = [
   'Bispham Rowland site',
   'Levens View, Ulverston'
 ];
+const SAVED_ADDRESSES = [{
+  label: 'PM Groundworks Yard',
+  searchText: 'PM Groundworks Yard Sower Carr Lane Hambleton FY6 9DJ',
+  address: {
+    line1: 'PM Groundworks Yard',
+    line2: 'Sower Carr Lane',
+    line3: 'Hambleton',
+    line4: 'Lancashire',
+    postcode: 'FY6 9DJ',
+    country: 'United Kingdom',
+    formattedAddress: 'PM Groundworks Yard, Sower Carr Lane, Hambleton, FY6 9DJ',
+    placeId: 'pmg-yard',
+  },
+}];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260721-walkaround-inline-camera-v69';
+const APP_BUILD_ID = '20260730-address-autocomplete-pricing-v70';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -5800,6 +5847,139 @@ $('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryManag
 
 let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
 let fPriceWasAuto = false;
+const selectedAddresses = { from: null, to: null };
+const addressSearchState = {
+  from: { timer: null, requestId: 0, sessionToken: '' },
+  to: { timer: null, requestId: 0, sessionToken: '' },
+};
+
+function addressSessionToken() {
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return Array.from(crypto.getRandomValues(new Uint8Array(18)), value => (value % 36).toString(36)).join('');
+}
+
+function addressKeyForField(fieldId) {
+  return fieldId === 'f-from' ? 'from' : 'to';
+}
+
+function addressStatus(key, message = '', verified = false) {
+  const status = $(`f-${key}-address-status`);
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle('verified', verified);
+}
+
+function clearSelectedAddress(key) {
+  selectedAddresses[key] = null;
+  addressStatus(key, '');
+}
+
+function selectStructuredAddress(key, address) {
+  const value = address?.formattedAddress || [
+    address?.line1, address?.line2, address?.line3, address?.line4, address?.postcode,
+  ].filter(Boolean).join(', ');
+  selectedAddresses[key] = { ...address };
+  $(`f-${key}`).value = value;
+  $(`f-${key}-address-dropdown`).classList.add('hidden');
+  addressStatus(key, address?.postcode ? `✓ Postcode saved: ${address.postcode}` : 'Address saved', !!address?.postcode);
+  addressSearchState[key].sessionToken = '';
+}
+
+function renderAddressSuggestions(key, suggestions) {
+  const dropdown = $(`f-${key}-address-dropdown`);
+  if (!suggestions.length) {
+    dropdown.classList.add('hidden');
+    dropdown.innerHTML = '';
+    return;
+  }
+  dropdown.innerHTML = suggestions.map((item, index) => `
+    <button type="button" class="address-suggestion" data-address-index="${index}">
+      <strong>${esc(item.mainText || item.label || item.text)}</strong>
+      <span>${esc(item.secondaryText || (item.address?.postcode ? item.address.formattedAddress : 'Saved PMG location'))}</span>
+    </button>
+  `).join('') + (suggestions.some(item => item.google)
+    ? '<div style="padding:7px 12px;text-align:right;color:var(--muted);font-size:11px">Powered by Google</div>'
+    : '');
+  dropdown.classList.remove('hidden');
+  dropdown.querySelectorAll('[data-address-index]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const item = suggestions[Number(button.dataset.addressIndex)];
+      if (item.address) {
+        selectStructuredAddress(key, item.address);
+        return;
+      }
+      button.disabled = true;
+      addressStatus(key, 'Checking full address…');
+      try {
+        const response = await api('/address/details', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ placeId: item.placeId, sessionToken: addressSearchState[key].sessionToken }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.address) throw new Error(result.error || 'address_details_failed');
+        selectStructuredAddress(key, result.address);
+      } catch {
+        addressStatus(key, 'Could not verify postcode — type it manually');
+        dropdown.classList.add('hidden');
+      }
+    });
+  });
+}
+
+async function searchAddresses(key, query) {
+  const q = String(query || '').trim();
+  const state = addressSearchState[key];
+  const requestId = ++state.requestId;
+  const saved = SAVED_ADDRESSES
+    .filter(item => item.searchText.toLowerCase().includes(q.toLowerCase()))
+    .map(item => ({ ...item, mainText: item.label, secondaryText: item.address.formattedAddress }));
+  if (q.length < 3) {
+    renderAddressSuggestions(key, saved);
+    return;
+  }
+  if (!state.sessionToken) state.sessionToken = addressSessionToken();
+  try {
+    const response = await api('/address/autocomplete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: q, sessionToken: state.sessionToken }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (requestId !== state.requestId) return;
+    if (!response.ok) {
+      renderAddressSuggestions(key, saved);
+      if (result.error === 'address_search_not_configured') {
+        addressStatus(key, 'Google address search awaiting billing verification');
+      }
+      return;
+    }
+    renderAddressSuggestions(key, [...saved, ...(result.suggestions || []).map(item => ({ ...item, google: true }))]);
+  } catch {
+    if (requestId === state.requestId) renderAddressSuggestions(key, saved);
+  }
+}
+
+function initAddressAutocomplete() {
+  ['from', 'to'].forEach(key => {
+    const input = $(`f-${key}`);
+    input.addEventListener('input', () => {
+      clearSelectedAddress(key);
+      $(`f-${key}-address-dropdown`).classList.add('hidden');
+      clearTimeout(addressSearchState[key].timer);
+      addressSearchState[key].timer = setTimeout(() => searchAddresses(key, input.value), 250);
+    });
+    input.addEventListener('focus', () => {
+      if (input.value.trim().length < 3) renderAddressSuggestions(key, SAVED_ADDRESSES);
+    });
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.address-autocomplete-wrap')) {
+      $('f-from-address-dropdown')?.classList.add('hidden');
+      $('f-to-address-dropdown')?.classList.add('hidden');
+    }
+  });
+}
 
 function canCurrentUserPriceJobs() {
   return currentUser?.username === 'richard' || currentUser?.name === 'Richard Whittaker';
@@ -5970,6 +6150,14 @@ function openAddJobModal() {
   if (!fSigCtx) initAddJobSig();
   fPhotoFile = null;
   fPriceWasAuto = false;
+  selectedAddresses.from = null;
+  selectedAddresses.to = null;
+  addressSearchState.from.sessionToken = '';
+  addressSearchState.to.sessionToken = '';
+  addressStatus('from', '');
+  addressStatus('to', '');
+  $('f-from-address-dropdown')?.classList.add('hidden');
+  $('f-to-address-dropdown')?.classList.add('hidden');
   $('f-photo-preview').style.display = 'none';
   $('f-photo-btn').textContent = '📷 Take Photo';
   $('f-waste-transfer').checked = false;
@@ -6104,6 +6292,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const vehicle = $('f-vehicle').value;
   const concreteEntry = isConcreteEntryCandidate({ vehicle, material, unit, notes });
   const concreteType = concreteEntry ? $('f-concrete-type').value : '';
+  const wagonVisits = concreteEntry ? Math.max(1, Math.min(20, Math.round(parseFloat($('f-wagon-visits').value) || 1))) : 1;
+  const chargeableWaitingMinutes = concreteEntry ? Math.max(0, Math.min(600, parseFloat($('f-waiting-minutes').value) || 0)) : 0;
+  const specialAccess = concreteEntry ? $('f-special-access').checked : false;
   const richardPrice = driverEnteredPricePayload(weight, unit);
   const wtn = buildAddJobWasteTransferNote({ material, weight, unit, from, to, customerName, ref });
   if (!vehicle) {
@@ -6155,8 +6346,13 @@ $('add-job-form').addEventListener('submit', async (e) => {
       customer: $('f-customer').value,
       material,
       concreteType,
+      wagonVisits,
+      chargeableWaitingMinutes,
+      specialAccess,
       from,
       to,
+      collectionAddress: selectedAddresses.from,
+      deliveryAddress: selectedAddresses.to,
       quantity: weight,
       unit,
       price: richardPrice?.quotedPrice ?? '',
@@ -6359,7 +6555,15 @@ function initPlaceChips() {
     const target = wrap.dataset.target;
     wrap.innerHTML = COMMON_PLACES.slice(0, 4).map(place => `<button type="button" class="place-chip" data-place="${esc(place)}">${esc(place.split(',')[0])}</button>`).join('');
     wrap.querySelectorAll('.place-chip').forEach(chip => {
-      chip.addEventListener('click', () => { $(target).value = chip.dataset.place; });
+      chip.addEventListener('click', () => {
+        const key = addressKeyForField(target);
+        const saved = SAVED_ADDRESSES.find(item => item.searchText.toLowerCase().includes(chip.dataset.place.toLowerCase()));
+        if (saved) selectStructuredAddress(key, saved.address);
+        else {
+          $(target).value = chip.dataset.place;
+          clearSelectedAddress(key);
+        }
+      });
     });
   });
 }
@@ -6445,6 +6649,7 @@ function showJobConfirmation(job) {
 function init() {
   renderUserButtons();
   initPlaceChips();
+  initAddressAutocomplete();
   setHeaderForLogin();
   recordCurrentAppBuild();
   scheduleWalkaroundActivationRefresh();

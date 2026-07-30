@@ -56,6 +56,38 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
         });
       }
     }
+    if (url.includes('/address/autocomplete')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          suggestions: [{
+            placeId: 'ChIJ-test-place',
+            text: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
+            mainText: 'High View',
+            secondaryText: 'Sower Carr Lane, Hambleton, FY6 9DJ',
+          }],
+        }),
+      });
+    }
+    if (url.includes('/address/details')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          address: {
+            line1: 'High View',
+            line2: 'Sower Carr Lane',
+            line3: 'Hambleton',
+            line4: 'Lancashire',
+            postcode: 'FY6 9DJ',
+            country: 'United Kingdom',
+            formattedAddress: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
+            placeId: 'ChIJ-test-place',
+          },
+        }),
+      });
+    }
     if (url.includes('/customers')) {
       return route.fulfill({
         status: 200,
@@ -360,6 +392,39 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests[0].body.a1PaymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.paymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.notes).toBe('Leave cones by the gate');
+  });
+
+  test('concrete row selects a full address and sends postcode pricing inputs', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+    await stubExternalApis(page, { captured });
+    await page.goto(`${APP_URL}/?driver=ian`);
+    await page.locator('#add-job-btn').click();
+    await page.locator('#f-vehicle').selectOption('PN25FLF');
+    await page.locator('#f-customer').fill('Test Customer');
+    await page.locator('#f-material').fill('Concrete');
+    await expect(page.locator('#concrete-type-fields')).toBeVisible();
+    await page.locator('#f-concrete-type').selectOption('recycled');
+    await page.locator('#f-wagon-visits').fill('2');
+    await page.locator('#f-waiting-minutes').fill('15');
+    await page.locator('#f-from').fill('Yard');
+    await page.locator('#f-to').fill('High View Sow');
+    await expect(page.locator('#f-to-address-dropdown')).toBeVisible();
+    await page.locator('#f-to-address-dropdown .address-suggestion').first().click();
+    await expect(page.locator('#f-to-address-status')).toContainText('FY6 9DJ');
+    await page.locator('#f-qty').fill('4');
+    await page.locator('#f-ref').fill('CONCRETE-ADDRESS');
+    await page.locator('#f-notes').fill('Recycled concrete delivery');
+    await page.locator('#add-job-submit').click();
+
+    await expect(page.locator('#job-confirm-modal')).toBeVisible();
+    expect(captured.driverAddRequests).toHaveLength(1);
+    const body = captured.driverAddRequests[0].body;
+    expect(body.concreteType).toBe('recycled');
+    expect(body.wagonVisits).toBe(2);
+    expect(body.chargeableWaitingMinutes).toBe(15);
+    expect(body.specialAccess).toBe(false);
+    expect(body.deliveryAddress.postcode).toBe('FY6 9DJ');
+    expect(body.deliveryAddress.line1).toBe('High View');
   });
 
   test('driver can change a saved driver row between Paid and Not paid', async ({ page }) => {

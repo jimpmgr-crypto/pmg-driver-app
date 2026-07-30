@@ -1,6 +1,6 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260720-driver-payment-status-worker-v2';
-const DRIVER_API_CONTRACT = 'pmg-driver-api-v1';
+const WORKER_BUILD_ID = '20260730-address-autocomplete-pricing-worker-v3';
+const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
 const PLANT_SNAPSHOT_KEY = 'plant:snapshot:v1';
@@ -158,9 +158,131 @@ const CONCRETE_RATES = {
   quarried: { over3: 145, under3: 165 },
 };
 const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;
+const CONCRETE_PRICE_API = 'https://pmg-concrete-price.jimpmgr.workers.dev/api/quote';
+const GOOGLE_PLACES_AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
+const GOOGLE_PLACES_DETAILS_URL = 'https://places.googleapis.com/v1/places';
+const ADDRESS_SEARCH_DAILY_LIMIT = 2500;
 
 function compactToken(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function normaliseUkPostcode(value) {
+  const compact = cleanText(value, 16).toUpperCase().replace(/\s+/g, '');
+  if (!/^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/.test(compact)) return '';
+  return `${compact.slice(0, -3)} ${compact.slice(-3)}`;
+}
+
+function normaliseStructuredAddress(body, kind, fallbackText = '') {
+  const source = body?.[`${kind}Address`];
+  const address = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+  const prefix = kind === 'collection' ? 'collection' : 'delivery';
+  const line1 = cleanText(address.line1 || body?.[`${prefix}AddressLine1`] || fallbackText, 240);
+  const line2 = cleanText(address.line2 || body?.[`${prefix}AddressLine2`], 240);
+  const line3 = cleanText(address.line3 || body?.[`${prefix}AddressLine3`], 120);
+  const line4 = cleanText(address.line4 || body?.[`${prefix}AddressLine4`], 120);
+  const postcode = normaliseUkPostcode(address.postcode || body?.[`${prefix}Postcode`]);
+  const country = cleanText(address.country || body?.[`${prefix}Country`] || 'United Kingdom', 80);
+  const formattedAddress = cleanText(address.formattedAddress || body?.[`${prefix}FormattedAddress`] || fallbackText, 500);
+  const placeId = cleanText(address.placeId || body?.[`${prefix}PlaceId`], 220);
+  return { line1, line2, line3, line4, postcode, country, formattedAddress, placeId };
+}
+
+function googleAddressComponent(components, type, short = false) {
+  const component = safeArray(components).find(item => safeArray(item?.types).includes(type));
+  return cleanText(short ? component?.shortText : component?.longText, 160);
+}
+
+function structuredAddressFromGooglePlace(place) {
+  const components = safeArray(place?.addressComponents);
+  const displayName = cleanText(place?.displayName?.text, 200);
+  const street = [
+    googleAddressComponent(components, 'street_number'),
+    googleAddressComponent(components, 'route'),
+  ].filter(Boolean).join(' ');
+  const premise = googleAddressComponent(components, 'premise');
+  const line1 = displayName || premise || street || cleanText(place?.formattedAddress, 240);
+  const line2 = displayName && street && displayName.toLowerCase() !== street.toLowerCase() ? street : '';
+  return {
+    line1,
+    line2,
+    line3: googleAddressComponent(components, 'postal_town') || googleAddressComponent(components, 'locality'),
+    line4: googleAddressComponent(components, 'administrative_area_level_2'),
+    postcode: normaliseUkPostcode(googleAddressComponent(components, 'postal_code')),
+    country: googleAddressComponent(components, 'country') || 'United Kingdom',
+    formattedAddress: cleanText(place?.formattedAddress, 500),
+    placeId: cleanText(place?.id, 220),
+    latitude: Number(place?.location?.latitude) || null,
+    longitude: Number(place?.location?.longitude) || null,
+  };
+}
+
+async function reserveAddressSearchUsage(env) {
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `address-search-count:${day}`;
+  const count = Number(await env.PMG_DATA.get(key)) || 0;
+  if (count >= ADDRESS_SEARCH_DAILY_LIMIT) return false;
+  await env.PMG_DATA.put(key, String(count + 1), { expirationTtl: 3 * 24 * 60 * 60 });
+  return true;
+}
+
+async function googlePlacesRequest(env, url, options = {}) {
+  const apiKey = cleanText(env.GOOGLE_PLACES_API_KEY, 300);
+  if (!apiKey) return { ok: false, status: 503, error: 'address_search_not_configured' };
+  if (!await reserveAddressSearchUsage(env)) {
+    return { ok: false, status: 429, error: 'address_search_daily_limit' };
+  }
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      ...(options.headers || {}),
+    },
+  });
+  const payload = safeJsonParse(await response.text(), {});
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status === 429 ? 429 : 502,
+      error: cleanText(payload?.error?.status || payload?.error?.message || `google_places_http_${response.status}`, 300),
+    };
+  }
+  return { ok: true, payload };
+}
+
+async function concreteDeliveryPrice(body, quantity, concreteType, basePrice) {
+  const delivery = normaliseStructuredAddress(body, 'delivery', body.to);
+  if (!delivery.postcode) return basePrice;
+  try {
+    const response = await fetch(CONCRETE_PRICE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        postcode: delivery.postcode,
+        concreteSource: concreteType,
+        quantityM3: quantity,
+        wagonVisits: Math.max(1, Math.min(20, Math.round(Number(body.wagonVisits) || 1))),
+        chargeableWaitingMinutes: Math.max(0, Math.min(600, Number(body.chargeableWaitingMinutes) || 0)),
+        specialAccess: body.specialAccess === true,
+      }),
+    });
+    const quote = safeJsonParse(await response.text(), {});
+    if (!response.ok) {
+      return { quotedPrice: 0, useQuotedPrice: false, note: `Concrete route price needs office review: ${cleanText(quote.error || `HTTP ${response.status}`, 180)}` };
+    }
+    const total = Number(quote?.calculation?.totalExVat);
+    if (quote?.calculation?.officeReviewRequired || !Number.isFinite(total) || total <= 0) {
+      return { quotedPrice: 0, useQuotedPrice: false, note: `Concrete route price needs office review: ${cleanText(quote?.calculation?.deliveryBand?.label || 'special access', 180)}` };
+    }
+    return {
+      quotedPrice: Math.round(total * 100) / 100,
+      useQuotedPrice: true,
+      note: `Auto-priced ${concreteType} concrete to ${delivery.postcode}: ${quote.route?.oneWayMinutes ?? '?'} minutes / ${quote.calculation.deliveryBand?.label || 'route checked'} = £${total.toFixed(2)} ex VAT (${cleanText(quote.pricingVersion, 80)})`,
+    };
+  } catch {
+    return { quotedPrice: 0, useQuotedPrice: false, note: 'Concrete route price needs office review: pricing service unavailable' };
+  }
 }
 
 function isVolumetricConcreteVehicle(value) {
@@ -341,7 +463,7 @@ function driverAddedQuantityAndUnit(body, material = '') {
   return { quantity: rawQuantity, unit: rawUnit };
 }
 
-function driverAddedConcreteAutoPrice(body, quantity) {
+async function driverAddedConcreteAutoPrice(body, quantity) {
   const material = cleanText(body.material || body.goodsDescription, 240).toLowerCase();
   const quantityInfo = driverAddedQuantityAndUnit(body, material);
   const unit = cleanText(quantityInfo.unit, 20).toLowerCase();
@@ -356,20 +478,37 @@ function driverAddedConcreteAutoPrice(body, quantity) {
   if (!Number.isFinite(qty) || qty <= 0) {
     return { quotedPrice: 0, useQuotedPrice: false, note: '' };
   }
+  if (internalPmgReferenceText(
+    body.reference,
+    body.customerReference,
+    body.customer,
+    body.customerName,
+    body.consignee,
+    body.to,
+    body.deliveryAddress?.formattedAddress
+  )) {
+    const quotedPrice = Math.round(qty * 40 * 100) / 100;
+    return {
+      quotedPrice,
+      useQuotedPrice: true,
+      note: `Auto-priced internal PM Groundworks concrete saving: ${qty}m3 @ £40.00/m3 = £${quotedPrice.toFixed(2)}`,
+    };
+  }
   const concreteType = inferConcreteType(body);
   if (!concreteType || !CONCRETE_RATES[concreteType]) {
     return { quotedPrice: 0, useQuotedPrice: false, note: '' };
   }
   const rate = qty > CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? CONCRETE_RATES[concreteType].over3 : CONCRETE_RATES[concreteType].under3;
   const quotedPrice = Math.round(qty * rate * 100) / 100;
-  return {
+  const basePrice = {
     quotedPrice,
     useQuotedPrice: true,
     note: `Auto-priced PMG ${concreteType} concrete: ${qty <= CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? '3.5m3 or under' : 'over 3.5m3'} @ £${rate.toFixed(2)}/m3 = £${quotedPrice.toFixed(2)}`,
   };
+  return concreteDeliveryPrice(body, qty, concreteType, basePrice);
 }
 
-function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '') {
+async function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '') {
   const fixedInternalPrice = driverAddedInternalPmgPrice(body, ref);
   if (fixedInternalPrice.useQuotedPrice) return fixedInternalPrice;
   if (!canDriverSetPrice(driverName)) return driverAddedConcreteAutoPrice(body, quantity);
@@ -394,7 +533,7 @@ function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '') {
       : `Priced by Richard: £${input.toFixed(2)}/${unit || 'unit'} = £${quotedPrice.toFixed(2)}`;
   }
   quotedPrice = Math.round((Number(quotedPrice) || 0) * 100) / 100;
-  if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) return { quotedPrice: 0, useQuotedPrice: false, note: '' };
+  if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) return driverAddedConcreteAutoPrice(body, quantity);
   return { quotedPrice, useQuotedPrice: true, note };
 }
 
@@ -492,6 +631,8 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const unit = quantityInfo.unit;
   const from = cleanText(body.from || body.collectionAddressLine1, 240);
   const to = cleanText(body.to || body.deliveryAddressLine1, 240);
+  const collectionAddress = normaliseStructuredAddress(body, 'collection', from);
+  const deliveryAddress = normaliseStructuredAddress(body, 'delivery', to);
   const driverName = cleanText(body.driver || body.driverName || body.addedBy || body.createdBy, 120);
   const vehicle = cleanText(body.vehicle || body.vehicleRegistration, 60);
   const sourceId = cleanText(body.id || body.ticketNo, 180);
@@ -524,7 +665,7 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const toText = to || customerName;
   const weightText = weight ? `${weight}${unit}` : '';
   const goodsDescription = normaliseDriverAddedMaterialLabel(material);
-  const pricing = driverAddedQuotedPrice(body, driverName, weight, unit, ref);
+  const pricing = await driverAddedQuotedPrice(body, driverName, weight, unit, ref);
   const accountParts = [];
   const trafficParts = [];
   const sourceNote = driverAddedSourceNote({ driverName, vehicle, weightText, fromText, toText });
@@ -571,14 +712,18 @@ async function buildDriverAddedHaultechPayload(env, body) {
       consignmentReference: ref,
       weight,
       quantity: weight,
-      collectionAddressLine1: from || YARD_ADDRESS.line1,
-      collectionAddressLine3: from ? '' : YARD_ADDRESS.line3,
-      collectionAddressLine4: from ? '' : YARD_ADDRESS.line4,
-      collectionPostcode: from ? '' : YARD_ADDRESS.postcode,
-      collectionCountry: YARD_ADDRESS.country,
-      deliveryAddressLine1: to || customerName,
-      deliveryPostcode: '',
-      deliveryCountry: 'United Kingdom',
+      collectionAddressLine1: collectionAddress.line1 || YARD_ADDRESS.line1,
+      collectionAddressLine2: collectionAddress.line2,
+      collectionAddressLine3: collectionAddress.line1 ? collectionAddress.line3 : YARD_ADDRESS.line3,
+      collectionAddressLine4: collectionAddress.line1 ? collectionAddress.line4 : YARD_ADDRESS.line4,
+      collectionPostcode: collectionAddress.line1 ? collectionAddress.postcode : YARD_ADDRESS.postcode,
+      collectionCountry: collectionAddress.country || YARD_ADDRESS.country,
+      deliveryAddressLine1: deliveryAddress.line1 || customerName,
+      deliveryAddressLine2: deliveryAddress.line2,
+      deliveryAddressLine3: deliveryAddress.line3,
+      deliveryAddressLine4: deliveryAddress.line4,
+      deliveryPostcode: deliveryAddress.postcode,
+      deliveryCountry: deliveryAddress.country || 'United Kingdom',
     }],
   });
 
@@ -2058,6 +2203,67 @@ export default {
       return unauthorized();
     }
     const isAuth = true;
+
+    // Google Places stays server-side: the browser never receives the API key.
+    // Both endpoints are UK-only, bounded, and fall back cleanly when billing/key
+    // setup is not available.
+    if (path === '/address/autocomplete' && request.method === 'POST') {
+      const body = safeJsonParse(await request.text(), {}) || {};
+      const input = cleanText(body.input, 120);
+      const sessionToken = cleanText(body.sessionToken, 36);
+      if (input.length < 3) return corsResponse(JSON.stringify({ suggestions: [] }));
+      if (!/^[A-Za-z0-9_-]{16,36}$/.test(sessionToken)) {
+        return corsResponse(JSON.stringify({ error: 'bad_address_session' }), 400);
+      }
+      const result = await googlePlacesRequest(env, GOOGLE_PLACES_AUTOCOMPLETE_URL, {
+        method: 'POST',
+        headers: { 'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat' },
+        body: JSON.stringify({
+          input,
+          includedRegionCodes: ['gb'],
+          languageCode: 'en-GB',
+          regionCode: 'GB',
+          sessionToken,
+          locationBias: {
+            circle: {
+              center: { latitude: 53.885484, longitude: -2.94882 },
+              radius: 120000,
+            },
+          },
+        }),
+      });
+      if (!result.ok) return corsResponse(JSON.stringify({ error: result.error }), result.status);
+      const suggestions = safeArray(result.payload?.suggestions).slice(0, 6).map(item => {
+        const prediction = item?.placePrediction || {};
+        return {
+          placeId: cleanText(prediction.placeId, 220),
+          text: cleanText(prediction.text?.text, 300),
+          mainText: cleanText(prediction.structuredFormat?.mainText?.text, 180),
+          secondaryText: cleanText(prediction.structuredFormat?.secondaryText?.text, 240),
+        };
+      }).filter(item => item.placeId && item.text);
+      return corsResponse(JSON.stringify({ suggestions }), 200, { 'Cache-Control': 'private, max-age=30' });
+    }
+
+    if (path === '/address/details' && request.method === 'POST') {
+      const body = safeJsonParse(await request.text(), {}) || {};
+      const placeId = cleanText(body.placeId, 220);
+      const sessionToken = cleanText(body.sessionToken, 36);
+      if (!/^[A-Za-z0-9_-]{8,220}$/.test(placeId) || !/^[A-Za-z0-9_-]{16,36}$/.test(sessionToken)) {
+        return corsResponse(JSON.stringify({ error: 'bad_address_selection' }), 400);
+      }
+      const detailsUrl = `${GOOGLE_PLACES_DETAILS_URL}/${encodeURIComponent(placeId)}?languageCode=en-GB&regionCode=GB&sessionToken=${encodeURIComponent(sessionToken)}`;
+      const result = await googlePlacesRequest(env, detailsUrl, {
+        method: 'GET',
+        headers: { 'X-Goog-FieldMask': 'id,displayName,formattedAddress,addressComponents,location' },
+      });
+      if (!result.ok) return corsResponse(JSON.stringify({ error: result.error }), result.status);
+      const address = structuredAddressFromGooglePlace(result.payload);
+      if (!address.postcode) {
+        return corsResponse(JSON.stringify({ error: 'selected_place_has_no_postcode' }), 422);
+      }
+      return corsResponse(JSON.stringify({ address }), 200, { 'Cache-Control': 'private, max-age=86400' });
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // HAULTECH PROXY ENDPOINTS — /ht/*
