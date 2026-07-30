@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260730-address-autocomplete-pricing-worker-v3';
+const WORKER_BUILD_ID = '20260730-geoapify-address-pricing-worker-v4';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -159,8 +159,7 @@ const CONCRETE_RATES = {
 };
 const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;
 const CONCRETE_PRICE_API = 'https://pmg-concrete-price.jimpmgr.workers.dev/api/quote';
-const GOOGLE_PLACES_AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
-const GOOGLE_PLACES_DETAILS_URL = 'https://places.googleapis.com/v1/places';
+const GEOAPIFY_AUTOCOMPLETE_URL = 'https://api.geoapify.com/v1/geocode/autocomplete';
 const ADDRESS_SEARCH_DAILY_LIMIT = 2500;
 
 function compactToken(value) {
@@ -188,32 +187,23 @@ function normaliseStructuredAddress(body, kind, fallbackText = '') {
   return { line1, line2, line3, line4, postcode, country, formattedAddress, placeId };
 }
 
-function googleAddressComponent(components, type, short = false) {
-  const component = safeArray(components).find(item => safeArray(item?.types).includes(type));
-  return cleanText(short ? component?.shortText : component?.longText, 160);
-}
-
-function structuredAddressFromGooglePlace(place) {
-  const components = safeArray(place?.addressComponents);
-  const displayName = cleanText(place?.displayName?.text, 200);
-  const street = [
-    googleAddressComponent(components, 'street_number'),
-    googleAddressComponent(components, 'route'),
-  ].filter(Boolean).join(' ');
-  const premise = googleAddressComponent(components, 'premise');
-  const line1 = displayName || premise || street || cleanText(place?.formattedAddress, 240);
-  const line2 = displayName && street && displayName.toLowerCase() !== street.toLowerCase() ? street : '';
+function structuredAddressFromGeoapifyPlace(place) {
+  const streetAddress = cleanText([place?.housenumber, place?.street].filter(Boolean).join(' '), 240);
+  const line1 = cleanText(place?.name || place?.address_line1 || streetAddress, 240);
+  const line2 = place?.name && streetAddress && line1.toLowerCase() !== streetAddress.toLowerCase()
+    ? streetAddress
+    : '';
   return {
     line1,
     line2,
-    line3: googleAddressComponent(components, 'postal_town') || googleAddressComponent(components, 'locality'),
-    line4: googleAddressComponent(components, 'administrative_area_level_2'),
-    postcode: normaliseUkPostcode(googleAddressComponent(components, 'postal_code')),
-    country: googleAddressComponent(components, 'country') || 'United Kingdom',
-    formattedAddress: cleanText(place?.formattedAddress, 500),
-    placeId: cleanText(place?.id, 220),
-    latitude: Number(place?.location?.latitude) || null,
-    longitude: Number(place?.location?.longitude) || null,
+    line3: cleanText(place?.town || place?.village || place?.city || place?.suburb, 120),
+    line4: cleanText(place?.county || place?.state, 120),
+    postcode: normaliseUkPostcode(place?.postcode),
+    country: cleanText(place?.country || 'United Kingdom', 80),
+    formattedAddress: cleanText(place?.formatted, 500),
+    placeId: cleanText(place?.place_id || place?.datasource?.raw?.place_id || place?.datasource?.raw?.osm_id, 220),
+    latitude: Number(place?.lat) || null,
+    longitude: Number(place?.lon) || null,
   };
 }
 
@@ -226,26 +216,27 @@ async function reserveAddressSearchUsage(env) {
   return true;
 }
 
-async function googlePlacesRequest(env, url, options = {}) {
-  const apiKey = cleanText(env.GOOGLE_PLACES_API_KEY, 300);
+async function geoapifyRequest(env, input) {
+  const apiKey = cleanText(env.GEOAPIFY_API_KEY, 300);
   if (!apiKey) return { ok: false, status: 503, error: 'address_search_not_configured' };
   if (!await reserveAddressSearchUsage(env)) {
     return { ok: false, status: 429, error: 'address_search_daily_limit' };
   }
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      ...(options.headers || {}),
-    },
-  });
+  const url = new URL(GEOAPIFY_AUTOCOMPLETE_URL);
+  url.searchParams.set('text', input);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('filter', 'countrycode:gb');
+  url.searchParams.set('bias', 'proximity:-2.94882,53.885484');
+  url.searchParams.set('lang', 'en');
+  url.searchParams.set('limit', '6');
+  url.searchParams.set('apiKey', apiKey);
+  const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
   const payload = safeJsonParse(await response.text(), {});
   if (!response.ok) {
     return {
       ok: false,
       status: response.status === 429 ? 429 : 502,
-      error: cleanText(payload?.error?.status || payload?.error?.message || `google_places_http_${response.status}`, 300),
+      error: cleanText(payload?.message || payload?.error || `geoapify_http_${response.status}`, 300),
     };
   }
   return { ok: true, payload };
@@ -2204,65 +2195,26 @@ export default {
     }
     const isAuth = true;
 
-    // Google Places stays server-side: the browser never receives the API key.
-    // Both endpoints are UK-only, bounded, and fall back cleanly when billing/key
-    // setup is not available.
+    // Geoapify stays server-side: the browser never receives the API key.
+    // Search is UK-only, bounded, and falls back cleanly if the free service
+    // is unavailable.
     if (path === '/address/autocomplete' && request.method === 'POST') {
       const body = safeJsonParse(await request.text(), {}) || {};
       const input = cleanText(body.input, 120);
-      const sessionToken = cleanText(body.sessionToken, 36);
       if (input.length < 3) return corsResponse(JSON.stringify({ suggestions: [] }));
-      if (!/^[A-Za-z0-9_-]{16,36}$/.test(sessionToken)) {
-        return corsResponse(JSON.stringify({ error: 'bad_address_session' }), 400);
-      }
-      const result = await googlePlacesRequest(env, GOOGLE_PLACES_AUTOCOMPLETE_URL, {
-        method: 'POST',
-        headers: { 'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat' },
-        body: JSON.stringify({
-          input,
-          includedRegionCodes: ['gb'],
-          languageCode: 'en-GB',
-          regionCode: 'GB',
-          sessionToken,
-          locationBias: {
-            circle: {
-              center: { latitude: 53.885484, longitude: -2.94882 },
-              radius: 120000,
-            },
-          },
-        }),
-      });
+      const result = await geoapifyRequest(env, input);
       if (!result.ok) return corsResponse(JSON.stringify({ error: result.error }), result.status);
-      const suggestions = safeArray(result.payload?.suggestions).slice(0, 6).map(item => {
-        const prediction = item?.placePrediction || {};
+      const suggestions = safeArray(result.payload?.results).slice(0, 6).map(place => {
+        const address = structuredAddressFromGeoapifyPlace(place);
         return {
-          placeId: cleanText(prediction.placeId, 220),
-          text: cleanText(prediction.text?.text, 300),
-          mainText: cleanText(prediction.structuredFormat?.mainText?.text, 180),
-          secondaryText: cleanText(prediction.structuredFormat?.secondaryText?.text, 240),
+          placeId: address.placeId,
+          text: address.formattedAddress,
+          mainText: address.line1,
+          secondaryText: [address.line2, address.line3, address.line4, address.postcode].filter(Boolean).join(', '),
+          address,
         };
-      }).filter(item => item.placeId && item.text);
+      }).filter(item => item.text && item.address.postcode);
       return corsResponse(JSON.stringify({ suggestions }), 200, { 'Cache-Control': 'private, max-age=30' });
-    }
-
-    if (path === '/address/details' && request.method === 'POST') {
-      const body = safeJsonParse(await request.text(), {}) || {};
-      const placeId = cleanText(body.placeId, 220);
-      const sessionToken = cleanText(body.sessionToken, 36);
-      if (!/^[A-Za-z0-9_-]{8,220}$/.test(placeId) || !/^[A-Za-z0-9_-]{16,36}$/.test(sessionToken)) {
-        return corsResponse(JSON.stringify({ error: 'bad_address_selection' }), 400);
-      }
-      const detailsUrl = `${GOOGLE_PLACES_DETAILS_URL}/${encodeURIComponent(placeId)}?languageCode=en-GB&regionCode=GB&sessionToken=${encodeURIComponent(sessionToken)}`;
-      const result = await googlePlacesRequest(env, detailsUrl, {
-        method: 'GET',
-        headers: { 'X-Goog-FieldMask': 'id,displayName,formattedAddress,addressComponents,location' },
-      });
-      if (!result.ok) return corsResponse(JSON.stringify({ error: result.error }), result.status);
-      const address = structuredAddressFromGooglePlace(result.payload);
-      if (!address.postcode) {
-        return corsResponse(JSON.stringify({ error: 'selected_place_has_no_postcode' }), 422);
-      }
-      return corsResponse(JSON.stringify({ address }), 200, { 'Cache-Control': 'private, max-age=86400' });
     }
 
     // ══════════════════════════════════════════════════════════════════════════

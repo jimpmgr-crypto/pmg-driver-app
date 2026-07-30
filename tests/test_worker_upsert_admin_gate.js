@@ -26,33 +26,22 @@ const sandbox = {
   },
   fetch: async (url, options = {}) => {
     sandbox.__fetches.push({ url: String(url), options });
-    if (String(url).includes('places.googleapis.com/v1/places:autocomplete')) {
+    if (String(url).includes('api.geoapify.com/v1/geocode/autocomplete')) {
       return new Response(JSON.stringify({
-        suggestions: [{
-          placePrediction: {
-            placeId: 'ChIJ-test-place',
-            text: { text: 'High View, Sower Carr Lane, Hambleton, Poulton-le-Fylde FY6 9DJ, UK' },
-            structuredFormat: {
-              mainText: { text: 'High View' },
-              secondaryText: { text: 'Sower Carr Lane, Hambleton, FY6 9DJ' },
-            },
-          },
+        results: [{
+          place_id: 'geo-test-place',
+          name: 'High View',
+          street: 'Sower Carr Lane',
+          address_line1: 'High View',
+          address_line2: 'Sower Carr Lane, Hambleton, FY6 9DJ',
+          city: 'Hambleton',
+          county: 'Lancashire',
+          postcode: 'FY6 9DJ',
+          country: 'United Kingdom',
+          formatted: 'High View, Sower Carr Lane, Hambleton, Poulton-le-Fylde FY6 9DJ, United Kingdom',
+          lat: 53.8854,
+          lon: -2.9488,
         }],
-      }), { status: 200 });
-    }
-    if (String(url).includes('places.googleapis.com/v1/places/ChIJ-test-place')) {
-      return new Response(JSON.stringify({
-        id: 'ChIJ-test-place',
-        displayName: { text: 'High View' },
-        formattedAddress: 'High View, Sower Carr Lane, Hambleton, Poulton-le-Fylde FY6 9DJ, UK',
-        addressComponents: [
-          { longText: 'Sower Carr Lane', types: ['route'] },
-          { longText: 'Hambleton', types: ['postal_town'] },
-          { longText: 'Lancashire', types: ['administrative_area_level_2'] },
-          { longText: 'FY6 9DJ', types: ['postal_code'] },
-          { longText: 'United Kingdom', shortText: 'GB', types: ['country'] },
-        ],
-        location: { latitude: 53.8854, longitude: -2.9488 },
       }), { status: 200 });
     }
     if (String(url).includes('pmg-concrete-price.jimpmgr.workers.dev/api/quote')) {
@@ -93,7 +82,7 @@ function env(adminKey = 'admin-key') {
   ]);
   return {
     PMG_DRIVER_SYNC_ADMIN_KEY: adminKey,
-    GOOGLE_PLACES_API_KEY: 'test-google-key',
+    GEOAPIFY_API_KEY: 'test-geoapify-key',
     PMG_DATA: {
       get: async key => {
         return store.has(key) ? store.get(key) : null;
@@ -130,46 +119,31 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260730-address-autocomplete-pricing-worker-v3$/);
+  assert.match(health.workerBuildId, /^20260730-geoapify-address-pricing-worker-v4$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
     method: 'POST',
-    body: JSON.stringify({
-      input: 'High View Sow',
-      sessionToken: '00000000-0000-4000-8000-000000000000',
-    }),
+    body: JSON.stringify({ input: 'High View Sow' }),
   }, addressEnv);
   assert.strictEqual(resp.status, 200);
   const addressSuggestions = await resp.json();
-  assert.strictEqual(addressSuggestions.suggestions[0].placeId, 'ChIJ-test-place');
+  assert.strictEqual(addressSuggestions.suggestions[0].placeId, 'geo-test-place');
   assert.strictEqual(addressSuggestions.suggestions[0].mainText, 'High View');
-
-  resp = await workerRequest('/address/details', {
-    method: 'POST',
-    body: JSON.stringify({
-      placeId: 'ChIJ-test-place',
-      sessionToken: '00000000-0000-4000-8000-000000000000',
-    }),
-  }, addressEnv);
-  assert.strictEqual(resp.status, 200);
-  const selectedAddress = (await resp.json()).address;
+  const selectedAddress = addressSuggestions.suggestions[0].address;
   assert.strictEqual(selectedAddress.line1, 'High View');
   assert.strictEqual(selectedAddress.line2, 'Sower Carr Lane');
   assert.strictEqual(selectedAddress.postcode, 'FY6 9DJ');
   sandbox.__fetches.length = 0;
-  const noGoogleEnv = env();
-  delete noGoogleEnv.GOOGLE_PLACES_API_KEY;
+  const noGeoapifyEnv = env();
+  delete noGeoapifyEnv.GEOAPIFY_API_KEY;
   resp = await workerRequest('/address/autocomplete', {
     method: 'POST',
-    body: JSON.stringify({
-      input: 'High View Sow',
-      sessionToken: '00000000-0000-4000-8000-000000000000',
-    }),
-  }, noGoogleEnv);
+    body: JSON.stringify({ input: 'High View Sow' }),
+  }, noGeoapifyEnv);
   assert.strictEqual(resp.status, 503);
   assert.strictEqual((await resp.json()).error, 'address_search_not_configured');
-  assert.strictEqual(sandbox.__fetches.length, 0, 'missing Google secret must fail before any external request');
+  assert.strictEqual(sandbox.__fetches.length, 0, 'missing Geoapify secret must fail before any external request');
 
   resp = await upsertRequest({}, { customerReference: 'PUBLIC-ONLY' });
   assert.strictEqual(resp.status, 403);

@@ -62,29 +62,21 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
         contentType: 'application/json',
         body: JSON.stringify({
           suggestions: [{
-            placeId: 'ChIJ-test-place',
+            placeId: 'geo-test-place',
             text: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
             mainText: 'High View',
             secondaryText: 'Sower Carr Lane, Hambleton, FY6 9DJ',
+            address: {
+              line1: 'High View',
+              line2: 'Sower Carr Lane',
+              line3: 'Hambleton',
+              line4: 'Lancashire',
+              postcode: 'FY6 9DJ',
+              country: 'United Kingdom',
+              formattedAddress: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
+              placeId: 'geo-test-place',
+            },
           }],
-        }),
-      });
-    }
-    if (url.includes('/address/details')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          address: {
-            line1: 'High View',
-            line2: 'Sower Carr Lane',
-            line3: 'Hambleton',
-            line4: 'Lancashire',
-            postcode: 'FY6 9DJ',
-            country: 'United Kingdom',
-            formattedAddress: 'High View, Sower Carr Lane, Hambleton, FY6 9DJ',
-            placeId: 'ChIJ-test-place',
-          },
         }),
       });
     }

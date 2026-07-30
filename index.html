@@ -5849,14 +5849,9 @@ let fSigCanvas, fSigCtx, fSigDrawing = false, fPhotoFile = null;
 let fPriceWasAuto = false;
 const selectedAddresses = { from: null, to: null };
 const addressSearchState = {
-  from: { timer: null, requestId: 0, sessionToken: '' },
-  to: { timer: null, requestId: 0, sessionToken: '' },
+  from: { timer: null, requestId: 0 },
+  to: { timer: null, requestId: 0 },
 };
-
-function addressSessionToken() {
-  if (crypto?.randomUUID) return crypto.randomUUID();
-  return Array.from(crypto.getRandomValues(new Uint8Array(18)), value => (value % 36).toString(36)).join('');
-}
 
 function addressKeyForField(fieldId) {
   return fieldId === 'f-from' ? 'from' : 'to';
@@ -5882,7 +5877,6 @@ function selectStructuredAddress(key, address) {
   $(`f-${key}`).value = value;
   $(`f-${key}-address-dropdown`).classList.add('hidden');
   addressStatus(key, address?.postcode ? `✓ Postcode saved: ${address.postcode}` : 'Address saved', !!address?.postcode);
-  addressSearchState[key].sessionToken = '';
 }
 
 function renderAddressSuggestions(key, suggestions) {
@@ -5897,32 +5891,20 @@ function renderAddressSuggestions(key, suggestions) {
       <strong>${esc(item.mainText || item.label || item.text)}</strong>
       <span>${esc(item.secondaryText || (item.address?.postcode ? item.address.formattedAddress : 'Saved PMG location'))}</span>
     </button>
-  `).join('') + (suggestions.some(item => item.google)
-    ? '<div style="padding:7px 12px;text-align:right;color:var(--muted);font-size:11px">Powered by Google</div>'
+  `).join('') + (suggestions.some(item => item.geoapify)
+    ? '<div style="padding:7px 12px;text-align:right;color:var(--muted);font-size:11px">Powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a></div>'
     : '');
   dropdown.classList.remove('hidden');
   dropdown.querySelectorAll('[data-address-index]').forEach(button => {
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', () => {
       const item = suggestions[Number(button.dataset.addressIndex)];
       if (item.address) {
         selectStructuredAddress(key, item.address);
         return;
       }
-      button.disabled = true;
-      addressStatus(key, 'Checking full address…');
-      try {
-        const response = await api('/address/details', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ placeId: item.placeId, sessionToken: addressSearchState[key].sessionToken }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.address) throw new Error(result.error || 'address_details_failed');
-        selectStructuredAddress(key, result.address);
-      } catch {
-        addressStatus(key, 'Could not verify postcode — type it manually');
-        dropdown.classList.add('hidden');
-      }
+      $(`f-${key}`).value = item.text || item.mainText || '';
+      clearSelectedAddress(key);
+      dropdown.classList.add('hidden');
     });
   });
 }
@@ -5938,23 +5920,22 @@ async function searchAddresses(key, query) {
     renderAddressSuggestions(key, saved);
     return;
   }
-  if (!state.sessionToken) state.sessionToken = addressSessionToken();
   try {
     const response = await api('/address/autocomplete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: q, sessionToken: state.sessionToken }),
+      body: JSON.stringify({ input: q }),
     });
     const result = await response.json().catch(() => ({}));
     if (requestId !== state.requestId) return;
     if (!response.ok) {
       renderAddressSuggestions(key, saved);
       if (result.error === 'address_search_not_configured') {
-        addressStatus(key, 'Google address search awaiting billing verification');
+        addressStatus(key, 'Address search setup is temporarily unavailable');
       }
       return;
     }
-    renderAddressSuggestions(key, [...saved, ...(result.suggestions || []).map(item => ({ ...item, google: true }))]);
+    renderAddressSuggestions(key, [...saved, ...(result.suggestions || []).map(item => ({ ...item, geoapify: true }))]);
   } catch {
     if (requestId === state.requestId) renderAddressSuggestions(key, saved);
   }
@@ -6152,8 +6133,6 @@ function openAddJobModal() {
   fPriceWasAuto = false;
   selectedAddresses.from = null;
   selectedAddresses.to = null;
-  addressSearchState.from.sessionToken = '';
-  addressSearchState.to.sessionToken = '';
   addressStatus('from', '');
   addressStatus('to', '');
   $('f-from-address-dropdown')?.classList.add('hidden');
