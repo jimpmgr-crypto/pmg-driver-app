@@ -8,3 +8,7 @@ crons = ["*/30 5-18 * * 1-6", "*/30 6-8 * * *"]
 [[kv_namespaces]]
 binding = "PMG_DATA"
 id = "8620f47859fb4bf1b874754ed4d9b631"
+
+[[services]]
+binding = "CONCRETE_PRICE_SERVICE"
+service = "pmg-concrete-price"

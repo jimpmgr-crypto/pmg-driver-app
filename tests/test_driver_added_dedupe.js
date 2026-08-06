@@ -55,6 +55,11 @@ assert(
   signComplete.includes('verifyHaultechCompletion(haultechCompleteJob, haultechJobId)'),
   'matched Haultech job must be marked and verified when the phone row is completed'
 );
+assert(
+  signComplete.includes('const isDriverAdded = !haultechJobId;') &&
+  signComplete.includes('if (LIVE_WRITE && !isDriverAdded)'),
+  'a cached driver-added row with a real Haultech id must use proof-first live completion'
+);
 
 const exactIanCase = "Ian Slater - PN25FLF - C35pmg Qu - 0.91m3 - Yard to Nottend";
 assert(

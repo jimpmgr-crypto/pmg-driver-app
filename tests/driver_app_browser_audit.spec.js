@@ -30,7 +30,8 @@ async function installInlineCameraStub(page) {
   });
 }
 
-async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null } = {}) {
+async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null, jobs = null } = {}) {
+  const effectiveJobs = Array.isArray(jobs) ? jobs : haultechJobs;
   await page.route(`${WORKER_URL}/**`, async route => {
     const url = route.request().url();
     if (captured) {
@@ -51,6 +52,13 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
       if (url.includes('/ht/payment/')) {
         captured.paymentUpdates = captured.paymentUpdates || [];
         captured.paymentUpdates.push({
+          url,
+          body: JSON.parse(route.request().postData() || '{}'),
+        });
+      }
+      if (url.includes('/ht/complete/')) {
+        captured.completionRequests = captured.completionRequests || [];
+        captured.completionRequests.push({
           url,
           body: JSON.parse(route.request().postData() || '{}'),
         });
@@ -91,7 +99,7 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: haultechJobs }),
+        body: JSON.stringify({ items: effectiveJobs }),
       });
     }
     if (url.includes('/ht/driver-add')) {
@@ -152,6 +160,36 @@ test.describe('driver app route audit', () => {
     await page.reload();
     await expect(page.locator('#jobs-screen')).toBeVisible();
     await expect(page.locator('#pin-screen')).toBeHidden();
+  });
+
+  test('completed Haultech jobs require an explicit finished-for-day action', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+    const jobs = [{
+      id: '11111111-1111-4111-8111-111111111111',
+      jobNumber: 9463,
+      deliveryDriverId: 'd6795d54-a5f4-441b-b09a-df06558f7154',
+      vehicle: 'BT66ZJO',
+      consignments: [{
+        id: '22222222-2222-4222-8222-222222222222',
+        deliveryDriverStatus: 'complete',
+      }],
+    }];
+    await stubExternalApis(page, { captured, jobs });
+    await page.goto(`${APP_URL}/?driver=andrew`);
+    await expect(page.locator('#jobs-screen')).toBeVisible();
+    await expect(page.locator('#complete-day-btn')).toHaveText('Finished for the day');
+    await expect(page.locator('.driver-day-finished')).toHaveCount(0);
+    expect(captured.ticketSaves.filter(request => request.body.type === 'day_finished')).toHaveLength(0);
+    await page.reload();
+    await expect(page.locator('#complete-day-btn')).toHaveText('Finished for the day');
+    expect(captured.ticketSaves.filter(request => request.body.type === 'day_finished')).toHaveLength(0);
+    await page.locator('#complete-day-btn').click();
+    await expect(page.locator('.driver-day-finished')).toBeVisible();
+    await expect.poll(() => captured.ticketSaves.filter(request => request.body.type === 'day_finished').length).toBe(1);
+    expect(captured.ticketSaves.find(request => request.body.type === 'day_finished').body.payload.vehicle).toBe('BT66ZJO');
+    await page.reload();
+    await expect(page.locator('#complete-day-btn')).toHaveText('Re-open / check day');
+    expect(captured.ticketSaves.filter(request => request.body.type === 'day_finished')).toHaveLength(1);
   });
 
   test('clear live torque response hides wheel torque wording and clears stale cache', async ({ page }) => {
@@ -417,6 +455,43 @@ test.describe('driver app route audit', () => {
     expect(body.specialAccess).toBe(false);
     expect(body.deliveryAddress.postcode).toBe('FY6 9DJ');
     expect(body.deliveryAddress.line1).toBe('High View');
+  });
+
+  test('existing ST concrete cannot complete until the driver selects its source', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [], completionRequests: [] };
+    const jobs = [{
+      id: 'f99eb646-5491-470d-9c91-862fec9b03c9',
+      jobId: 9467,
+      customerId: 'cust-1',
+      customerName: 'Jeffries Contractors',
+      deliveryDriverId: '201938f2-da93-4987-bd42-32342fcce78f',
+      deliveryDate: new Date().toISOString(),
+      deliveryStatus: 'Scheduled',
+      deliveryVehicleId: '695b915e-d817-476c-b3e1-a1768233edd9',
+      consignments: [{
+        id: '6811fd27-a890-45bb-b75a-7384d5c753ad',
+        goodsDescription: 'ST1 CONCRETE',
+        weight: 2,
+        deliveryAddressLine1: 'Poulton Plaiz Leisure Park',
+        deliveryPostcode: 'FY6 8AR',
+        deliveryDriverStatus: 'Scheduled',
+      }],
+    }];
+    await stubExternalApis(page, { captured, jobs });
+    await page.goto(`${APP_URL}/?driver=richard`);
+    await page.evaluate(() => { isManager = true; });
+    await page.locator('.quick-proof').click();
+    await expect(page.locator('#sign-concrete-type')).toBeVisible();
+
+    await page.locator('#sign-save-main-btn').click();
+    await expect(page.locator('#toast')).toContainText('Choose quarried or recycled');
+    expect(captured.completionRequests).toHaveLength(0);
+
+    await page.locator('#sign-concrete-type').selectOption('quarried');
+    await page.locator('#sign-photo-input').setInputFiles({ name: 'proof.png', mimeType: 'image/png', buffer: TEST_PNG });
+    await page.locator('#sign-save-main-btn').click();
+    await expect.poll(() => captured.completionRequests.length).toBe(1);
+    expect(captured.completionRequests[0].body.concreteType).toBe('quarried');
   });
 
   test('driver can change a saved driver row between Paid and Not paid', async ({ page }) => {

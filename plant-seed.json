@@ -1,6 +1,6 @@
 {
   "schema": "pmg-plant-snapshot-v1",
-  "generatedAt": "2026-07-11T00:45:01+00:00",
+  "generatedAt": "2026-08-06T00:45:01+00:00",
   "sharePointEvidenceRoot": "SHARED/Plant and Tool Service Records",
   "sources": {
     "plantScheduleWorkbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
@@ -13,7 +13,7 @@
   },
   "plantOnlyRules": {
     "includedSheetPattern": "^Plant <number>$ plus Tractor, Kubota Mower and Forklift",
-    "ignoredSheetCount": 34,
+    "ignoredSheetCount": 36,
     "ignoredSheetsStored": false,
     "unusedSchedulePlantNumbersSkipped": [
       "11",
@@ -163,7 +163,7 @@
         }
       ],
       "lastInspectionDate": "2026-04-29",
-      "lastCostDate": "2026-06-16",
+      "lastCostDate": "2026-07-28",
       "lastKnownHours": 6383,
       "lastServiceDate": "2025-11-28",
       "lastServiceHours": 6383,
@@ -385,7 +385,8 @@
           "sheet": "Plant 25"
         }
       ],
-      "lastInspectionDate": "2025-10-27"
+      "lastInspectionDate": "2025-10-27",
+      "lastCostDate": "2026-07-29"
     },
     {
       "id": "plant-27",
@@ -697,7 +698,7 @@
         }
       ],
       "lastInspectionDate": "2025-05-12",
-      "lastCostDate": "2026-06-30"
+      "lastCostDate": "2026-07-27"
     },
     {
       "id": "plant-61",
@@ -917,7 +918,7 @@
         }
       ],
       "lastInspectionDate": "2025-05-12",
-      "lastCostDate": "2025-01-16"
+      "lastCostDate": "2026-07-13"
     },
     {
       "id": "plant-70",
@@ -1021,7 +1022,8 @@
           "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
           "sheet": "Plant 73"
         }
-      ]
+      ],
+      "lastCostDate": "2026-07-14"
     },
     {
       "id": "plant-74",
@@ -1443,6 +1445,114 @@
   ],
   "history": [
     {
+      "id": "hist-7289b5ea60f7c405",
+      "assetId": "plant-25",
+      "plantNumber": "25",
+      "date": "2026-07-29",
+      "category": "invoice",
+      "sourceName": "Astrak",
+      "description": "1xpair Protrack carrier rollers",
+      "hours": null,
+      "invoiceNumber": "UK-431447",
+      "amount": 165.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 25",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-7941d8e440aaab15",
+      "assetId": "plant-14",
+      "plantNumber": "14",
+      "date": "2026-07-28",
+      "category": "invoice",
+      "sourceName": "Finning (UK) Ltd",
+      "description": "module kt-fp",
+      "hours": null,
+      "invoiceNumber": "PINV9196026",
+      "amount": 415.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 14",
+        "row": 7
+      }
+    },
+    {
+      "id": "hist-ad8aa46192f83576",
+      "assetId": "plant-60",
+      "plantNumber": "60",
+      "date": "2026-07-27",
+      "category": "invoice",
+      "sourceName": "MRS Heat Transfer Ltd",
+      "description": "1 remanufactured raidiator",
+      "hours": null,
+      "invoiceNumber": "15486",
+      "amount": 226.45,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 60",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-eec8c2bb1a49523d",
+      "assetId": "plant-73",
+      "plantNumber": "73",
+      "date": "2026-07-14",
+      "category": "invoice",
+      "sourceName": "Siteglass",
+      "description": "supply and fit rear slider, rear qtr, lower door glass, boomside special",
+      "hours": null,
+      "invoiceNumber": "81492",
+      "amount": 765.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 73",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-b348a798338a9b5a",
+      "assetId": "plant-69",
+      "plantNumber": "69",
+      "date": "2026-07-13",
+      "category": "invoice",
+      "sourceName": "EK",
+      "description": "1x12V 100AH 900A YUASA SILVER",
+      "hours": null,
+      "invoiceNumber": "BLM2346102",
+      "amount": 124.26,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 69",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-2f75e16568525f3e",
+      "assetId": "plant-69",
+      "plantNumber": "69",
+      "date": "2026-07-13",
+      "category": "invoice",
+      "sourceName": "EK",
+      "description": "1 x threaded bar M6x300mm",
+      "hours": null,
+      "invoiceNumber": "BLM2346120",
+      "amount": 0.91,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 69",
+        "row": 9
+      }
+    },
+    {
       "id": "hist-dbed6d28d137d950",
       "assetId": "plant-79",
       "plantNumber": "79",
@@ -1803,7 +1913,7 @@
       }
     },
     {
-      "id": "hist-530f02740480940a",
+      "id": "hist-ac48728ba838cb4a",
       "assetId": "plant-14",
       "plantNumber": "14",
       "date": "2026-06-16",
@@ -1817,7 +1927,7 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 14",
-        "row": 14
+        "row": 15
       }
     },
     {
@@ -2343,7 +2453,7 @@
       }
     },
     {
-      "id": "hist-f55001c5fbfd4ca6",
+      "id": "hist-62f3a2f643efd77e",
       "assetId": "plant-14",
       "plantNumber": "14",
       "date": "2026-02-24",
@@ -2357,7 +2467,7 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 14",
-        "row": 12
+        "row": 13
       }
     },
     {
@@ -2721,7 +2831,7 @@
       }
     },
     {
-      "id": "hist-d1c176bc88d95285",
+      "id": "hist-e759b07cf219f1fc",
       "assetId": "plant-14",
       "plantNumber": "14",
       "date": "2025-11-28",
@@ -2735,11 +2845,11 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 14",
-        "row": 8
+        "row": 9
       }
     },
     {
-      "id": "hist-a768183b7124573b",
+      "id": "hist-6310087ae1ce9377",
       "assetId": "plant-14",
       "plantNumber": "14",
       "date": "2025-11-26",
@@ -2753,7 +2863,7 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 14",
-        "row": 10
+        "row": 11
       }
     },
     {
@@ -3494,7 +3604,7 @@
     ],
     "plant-14": [
       {
-        "id": "part-36871a3e700729cd",
+        "id": "part-80f42e6d4f121009",
         "assetId": "plant-14",
         "type": "Service/parts note",
         "code": "",
@@ -3503,7 +3613,7 @@
           "type": "service_workbook",
           "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
           "sheet": "Plant 14",
-          "row": 8
+          "row": 9
         }
       }
     ],
@@ -3621,6 +3731,7 @@
         }
       }
     ],
+    "plant-25": [],
     "plant-27": [
       {
         "id": "part-a3f204424932389e",
@@ -3823,6 +3934,7 @@
     ],
     "plant-69": [],
     "plant-70": [],
+    "plant-73": [],
     "plant-74": [],
     "plant-75": [
       {
@@ -5093,10 +5205,10 @@
   ],
   "stats": {
     "assetCount": 53,
-    "historyEventCount": 112,
+    "historyEventCount": 118,
     "filterPartCount": 52,
     "reviewItemCount": 64,
-    "ignoredSheetCount": 34,
+    "ignoredSheetCount": 36,
     "serviceDateScheduleCount": 21,
     "unusedSchedulePlantNumberCount": 4
   }

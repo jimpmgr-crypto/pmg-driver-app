@@ -356,6 +356,11 @@
       font-family: 'Inter', sans-serif; font-size: 15px; background: white;
     }
     .sign-input-row input:focus { outline: none; border-color: var(--primary); }
+    .sign-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 15px; background: white;
+    }
+    .sign-input:focus { outline: none; border-color: var(--primary); }
     .sign-contact-btn {
       width: 44px; height: 44px; background: var(--primary); color: white;
       border: none; border-radius: 8px; cursor: pointer; font-size: 20px;
@@ -664,6 +669,10 @@
       gap: 8px;
       padding: 10px 12px;
       box-shadow: 0 4px 12px rgba(16,185,129,0.10);
+    }
+    .walkaround-card.prestart-gate.day-closed {
+      position: static;
+      z-index: auto;
     }
     .walkaround-card h2 { font-size: 18px; line-height: 1.2; margin-bottom: 6px; }
     .walkaround-card.prestart-gate h2 { font-size: 24px; line-height: 1.1; margin-bottom: 8px; }
@@ -1053,6 +1062,7 @@
           <select id="f-unit">
             <option value="t">tonnes</option>
             <option value="m3">m3</option>
+            <option value="litres">litres</option>
             <option value="bags">bags</option>
             <option value="each">each</option>
             <option value="days">days</option>
@@ -1260,9 +1270,9 @@ const MATERIAL_PRICING = {
   "Rubble Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Tree Stump Disposal": { type: "job", rate: 40, unit: "each" },
   "6F2 Crushed Concrete": { type: 'tiered', under10: 11.5, over10: 10, unit: "tonnes" },
-  "40mm Recycled MOT": { type: 'tiered', under10: 16, over10: 15, unit: "tonnes" },
+  "40mm Recycled MOT": { type: 'tiered', under10: 20, over10: 18, unit: "tonnes" },
   "Large Clean Crush": { type: 'tiered', under10: 19.5, over10: 17.5, unit: "tonnes" },
-  "Road Plainings": { type: 'tiered', under10: 18, over10: 18, unit: "tonnes" },
+  "Road Plainings": { type: 'tiered', under10: 18, over10: 16, unit: "tonnes" },
   "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
   "Recycled 20mm Clean Washed": { type: 'tiered', under10: 26.5, over10: 23.5, unit: "tonnes" },
   "Recycled 10mm Clean Washed": { type: 'tiered', under10: 28.5, over10: 26.5, unit: "tonnes" },
@@ -1366,6 +1376,8 @@ const MATERIAL_PRICING = {
   "6 inch bullnose kerb": { type: "flat", rate: 8.05, unit: "each" },
   "ACO": { type: "flat", rate: 29.05, unit: "each" },
   "A15 ACO": { type: "flat", rate: 12.5, unit: "each" },
+  "Petrol": { type: "flat", rate: 2, unit: "litres" },
+  "Diesel": { type: "flat", rate: 2, unit: "litres" },
   "Duct tape": { type: "flat", rate: 5.2, unit: "each" },
   "Gloves (per pair)": { type: "flat", rate: 2.2, unit: "each" },
   "Goggles": { type: "flat", rate: 4.75, unit: "each" },
@@ -1501,6 +1513,8 @@ const MATERIALS = [
   {"group": "HARD LANDSCAPING","label": "6 inch bullnose kerb","value": "6 inch bullnose kerb"},
   {"group": "HARD LANDSCAPING","label": "B125 ACO channel","value": "ACO"},
   {"group": "HARD LANDSCAPING","label": "A15 ACO channel","value": "A15 ACO"},
+  {"group": "FUEL","label": "Petrol","value": "Petrol"},
+  {"group": "FUEL","label": "Diesel","value": "Diesel"},
   {"group": "MISC","label": "Duct tape","value": "Duct tape"},
   {"group": "MISC","label": "Gloves (per pair)","value": "Gloves (per pair)"},
   {"group": "MISC","label": "Goggles","value": "Goggles"},
@@ -1636,7 +1650,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260730-address-autocomplete-pricing-v70';
+const APP_BUILD_ID = '20260806-signed-haultech-completion-v71';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1689,7 +1703,6 @@ let selectedProblemReason = '';
 let selectedFeedbackTags = [];
 let dayReviewOpen = false;
 let lastJobsUpdatedAt = null;
-let suppressAutoFinishForDay = false;
 let walkaroundState = null;
 let walkaroundSigCtx = null;
 let walkaroundSigDrawing = false;
@@ -1903,6 +1916,7 @@ const CUSTOMER_MAP = {
   "9a19e11a-52ab-400d-872d-4fb4df4dad7c": "Taymin Ltd",
   "8e8b6ba3-0ff6-4c42-8d97-4da565fd6746": "Test Customer 1",
   "8ad448ba-ad79-4bc5-9cb3-4c74c89d3fee": "Test Customer 2",
+  "888e9fa6-2a91-4b53-b89a-2464c02d3859": "TLC Total Lawn Care",
   "bb2616de-eaf2-43ae-97fb-54d9cd4038b8": "Tom France",
   "a3673f8e-05af-4360-8dde-9243cd877f1d": "TOTAL BUILDING NORTH WEST LTD",
   "d443fd17-98a7-4e6b-b4cc-81f6ffb51e1e": "Tudor Farm and Equine",
@@ -1911,11 +1925,11 @@ const CUSTOMER_MAP = {
   "0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915": "W.Robinson",
   "bb2da142-5507-4e4d-a228-87a72a875db5": "White Feather Homes",
   "720dae43-f35f-446b-99f6-da9e2c5ff9e9": "Whitesides Ltd",
+  "c5ecd3a7-a15c-4561-b04e-d2749686905e": "Wilson Publications",
   "5ddeef1b-0ccd-4354-a810-9f95e96e45c7": "WJ Davidson",
   "da59556d-6614-4a94-8428-88781dc69123": "Woolfen Hall Farm",
   "650fea1c-aa1d-47f5-891e-77300886eef4": "Wyre Building Supplies Limited",
   "b6edf99f-aeb1-46f7-8560-1623b8f4036f": "Wyre Drives",
-  "20162a01-94ad-433a-b566-8bf0000cf047": "Wyre Landscapes",
 };
 let refreshTimer = null;
 let currentScreen = 'login'; // login | jobs | walkaround | detail | sign
@@ -3142,6 +3156,26 @@ function getJobMaterial(job) {
   return c?.goodsDescription || '';
 }
 
+function jobRequiresConcreteSource(job) {
+  const goods = String(getJobMaterial(job) || '').toLowerCase();
+  if (/\b6f2\b|\bcrush(?:ed)?\b|\bhardcore\b|\bclean concrete\s*\/\s*brick\b|\bconcrete agg(?:regate)?\b/.test(goods)) return false;
+  return /\b(?:c|rc)\s*\d{2}/.test(goods)
+    || /\bst\s*\d+\b/.test(goods)
+    || /\bconcrete\b/.test(goods);
+}
+
+function concreteSourceAlreadyShown(job) {
+  const text = [
+    getJobMaterial(job),
+    getJobNotes(job),
+    job?.accountNotes,
+    job?.trafficNotes,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (/\bquarried\b|\bquarry\b|\bqu\b/.test(text)) return 'quarried';
+  if (/\brecycled\b|\brec\b/.test(text)) return 'recycled';
+  return '';
+}
+
 function getJobFrom(job) {
   if (job._cached) return job._from || '';
   const c = getJobConsignment(job);
@@ -3566,14 +3600,10 @@ function renderDriverView(container) {
     clearDayFinished();
     finished = null;
   }
-  if (jobs.length && !openJobs.length && !finished && !suppressAutoFinishForDay) {
-    saveFinishedForDay(jobs, { automatic: true });
-    finished = getDayFinished();
-  }
   const queue = renderQueueSummary();
   const selectedVehicle = getSelectedDriverVehicle();
   const canFinishDay = jobs.length && !openJobs.length;
-  const walkaroundPanel = renderWalkaroundPanel();
+  const walkaroundPanel = renderWalkaroundPanel({ dayClosed: canFinishDay });
   const trialBanner = trialMode ? `
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} — jobs connected to the office</strong><br>
@@ -3640,7 +3670,6 @@ function attachDayReviewListeners(container, jobs) {
   container.querySelector('#complete-day-btn')?.addEventListener('click', () => {
     if (getDayFinished()) {
       clearDayFinished();
-      suppressAutoFinishForDay = true;
       dayReviewOpen = true;
       toast('Day re-opened on this phone');
       renderJobs();
@@ -3656,7 +3685,6 @@ function attachDayReviewListeners(container, jobs) {
   });
   container.querySelector('#finished-add-row-btn')?.addEventListener('click', () => {
     clearDayFinished();
-    suppressAutoFinishForDay = true;
     openAddJobModal();
   });
   container.querySelectorAll('.day-review-close').forEach(btn => {
@@ -3717,13 +3745,20 @@ async function handleDayReviewAction(job, action) {
   renderJobs();
 }
 
-function saveFinishedForDay(jobs, options = {}) {
+function getFinishedDayVehicle(jobs) {
+  const selected = normaliseVehicleRef(getSelectedDriverVehicle());
+  if (selected) return selected;
+  const jobVehicles = [...new Set(jobs.map(getJobVehicle).map(normaliseVehicleRef).filter(Boolean))];
+  return jobVehicles.length === 1 ? jobVehicles[0] : '';
+}
+
+function saveFinishedForDay(jobs) {
   const openJobs = getOpenDayReviewJobs(jobs);
   if (openJobs.length) return false;
   markDriverFailedWritebacksSavedLocally();
   const existing = getDayFinished();
   if (existing) {
-    if (!options.automatic) toast('✓ Already marked finished for the day');
+    toast('✓ Already marked finished for the day');
     return true;
   }
   const payload = {
@@ -3732,7 +3767,7 @@ function saveFinishedForDay(jobs, options = {}) {
     date: todayISO(),
     finishedAt: new Date().toISOString(),
     jobCount: jobs.length,
-    vehicle: getSelectedDriverVehicle(),
+    vehicle: getFinishedDayVehicle(jobs),
   };
   setDayFinished(payload);
   const fakeJob = { id: `day-${currentUser.driverId || currentUser.name}`, jobId: `day-${currentUser.driverId || currentUser.name}` };
@@ -3745,7 +3780,7 @@ function saveFinishedForDay(jobs, options = {}) {
   setQueueState(event.eventId, 'written', 'Driver finished for the day; all jobs reviewed');
   dayReviewOpen = false;
   updateSyncUI();
-  if (!options.automatic) toast('✓ Finished for the day saved');
+  toast('✓ Finished for the day saved');
   return true;
 }
 
@@ -4108,7 +4143,7 @@ function restoreWalkaroundDraftIfMatching() {
   }
 }
 
-function renderWalkaroundPanel() {
+function renderWalkaroundPanel(options = {}) {
   if (!isWalkaroundVisible()) return '';
   const vehicle = getSelectedDriverVehicle();
   const trailer = getSelectedDriverTrailer();
@@ -4141,7 +4176,7 @@ function renderWalkaroundPanel() {
         </div>
       </div>`;
   return `
-    <div class="walkaround-card prestart-gate ${fullyClear ? 'done' : ''}" id="walkaround-card">
+    <div class="walkaround-card prestart-gate ${fullyClear ? 'done' : ''} ${options.dayClosed ? 'day-closed' : ''}" id="walkaround-card">
       <div class="walkaround-status">${fullyClear ? 'Clear' : 'Pre-start required'} · ${esc(statusText)} · ${esc(uploadText)}</div>
       <h2>${esc(title)}</h2>
       <p>${esc(detail)}</p>
@@ -5351,6 +5386,8 @@ function renderSignScreen(job) {
   const customer = getJobCustomer(job);
   const addr = getDeliveryAddress(job);
   const weight = getJobWeight(job);
+  const concreteSourceRequired = jobRequiresConcreteSource(job);
+  const existingConcreteSource = concreteSourceAlreadyShown(job);
 
   $('sign-content').innerHTML = `
     <div class="trial-banner">
@@ -5385,6 +5422,16 @@ function renderSignScreen(job) {
       <div class="sign-field-label">Driver Notes:</div>
       <textarea class="sign-textarea" id="sign-notes" placeholder="Enter Notes..."></textarea>
     </div>
+
+    ${concreteSourceRequired ? `
+      <div class="sign-field">
+        <label class="sign-field-label" for="sign-concrete-type">Concrete source (required):</label>
+        <select id="sign-concrete-type" class="sign-input" required>
+          <option value="">Choose quarried or recycled</option>
+          <option value="quarried" ${existingConcreteSource === 'quarried' ? 'selected' : ''}>Quarried</option>
+          <option value="recycled" ${existingConcreteSource === 'recycled' ? 'selected' : ''}>Recycled</option>
+        </select>
+      </div>` : ''}
 
     <div class="sign-field">
       <div class="sign-field-label">Signature:</div>
@@ -5594,8 +5641,20 @@ async function handleSignComplete() {
   const haultechCompleteJob = matchedLiveJob || job;
   const consId = getJobConsignmentId(haultechCompleteJob) || getJobConsignmentId(job);
   const haultechJobId = getHaultechJobId(haultechCompleteJob);
-  const isDriverAdded = !haultechJobId || (isDriverAddedJob(job) && !matchedLiveJob);
+  // A driver-added row with a real Haultech id is a live row and must follow
+  // the same proof-first completion path as an office-created row.  The old
+  // condition treated every cached driver row as local-only, even after
+  // /ht/driver-add had returned a real GUID, so signed jobs stayed Scheduled.
+  const isDriverAdded = !haultechJobId;
   const storageKey = consId || haultechJobId || job.id;
+
+  const concreteSourceRequired = jobRequiresConcreteSource(haultechCompleteJob);
+  const concreteType = $('sign-concrete-type')?.value || '';
+  if (concreteSourceRequired && !concreteType) {
+    toast('Choose quarried or recycled before completing');
+    $('sign-concrete-type')?.focus();
+    return;
+  }
 
   setSignCompleteBusy(true);
 
@@ -5618,6 +5677,7 @@ async function handleSignComplete() {
       wasteTransferNote: wtn,
       hasSignature: !!sigData,
       hasPhoto: !!signPhotoFile,
+      concreteType,
       state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
       haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
     });
@@ -5668,6 +5728,7 @@ async function handleSignComplete() {
           originalReference: job.reference || job.customerReference || job._reference || getJobRef(job),
           quantity: parseFloat(weight) || 0,
           weight: parseFloat(weight) || 0,
+          concreteType,
         }),
       });
       if (!completeResp.ok) {
@@ -5685,6 +5746,7 @@ async function handleSignComplete() {
             consigneeName: consignee, driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
             wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
+            concreteType,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
         });
@@ -5728,6 +5790,7 @@ async function handleSignComplete() {
             driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
             wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
+            concreteType,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
         });

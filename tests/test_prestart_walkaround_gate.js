@@ -50,10 +50,15 @@ assert(index.includes("driver-complete"), 'driver torque close must call the Fle
 assert(index.includes("Tick confirmed at"), 'wheel torque row must give drivers a clear tick/confirm action');
 assert(index.includes('.walkaround-card.prestart-gate.done'), 'completed walkaround state must have dedicated compact styling');
 assert(index.includes('position: static;'), 'completed walkaround card must not remain sticky over the jobs screen');
+assert(index.includes('.walkaround-card.prestart-gate.day-closed'), 'pre-start card must stop sticking once every job is already closed');
+assert(index.includes('renderWalkaroundPanel({ dayClosed: canFinishDay })'), 'closed-day layout must expose the explicit finish action on phone screens');
 assert(index.includes("const selectorRows = fullyClear ? '' :"), 'completed walkaround card must not keep showing wagon/trailer selector fields');
 assert(index.includes("window.scrollTo({ top: 0, behavior: 'auto' });"), 'walkaround completion must force a clean return to the top of the jobs list');
 assert(index.includes("finished ? 'Re-open / check day'"), 'finished drivers must have a clear route out of the completed screen');
 assert(index.includes('id="finished-add-row-btn"'), 'finished drivers must be able to add another day-sheet row from the completed screen');
+assert(!index.includes('saveFinishedForDay(jobs, { automatic: true })'), 'loading completed Haultech jobs must not declare the driver finished automatically');
+assert(!index.includes('suppressAutoFinishForDay'), 'the removed automatic finish path must not leave stale render-state controls behind');
+assert(index.includes('vehicle: getFinishedDayVehicle(jobs)'), 'explicit day finish must retain the single assigned job vehicle when no selector was saved');
 assert(index.includes('currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };'), 'saved driver sessions must reopen directly instead of bouncing back to PIN');
 assert(index.includes("$('pin-screen').classList.add('hidden');"), 'entering jobs must always hide the PIN screen');
 assert(!appShell.includes("'/plant'"), 'plant route must not be able to block installation of a driver update');

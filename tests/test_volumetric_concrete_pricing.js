@@ -15,6 +15,8 @@ assert(index.includes('id="f-wagon-visits"'), 'driver concrete form must capture
 assert(index.includes('id="f-waiting-minutes"'), 'driver concrete form must capture chargeable waiting');
 assert(index.includes('id="f-special-access"'), 'driver concrete form must flag difficult/restricted access');
 assert(index.includes("toast('Choose quarried or recycled')"), 'concrete rows must require a concrete type');
+assert(index.includes('id="sign-concrete-type"'), 'existing concrete jobs must ask for a source at completion');
+assert(index.includes("toast('Choose quarried or recycled before completing')"), 'existing concrete completion must fail closed without a source');
 assert(index.includes('concreteType,'), 'driver app must save concreteType with local rows');
 assert(index.includes('deliveryAddress: selectedAddresses.to'), 'driver app must save the selected structured delivery address');
 assert(index.includes("api('/address/autocomplete'"), 'driver app must request server-side address suggestions');
@@ -24,6 +26,8 @@ assert(worker.includes('quarried: { over3: 145, under3: 165 }'), 'worker must us
 assert(worker.includes('const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;'), 'worker must use Jim confirmed 3.5m3 small-load threshold');
 assert(worker.includes('useQuotedPrice: true'), 'worker auto-priced concrete rows must write quoted price');
 assert(worker.includes("return '';"), 'worker must not default untyped concrete to recycled');
+assert(worker.includes("error: 'concrete_type_required'"), 'worker must reject untyped existing concrete completion');
+assert(worker.includes('/\\bst\\s*\\d+\\b/.test(goods)'), 'worker must recognise ST1/ST2 descriptions as concrete');
 assert(worker.includes('extractVehicleFromText'), 'worker must recover vehicle from old Added by notes');
 assert(worker.includes("path === '/address/autocomplete'"), 'worker must expose authenticated address autocomplete');
 assert(worker.includes('env.GEOAPIFY_API_KEY'), 'Geoapify API key must remain a server-side Worker secret');

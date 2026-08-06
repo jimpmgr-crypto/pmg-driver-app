@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260730-geoapify-address-pricing-worker-v4';
+const WORKER_BUILD_ID = '20260806-proof-backed-haultech-worker-v7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -159,6 +159,15 @@ const CONCRETE_RATES = {
 };
 const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;
 const CONCRETE_PRICE_API = 'https://pmg-concrete-price.jimpmgr.workers.dev/api/quote';
+const PM_GROUNDWORKS_CUSTOMER_ID = '6861767c-4418-45ec-ac56-a0673ecce127';
+const WYRE_BUILDING_SUPPLIES_CUSTOMER_ID = '650fea1c-aa1d-47f5-891e-77300886eef4';
+// Exact customer/material totals observed in the live Haultech diary, 1 June-30 July 2026.
+// Concrete is deliberately excluded: Wyre concrete history is route/quantity dependent.
+const WYRE_COMPLETION_MATERIAL_RATES = [
+  { key: 'recycled_6f2', rate: 12, matches: material => ['6f2', '6f2 crush', '6f2 crushed concrete', 'crush', 'recycled 6f2', 'recycled crush'].includes(material) },
+  { key: 'clean_stone', rate: 33.68, matches: material => ['20mm clean stone', '20mm s s', '10mm s s', '6mm s s'].includes(material) },
+  { key: 'granite_dust', rate: 33.5, matches: material => material === 'granite dust' },
+];
 const GEOAPIFY_AUTOCOMPLETE_URL = 'https://api.geoapify.com/v1/geocode/autocomplete';
 const ADDRESS_SEARCH_DAILY_LIMIT = 2500;
 
@@ -242,11 +251,15 @@ async function geoapifyRequest(env, input) {
   return { ok: true, payload };
 }
 
-async function concreteDeliveryPrice(body, quantity, concreteType, basePrice) {
+async function concreteDeliveryPrice(body, quantity, concreteType, basePrice, { requirePostcode = false, env = null } = {}) {
   const delivery = normaliseStructuredAddress(body, 'delivery', body.to);
-  if (!delivery.postcode) return basePrice;
+  if (!delivery.postcode) {
+    return requirePostcode
+      ? { quotedPrice: 0, useQuotedPrice: false, note: 'Concrete route price needs office review: valid delivery postcode missing' }
+      : basePrice;
+  }
   try {
-    const response = await fetch(CONCRETE_PRICE_API, {
+    const request = new Request(CONCRETE_PRICE_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -258,6 +271,9 @@ async function concreteDeliveryPrice(body, quantity, concreteType, basePrice) {
         specialAccess: body.specialAccess === true,
       }),
     });
+    const response = env?.CONCRETE_PRICE_SERVICE
+      ? await env.CONCRETE_PRICE_SERVICE.fetch(request)
+      : await fetch(request);
     const quote = safeJsonParse(await response.text(), {});
     if (!response.ok) {
       return { quotedPrice: 0, useQuotedPrice: false, note: `Concrete route price needs office review: ${cleanText(quote.error || `HTTP ${response.status}`, 180)}` };
@@ -410,7 +426,14 @@ function inferConcreteType(body) {
   if (explicit.startsWith('q')) return 'quarried';
   if (explicit.startsWith('r')) return 'recycled';
 
-  const material = compactToken([body.material, body.goodsDescription, body.notes, body.driverNotes].filter(Boolean).join(' '));
+  const material = compactToken([
+    body.material,
+    body.goodsDescription,
+    body.notes,
+    body.driverNotes,
+    body.accountNotes,
+    body.trafficNotes,
+  ].filter(Boolean).join(' '));
   if (!material) return '';
   if (
     material.includes('QUARRIED')
@@ -454,7 +477,7 @@ function driverAddedQuantityAndUnit(body, material = '') {
   return { quantity: rawQuantity, unit: rawUnit };
 }
 
-async function driverAddedConcreteAutoPrice(body, quantity) {
+async function driverAddedConcreteAutoPrice(body, quantity, env = null) {
   const material = cleanText(body.material || body.goodsDescription, 240).toLowerCase();
   const quantityInfo = driverAddedQuantityAndUnit(body, material);
   const unit = cleanText(quantityInfo.unit, 20).toLowerCase();
@@ -496,13 +519,13 @@ async function driverAddedConcreteAutoPrice(body, quantity) {
     useQuotedPrice: true,
     note: `Auto-priced PMG ${concreteType} concrete: ${qty <= CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? '3.5m3 or under' : 'over 3.5m3'} @ £${rate.toFixed(2)}/m3 = £${quotedPrice.toFixed(2)}`,
   };
-  return concreteDeliveryPrice(body, qty, concreteType, basePrice);
+  return concreteDeliveryPrice(body, qty, concreteType, basePrice, { env });
 }
 
-async function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '') {
+async function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '', env = null) {
   const fixedInternalPrice = driverAddedInternalPmgPrice(body, ref);
   if (fixedInternalPrice.useQuotedPrice) return fixedInternalPrice;
-  if (!canDriverSetPrice(driverName)) return driverAddedConcreteAutoPrice(body, quantity);
+  if (!canDriverSetPrice(driverName)) return driverAddedConcreteAutoPrice(body, quantity, env);
   const explicit = Number(body.quotedPrice || body.price || 0);
   const mode = cleanText(body.priceMode, 20).toLowerCase() === 'fixed' ? 'fixed' : 'rate';
   const input = Number(body.priceInput || body.rate || body.unitRate || 0);
@@ -524,7 +547,7 @@ async function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = ''
       : `Priced by Richard: £${input.toFixed(2)}/${unit || 'unit'} = £${quotedPrice.toFixed(2)}`;
   }
   quotedPrice = Math.round((Number(quotedPrice) || 0) * 100) / 100;
-  if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) return driverAddedConcreteAutoPrice(body, quantity);
+  if (!Number.isFinite(quotedPrice) || quotedPrice <= 0) return driverAddedConcreteAutoPrice(body, quantity, env);
   return { quotedPrice, useQuotedPrice: true, note };
 }
 
@@ -656,7 +679,7 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const toText = to || customerName;
   const weightText = weight ? `${weight}${unit}` : '';
   const goodsDescription = normaliseDriverAddedMaterialLabel(material);
-  const pricing = await driverAddedQuotedPrice(body, driverName, weight, unit, ref);
+  const pricing = await driverAddedQuotedPrice(body, driverName, weight, unit, ref, env);
   const accountParts = [];
   const trafficParts = [];
   const sourceNote = driverAddedSourceNote({ driverName, vehicle, weightText, fromText, toText });
@@ -2031,6 +2054,197 @@ function applyDriverQuantityToHaultechJob(job, quantity) {
   return { job: updatedJob, changed: true };
 }
 
+function jobCustomerId(job) {
+  return cleanText(
+    job?.customerId || job?.customerID || job?.customer?.id || firstConsignment(job)?.customerId,
+    80
+  );
+}
+
+function jobCustomerName(job) {
+  return cleanText(
+    job?.customerName || job?.customer?.companyName || job?.customer?.name || job?.consigneeName || job?.consignee,
+    200
+  );
+}
+
+function jobHasExistingPrice(job) {
+  const consignment = firstConsignment(job);
+  return [
+    job?.quotedPrice,
+    job?.totalPrice,
+    job?.price,
+    job?.consignmentPrice,
+    consignment?.quotedPrice,
+    consignment?.totalPrice,
+    consignment?.price,
+  ].some(value => Number.isFinite(Number(value)) && Number(value) !== 0);
+}
+
+function normalisedCompletionMaterial(job) {
+  return normalisedLookupText(jobGoodsDescription(job));
+}
+
+function isDeliveredConcreteJob(job) {
+  const goods = normalisedCompletionMaterial(job);
+  if (/\b6f2\b|\bcrush(?:ed)?\b|\bhardcore\b|\bclean concrete brick\b|\bconcrete agg(?:regate)?\b/.test(goods)) return false;
+  return /\b(?:c|rc)\s*\d{2}/.test(goods)
+    || /\bst\s*\d+\b/.test(goods)
+    || /\b(?:quarried|recycled) concrete\b/.test(goods)
+    || /\bconcrete\b/.test(goods);
+}
+
+function normaliseConcreteType(value) {
+  const type = cleanText(value, 40).toLowerCase();
+  if (type.startsWith('q')) return 'quarried';
+  if (type.startsWith('r')) return 'recycled';
+  return '';
+}
+
+function applyDriverConcreteTypeToHaultechJob(job, concreteType) {
+  const type = normaliseConcreteType(concreteType);
+  if (!type) return { job, changed: false, concreteType: '' };
+  const existingNotes = job?.accountNotes || job?.accountnotes || '';
+  const note = `Driver confirmed ${type.toUpperCase()} concrete source`;
+  const accountNotes = mergePlainNoteText(existingNotes, note);
+  return {
+    job: accountNotes === cleanText(existingNotes, 4000) ? job : { ...job, accountNotes },
+    changed: accountNotes !== cleanText(existingNotes, 4000),
+    concreteType: type,
+  };
+}
+
+function completionPricingReview(job, reason, detail) {
+  const note = `OFFICE PRICE REVIEW REQUIRED: ${cleanText(detail || reason, 300)}`;
+  const existingNotes = job?.accountNotes || job?.accountnotes || '';
+  const accountNotes = mergePlainNoteText(existingNotes, note);
+  return {
+    job: accountNotes === cleanText(existingNotes, 4000) ? job : { ...job, accountNotes },
+    changed: accountNotes !== cleanText(existingNotes, 4000),
+    reviewRequired: true,
+    reason,
+  };
+}
+
+function clearCompletionPricingReview(value) {
+  return cleanText(value, 4000)
+    .split('|')
+    .map(part => cleanText(part, 1200))
+    .filter(Boolean)
+    .filter(part => !part.startsWith('OFFICE PRICE REVIEW REQUIRED:'))
+    .join(' | ');
+}
+
+function completionPricingBody(job) {
+  const consignment = firstConsignment(job);
+  const deliveryPostcode = cleanText(
+    consignment?.deliveryPostcode || consignment?.deliverypostcode || job?.deliveryPostcode || job?.deliverypostcode,
+    20
+  );
+  const deliveryLine1 = cleanText(
+    consignment?.deliveryAddressLine1 || consignment?.deliveryaddressline1 || job?.deliveryAddressLine1,
+    240
+  );
+  const deliveryParts = [
+    deliveryLine1,
+    consignment?.deliveryAddressLine2,
+    consignment?.deliveryAddressLine3,
+    consignment?.deliveryAddressLine4,
+    deliveryPostcode,
+  ].map(value => cleanText(value, 240)).filter(Boolean);
+  return {
+    material: jobGoodsDescription(job),
+    goodsDescription: jobGoodsDescription(job),
+    notes: job?.trafficNotes || job?.trafficnotes || '',
+    accountNotes: job?.accountNotes || job?.accountnotes || '',
+    trafficNotes: job?.trafficNotes || job?.trafficnotes || '',
+    reference: jobCustomerReference(job),
+    customerReference: jobCustomerReference(job),
+    customer: jobCustomerName(job),
+    customerName: jobCustomerName(job),
+    consignee: jobCustomerName(job),
+    to: deliveryParts.join(', '),
+    unit: 'm3',
+    deliveryAddress: {
+      line1: deliveryLine1,
+      line2: cleanText(consignment?.deliveryAddressLine2, 240),
+      line3: cleanText(consignment?.deliveryAddressLine3, 120),
+      line4: cleanText(consignment?.deliveryAddressLine4, 120),
+      postcode: deliveryPostcode,
+      formattedAddress: deliveryParts.join(', '),
+    },
+  };
+}
+
+async function completionAutoPrice(job, quantity, env = null) {
+  const qty = Number(quantity);
+  if (!Number.isFinite(qty) || qty <= 0 || jobHasExistingPrice(job)) {
+    return { job, changed: false, reason: jobHasExistingPrice(job) ? 'existing_price' : 'bad_quantity' };
+  }
+
+  if (isDeliveredConcreteJob(job)) {
+    // Wyre concrete has multiple proven rates and must remain manual rather than inherit a generic rate.
+    if (jobCustomerId(job) === WYRE_BUILDING_SUPPLIES_CUSTOMER_ID) {
+      return completionPricingReview(job, 'wyre_concrete_manual', 'Wyre concrete uses a manual route/quantity-specific price');
+    }
+    const body = completionPricingBody(job);
+    let pricing;
+    if (jobCustomerId(job) === PM_GROUNDWORKS_CUSTOMER_ID) {
+      const quotedPrice = Math.round(qty * 40 * 100) / 100;
+      pricing = {
+        quotedPrice,
+        useQuotedPrice: true,
+        note: `Auto-priced at completion: internal PM Groundworks concrete saving ${qty}m3 @ £40.00/m3 = £${quotedPrice.toFixed(2)}`,
+      };
+    } else {
+      const concreteType = inferConcreteType(body);
+      if (!concreteType) {
+        return completionPricingReview(job, 'concrete_type_missing', 'concrete type is not proven as quarried or recycled');
+      }
+      pricing = await concreteDeliveryPrice(
+        body,
+        qty,
+        concreteType,
+        { quotedPrice: 0, useQuotedPrice: false, note: '' },
+        { requirePostcode: true, env }
+      );
+    }
+    if (!pricing.useQuotedPrice || !Number.isFinite(Number(pricing.quotedPrice)) || Number(pricing.quotedPrice) <= 0) {
+      return completionPricingReview(job, 'concrete_review_required', pricing.note || 'concrete calculator did not return a safe price');
+    }
+    const accountNotes = mergePlainNoteText(clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''), pricing.note);
+    return {
+      job: { ...job, quotedPrice: pricing.quotedPrice, totalPrice: pricing.quotedPrice, useQuotedPrice: true, accountNotes },
+      changed: true,
+      quotedPrice: pricing.quotedPrice,
+      basis: 'concrete',
+    };
+  }
+
+  if (jobCustomerId(job) !== WYRE_BUILDING_SUPPLIES_CUSTOMER_ID) {
+    return { job, changed: false, reason: 'unsupported_customer' };
+  }
+  const material = normalisedCompletionMaterial(job);
+  const rateRule = WYRE_COMPLETION_MATERIAL_RATES.find(rule => rule.matches(material));
+  if (!rateRule) {
+    return completionPricingReview(job, 'unsupported_wyre_material', `Wyre material has no proven automatic rate: ${material || 'blank material'}`);
+  }
+  const quotedPrice = Math.round(qty * rateRule.rate * 100) / 100;
+  const note = `Auto-priced at completion: Wyre ${rateRule.key.replace(/_/g, ' ')} ${qty}t @ £${rateRule.rate.toFixed(2)}/t = £${quotedPrice.toFixed(2)}`;
+  return {
+    job: {
+      ...job,
+      quotedPrice,
+      totalPrice: quotedPrice,
+      useQuotedPrice: true,
+      accountNotes: mergePlainNoteText(clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''), note),
+    },
+    changed: true,
+    quotedPrice,
+    basis: `wyre_${rateRule.key}`,
+  };
+}
+
 async function fetchHaultechJobsByDate(env, date) {
   const resp = await htFetch(env, queryPath('/api/Display/GetJobsByDatePaginated', {
     selectFromDate: date,
@@ -2047,14 +2261,12 @@ async function fetchHaultechJobsByDate(env, date) {
   return { ok: true, jobs };
 }
 
-async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes = '', quantity = null, consigneeName = '', originalReference = '', paymentStatus = '' } = {}) {
+async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes = '', quantity = null, consigneeName = '', originalReference = '', paymentStatus = '', concreteType = '' } = {}) {
   const note = cleanText(driverNotes, 1200);
   const numericQuantity = Number(quantity);
   const typedCustomer = cleanText(consigneeName, 120);
   const normalizedPaymentStatus = normaliseA1PaymentStatus({ paymentStatus });
-  if (!note && !typedCustomer && !normalizedPaymentStatus && (!Number.isFinite(numericQuantity) || numericQuantity <= 0)) {
-    return { ok: true, skipped: true };
-  }
+  const normalizedConcreteType = normaliseConcreteType(concreteType);
   const requestedDates = uniqueIsoDates(Array.isArray(dateOrDates) ? dateOrDates : [dateOrDates]);
   const primaryDate = requestedDates[0] || new Date().toISOString().slice(0, 10);
   const lookupDates = uniqueIsoDates([
@@ -2081,6 +2293,15 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
     };
   }
 
+  const existingConcreteType = inferConcreteType(completionPricingBody(job));
+  if (isDeliveredConcreteJob(job) && !existingConcreteType && !normalizedConcreteType) {
+    return {
+      ok: false,
+      error: 'concrete_type_required',
+      message: 'Choose quarried or recycled before completing this concrete job',
+    };
+  }
+
   const currentNotes = job.trafficNotes || job.trafficnotes || '';
   const mergedNotes = mergeDriverNoteText(currentNotes, note);
   let updatedJob = { ...job };
@@ -2103,6 +2324,14 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
     updatedJob = paymentUpdate.job;
     changed = changed || paymentUpdate.changed;
   }
+  const concreteTypeUpdate = isDeliveredConcreteJob(updatedJob)
+    ? applyDriverConcreteTypeToHaultechJob(updatedJob, normalizedConcreteType)
+    : { job: updatedJob, changed: false, concreteType: '' };
+  updatedJob = concreteTypeUpdate.job;
+  changed = changed || concreteTypeUpdate.changed;
+  const pricingUpdate = await completionAutoPrice(updatedJob, numericQuantity, env);
+  updatedJob = pricingUpdate.job;
+  changed = changed || pricingUpdate.changed;
 
   if (!changed) return { ok: true, notes: mergedNotes, paymentStatus: paymentUpdate.paymentStatus, unchanged: true };
 
@@ -2120,6 +2349,11 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
     quantity: quantityUpdate.changed ? numericQuantity : undefined,
     reference: customerUpdate.changed ? customerUpdate.reference : undefined,
     paymentStatus: paymentUpdate.paymentStatus || undefined,
+    concreteType: concreteTypeUpdate.concreteType || existingConcreteType || undefined,
+    quotedPrice: pricingUpdate.changed ? pricingUpdate.quotedPrice : undefined,
+    pricingBasis: pricingUpdate.changed ? pricingUpdate.basis : undefined,
+    pricingReviewRequired: !!pricingUpdate.reviewRequired,
+    pricingReviewReason: pricingUpdate.reviewRequired ? pricingUpdate.reason : undefined,
   };
 }
 
@@ -2342,21 +2576,21 @@ export default {
       const driverQuantity = Number(body.quantity || body.weight || 0) || 0;
       const consigneeName = cleanText(body.consigneeName || body.customerName || body.customer, 120);
       const originalReference = cleanText(body.originalReference || body.reference || body.customerReference, 120);
+      const concreteType = normaliseConcreteType(body.concreteType || body.concrete_type);
       const requestedDates = uniqueIsoDates(Array.isArray(body.lookupDates) ? body.lookupDates : []);
       const noteDate = maybeIsoDate(body.date) || requestedDates[0] || new Date().toISOString().slice(0, 10);
-      if (driverNotes || driverQuantity > 0 || consigneeName) {
-        const noteResult = await applyDriverCompletionUpdateToHaultechJob(
-          env,
-          jobId,
-          [noteDate, ...requestedDates].filter(Boolean),
-          { driverNotes, quantity: driverQuantity, consigneeName, originalReference }
-        );
-        if (!noteResult.ok) {
-          return corsResponse(JSON.stringify({
-            error: 'driver_update_failed',
-            message: noteResult.error || 'Could not write driver update before completing job',
-          }), 502);
-        }
+      const noteResult = await applyDriverCompletionUpdateToHaultechJob(
+        env,
+        jobId,
+        [noteDate, ...requestedDates].filter(Boolean),
+        { driverNotes, quantity: driverQuantity, consigneeName, originalReference, concreteType }
+      );
+      if (!noteResult.ok) {
+        const typeRequired = noteResult.error === 'concrete_type_required';
+        return corsResponse(JSON.stringify({
+          error: typeRequired ? 'concrete_type_required' : 'driver_update_failed',
+          message: noteResult.message || noteResult.error || 'Could not write driver update before completing job',
+        }), typeRequired ? 422 : 502);
       }
       const guidResult = await resolveHaultechJobGuidForCompletion(
         env,
@@ -2391,18 +2625,25 @@ export default {
       }
 
       const existing = safeArray(existingLookup.jobs);
-      const existingRef = existing.find(job => jobCustomerReference(job) === built.ref);
-      if (existingRef) {
-        const exact = driverAddSignatureFromJob(existingRef) === driverAddSignatureFromPayload(built.payload);
+      const requestedSignature = driverAddSignatureFromPayload(built.payload);
+      const exactExisting = existing.find(job => driverAddSignatureFromJob(job) === requestedSignature);
+      if (exactExisting) {
         return corsResponse(JSON.stringify({
           ok: true,
           alreadyPresent: true,
-          exact,
+          exact: true,
           ref: built.ref,
-          jobId: haultechJobIds(existingRef)[0] || '',
-          message: exact ? 'Driver row already exists in Haultech' : 'Reference already exists in Haultech; not duplicated',
+          jobId: haultechJobIds(exactExisting)[0] || '',
+          message: 'Exact driver row already exists in Haultech',
         }));
       }
+
+      // Customer references are not unique movement ids.  Drivers regularly
+      // make two real loads for the same reference (Honeywells, Carnforth,
+      // Ryan Holt).  A reference-only collision must therefore not swallow
+      // the later movement; the semantic signature above remains idempotent
+      // for retries of the same row.
+      const referenceCollision = existing.some(job => jobCustomerReference(job) === built.ref);
 
       const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {
         method: 'POST',
@@ -2419,6 +2660,7 @@ export default {
       return corsResponse(JSON.stringify({
         ok: true,
         alreadyPresent: false,
+        referenceCollision,
         ref: built.ref,
         customerName: built.customerName,
         a1Fallback: !!built.useA1Fallback,

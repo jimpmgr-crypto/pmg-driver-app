@@ -7,6 +7,20 @@ const projectRoot = path.resolve(__dirname, '..');
 const workerPath = path.join(projectRoot, 'worker', 'index.js');
 const workerSource = fs.readFileSync(workerPath, 'utf8');
 
+function mockCalculatorResponse() {
+  const calculatorReply = sandbox.__calculatorReply || {
+    postcode: 'FY6 9DJ',
+    route: { oneWayMinutes: 8.2, oneWayMiles: 3.1 },
+    pricingVersion: '29 July 2026',
+    calculation: {
+      deliveryBand: { label: '0-15 minutes', supplementPerVisit: -25 },
+      totalExVat: 555,
+      officeReviewRequired: false,
+    },
+  };
+  return new Response(JSON.stringify(calculatorReply.body || calculatorReply), { status: calculatorReply.status || 200 });
+}
+
 const sandbox = {
   TextEncoder,
   TextDecoder,
@@ -45,16 +59,7 @@ const sandbox = {
       }), { status: 200 });
     }
     if (String(url).includes('pmg-concrete-price.jimpmgr.workers.dev/api/quote')) {
-      return new Response(JSON.stringify({
-        postcode: 'FY6 9DJ',
-        route: { oneWayMinutes: 8.2, oneWayMiles: 3.1 },
-        pricingVersion: '29 July 2026',
-        calculation: {
-          deliveryBand: { label: '0-15 minutes', supplementPerVisit: -25 },
-          totalExVat: 555,
-          officeReviewRequired: false,
-        },
-      }), { status: 200 });
+      return new Response(JSON.stringify({ error: 'public_worker_to_worker_404' }), { status: 404 });
     }
     if (String(url).includes('/api/Display/GetJobsByDatePaginated')) {
       return new Response(JSON.stringify({ items: sandbox.__haultechJobs || [] }), { status: 200 });
@@ -63,6 +68,8 @@ const sandbox = {
   },
   __fetches: [],
   __haultechJobs: [],
+  __calculatorReply: null,
+  __serviceBindingCalls: 0,
 };
 
 vm.runInNewContext(
@@ -83,6 +90,17 @@ function env(adminKey = 'admin-key') {
   return {
     PMG_DRIVER_SYNC_ADMIN_KEY: adminKey,
     GEOAPIFY_API_KEY: 'test-geoapify-key',
+    CONCRETE_PRICE_SERVICE: {
+      fetch: async request => {
+        sandbox.__serviceBindingCalls += 1;
+        sandbox.__fetches.push({ url: request.url, options: {
+          method: request.method,
+          headers: request.headers,
+          body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text(),
+        } });
+        return mockCalculatorResponse();
+      },
+    },
     PMG_DATA: {
       get: async key => {
         return store.has(key) ? store.get(key) : null;
@@ -112,6 +130,28 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   }), testEnv);
 }
 
+async function completeJobFixture(job, quantity, extras = {}) {
+  sandbox.__fetches.length = 0;
+  const serviceBindingCallsBefore = sandbox.__serviceBindingCalls;
+  sandbox.__haultechJobs = [job];
+  const resp = await workerRequest(`/ht/complete/${job.jobId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ date: '2026-07-30', quantity, ...extras }),
+  });
+  const result = await resp.json();
+  const upsertCall = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  const upsertPayload = upsertCall ? JSON.parse(upsertCall.options.body) : null;
+  const calculatorCalls = sandbox.__fetches.filter(call => call.url.includes('/api/quote'));
+  sandbox.__haultechJobs = [];
+  return {
+    resp,
+    result,
+    upsertPayload,
+    calculatorCalls,
+    serviceBindingCalls: sandbox.__serviceBindingCalls - serviceBindingCallsBefore,
+  };
+}
+
 (async () => {
   let resp = await worker.fetch(new Request('https://pmg-driver-sync.test/health'), env());
   assert.strictEqual(resp.status, 200, 'health check must be public and read-only');
@@ -119,7 +159,7 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260730-geoapify-address-pricing-worker-v4$/);
+  assert.match(health.workerBuildId, /^20260806-proof-backed-haultech-worker-v7$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -204,6 +244,38 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
 
   sandbox.__fetches.length = 0;
   sandbox.__haultechJobs = [{
+    jobId: 9100,
+    id: '11111111-1111-4111-8111-111111111111',
+    customerReference: 'HONEYWELLS',
+    quantity: 20,
+    consignments: [{ goodsDescription: 'Type 1 MOT', quantity: 20 }],
+  }];
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'driver-honeywells-second',
+      date: '2026-08-04',
+      customer: 'Customer One',
+      driver: 'Neil Antony',
+      vehicle: 'EY15BOV',
+      material: 'Type 1 MOT plus grab spoil away',
+      quantity: 20,
+      unit: 't',
+      from: 'PMG Yard',
+      to: 'Honeywells',
+      reference: 'HONEYWELLS',
+      notes: 'Second physical movement; 15t spoil returned',
+    }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const referenceCollisionAdd = await resp.json();
+  assert.strictEqual(referenceCollisionAdd.alreadyPresent, false, 'same reference with different movement signature must be created');
+  assert.strictEqual(referenceCollisionAdd.referenceCollision, true, 'reference collision should remain visible in the response');
+  assert.strictEqual(sandbox.__fetches.length, 2, 'reference collision must still upsert the distinct movement');
+  sandbox.__haultechJobs = [];
+
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [{
     jobId: 8708,
     id: '8fa30d53-5770-43a6-8e20-d4f618034c7d',
     customerReference: 'Wyre Drives - Cedar Close Garstang',
@@ -218,6 +290,278 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Display/GetJobsByDatePaginated')), 'complete must look up the hidden Haultech GUID');
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob?id=8fa30d53-5770-43a6-8e20-d4f618034c7d')), 'complete must call QuickCompleteJob with the Haultech GUID, not the visible job number');
   sandbox.__haultechJobs = [];
+
+  let completionPricing = await completeJobFixture({
+    jobId: 9801,
+    id: '11111111-1111-4111-8111-111111111111',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'External concrete delivery',
+    quotedPrice: 0,
+    totalPrice: 0,
+    accountNotes: 'OFFICE PRICE REVIEW REQUIRED: prior calculator failure | QUARRIED concrete',
+    consignments: [{
+      consignmentId: 9801,
+      goodsDescription: 'C35pmg Qu',
+      deliveryAddressLine1: 'High View',
+      deliveryPostcode: 'FY6 9DJ',
+    }],
+  }, 1.51);
+  assert.strictEqual(completionPricing.resp.status, 200);
+  assert.strictEqual(completionPricing.calculatorCalls.length, 1, 'external concrete completion must use the shared postcode calculator');
+  assert.strictEqual(completionPricing.serviceBindingCalls, 1, 'completion pricing must use the calculator service binding, not public Worker fetch');
+  assert.strictEqual(completionPricing.upsertPayload.quantity, 1.51);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555);
+  assert.strictEqual(completionPricing.upsertPayload.totalPrice, 555, 'completion must write quoted and total prices together');
+  assert.strictEqual(completionPricing.upsertPayload.useQuotedPrice, true);
+  assert(completionPricing.upsertPayload.accountNotes.includes('Auto-priced quarried concrete to FY6 9DJ'));
+  assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'successful retry must clear its stale office-review marker');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9802,
+    id: '22222222-2222-4222-8222-222222222222',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Existing manual price',
+    quotedPrice: 123.45,
+    totalPrice: 123.45,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{ consignmentId: 9802, goodsDescription: 'C35pmg Qu', deliveryPostcode: 'FY6 9DJ' }],
+  }, 1.71);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 123.45, 'completion must never overwrite a non-zero price');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0, 'existing prices must bypass automatic pricing');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9803,
+    id: '33333333-3333-4333-8333-333333333333',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'No postcode concrete',
+    quotedPrice: 0,
+    accountNotes: 'RECYCLED concrete',
+    consignments: [{ consignmentId: 9803, goodsDescription: 'C25pmg Rec', deliveryAddressLine1: 'Poulton-le-Fylde' }],
+  }, 0.89);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'missing postcode must leave external concrete for office review');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'unpriced completion must leave a durable office-review marker');
+  assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'review-marked rows may complete without blocking the driver');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9804,
+    id: '44444444-4444-4444-8444-444444444444',
+    customerId: '6861767c-4418-45ec-ac56-a0673ecce127',
+    customerName: 'PM Groundworks',
+    customerReference: 'PMG Carnforth',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9804, goodsDescription: 'C35pmg Qu' }],
+  }, 4.69);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 187.6, 'internal PMG concrete must use the £40/m3 saving rate');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+
+  completionPricing = await completeJobFixture({
+    jobId: 9810,
+    id: '10101010-1010-4010-8010-101010101010',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'External concrete to PMG site',
+    quotedPrice: 0,
+    accountNotes: 'QUARRIED concrete for PMG',
+    consignments: [{
+      consignmentId: 9810,
+      goodsDescription: 'C35pmg Qu',
+      deliveryAddressLine1: 'PMG Carnforth',
+      deliveryPostcode: 'LA5 9RQ',
+    }],
+  }, 2);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555, 'external concrete must use the postcode calculator even when delivered to a PMG-named site');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 1);
+
+  completionPricing = await completeJobFixture({
+    jobId: 9805,
+    id: '55555555-5555-4555-8555-555555555555',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre stone',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9805, goodsDescription: '6MM S/S' }],
+  }, 27.36);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 921.48, 'Wyre 6mm/20mm clean stone family must use £33.68/t');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9817,
+    id: '17171717-1717-4717-8717-171717171717',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre 10mm stone',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9817, goodsDescription: '10MM S/S' }],
+  }, 27.16);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 914.75, 'Wyre 10MM S/S must use the proven clean-stone family rate of £33.68/t');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9818,
+    id: '18181818-1818-4818-8818-181818181818',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre unsupported longer alias',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9818, goodsDescription: '10MM S/S Decorative' }],
+  }, 27.16);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'longer unsupported 10MM S/S descriptions must not inherit the clean-stone rate');
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+
+  completionPricing = await completeJobFixture({
+    jobId: 9806,
+    id: '66666666-6666-4666-8666-666666666666',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre recycled',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9806, goodsDescription: '6F2 Crushed Concrete' }],
+  }, 20);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 240, 'Wyre 6F2/crush must use £12/t');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0, '6F2 crushed concrete must not be mistaken for volumetric concrete');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9811,
+    id: '11111111-aaaa-4111-8111-111111111111',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre unsupported crushed material',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9811, goodsDescription: 'Crushed Limestone' }],
+  }, 20);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'generic crushed materials must not inherit the proven Wyre 6F2 rate');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9812,
+    id: '12121212-1212-4212-8212-121212121212',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Plot C35',
+    quotedPrice: 0,
+    accountNotes: 'quarried material',
+    consignments: [{ consignmentId: 9812, goodsDescription: '20mm Clean Stone' }],
+  }, 20);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'plot/reference grade text must not turn an aggregate job into concrete');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+
+  completionPricing = await completeJobFixture({
+    jobId: 9807,
+    id: '77777777-7777-4777-8777-777777777777',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre unsupported',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9807, goodsDescription: 'Unknown special stone' }],
+  }, 20);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'unsupported Wyre materials must remain unpriced');
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+
+  completionPricing = await completeJobFixture({
+    jobId: 9808,
+    id: '88888888-8888-4888-8888-888888888888',
+    customerId: '650fea1c-aa1d-47f5-891e-77300886eef4',
+    customerName: 'Wyre Building Supplies Limited',
+    customerReference: 'Wyre concrete manual',
+    quotedPrice: 0,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{ consignmentId: 9808, goodsDescription: 'C35pmg Qu', deliveryPostcode: 'FY6 9DJ' }],
+  }, 2.61);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'Wyre concrete must remain manual because its historical rates vary');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+
+  completionPricing = await completeJobFixture({
+    jobId: 9813,
+    id: '13131313-1313-4313-8313-131313131313',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Negative manual correction',
+    quotedPrice: -50,
+    totalPrice: -50,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{ consignmentId: 9813, goodsDescription: 'C35pmg Qu', deliveryPostcode: 'FY6 9DJ' }],
+  }, 1.2);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, -50, 'negative manual price corrections must never be overwritten');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+
+  sandbox.__calculatorReply = {
+    calculation: {
+      deliveryBand: { label: 'Office review' },
+      totalExVat: 0,
+      officeReviewRequired: true,
+    },
+    pricingVersion: 'review-test',
+  };
+  completionPricing = await completeJobFixture({
+    jobId: 9814,
+    id: '14141414-1414-4414-8414-141414141414',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Calculator review',
+    quotedPrice: 0,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{ consignmentId: 9814, goodsDescription: 'C35pmg Qu', deliveryPostcode: 'FY6 9DJ' }],
+  }, 1.2);
+  sandbox.__calculatorReply = null;
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0);
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator review responses must be made durable in Haultech');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9815,
+    id: '15151515-1515-4515-8515-151515151515',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Unknown concrete source',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9815, goodsDescription: 'Concrete', deliveryPostcode: 'FY6 9DJ' }],
+  }, 1.2);
+  assert.strictEqual(completionPricing.resp.status, 422, 'missing concrete type must block completion');
+  assert.strictEqual(completionPricing.result.error, 'concrete_type_required');
+  assert.strictEqual(completionPricing.calculatorCalls.length, 0);
+  assert.strictEqual(completionPricing.upsertPayload, null, 'missing concrete type must not write or complete the job');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9819,
+    id: '19191919-1919-4919-8919-191919191919',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'ST1 concrete with missing source',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9819, goodsDescription: 'ST1 CONCRETE', deliveryPostcode: 'FY6 8AR' }],
+  }, 2);
+  assert.strictEqual(completionPricing.resp.status, 422, 'ST concrete descriptions must use the concrete source gate');
+  assert.strictEqual(completionPricing.result.error, 'concrete_type_required');
+  assert(!sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'blocked ST concrete must not reach QuickCompleteJob');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9820,
+    id: '20202020-2020-4020-8020-202020202020',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'ST1 concrete with driver source',
+    quotedPrice: 0,
+    consignments: [{ consignmentId: 9820, goodsDescription: 'ST1 CONCRETE', deliveryPostcode: 'FY6 8AR' }],
+  }, 2, { concreteType: 'quarried' });
+  assert.strictEqual(completionPricing.resp.status, 200, 'explicit ST concrete source must allow completion');
+  assert(completionPricing.upsertPayload.accountNotes.includes('Driver confirmed QUARRIED concrete source'));
+  assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'typed ST concrete may reach QuickCompleteJob');
+
+  sandbox.__calculatorReply = { status: 503, body: { error: 'pricing unavailable' } };
+  completionPricing = await completeJobFixture({
+    jobId: 9816,
+    id: '16161616-1616-4616-8616-161616161616',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Calculator unavailable',
+    quotedPrice: 0,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{ consignmentId: 9816, goodsDescription: 'C35pmg Qu', deliveryPostcode: 'FY6 9DJ' }],
+  }, 1.2);
+  sandbox.__calculatorReply = null;
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0);
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator HTTP failures must be visibly held for review');
 
   sandbox.__fetches.length = 0;
   sandbox.__haultechJobs = [{
@@ -555,6 +899,7 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert(concretePayload.accountNotes.includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £150.15'));
 
   sandbox.__fetches.length = 0;
+  const addressedServiceBindingCallsBefore = sandbox.__serviceBindingCalls;
   resp = await workerRequest('/ht/driver-add', {
     method: 'POST',
     body: JSON.stringify({
@@ -588,6 +933,7 @@ async function workerRequest(pathname, options = {}, testEnv = env()) {
   assert.strictEqual(resp.status, 200);
   const routePriceCall = sandbox.__fetches.find(call => call.url.includes('/api/quote'));
   assert(routePriceCall, 'structured concrete delivery must use the shared concrete pricing API');
+  assert.strictEqual(sandbox.__serviceBindingCalls - addressedServiceBindingCallsBefore, 1, 'driver-added postcode pricing must use the calculator service binding');
   const routePriceInput = JSON.parse(routePriceCall.options.body);
   assert.strictEqual(routePriceInput.postcode, 'FY6 9DJ');
   assert.strictEqual(routePriceInput.concreteSource, 'quarried');
