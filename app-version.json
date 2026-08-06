@@ -1,9 +1,9 @@
 {
-  "buildId": "20260806-signed-haultech-completion-v71",
+  "buildId": "20260806-signed-haultech-prestart-fleet-torque-source-v71",
   "updatedAt": "2026-08-06T19:35:00+01:00",
   "baselineCommit": "43f1f5c",
   "expectedWorkerBuildId": "20260806-proof-backed-haultech-worker-v7",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Signed driver-added jobs now use the proof-first live Haultech completion path whenever /ht/driver-add has returned a real Haultech id. Duplicate protection is movement-signature based, so repeated customer references no longer swallow genuine second loads. The historical load writers are proof-gated and revisit recent dates; unsigned scheduled siblings are never inferred complete from a matching reference/material. Existing address, concrete pricing, walkaround and torque protections remain in place. Lane split remains explicit: the Driver App owns driver jobs and walkarounds, Fleet Live supplies Gary and Richard torque state, and Tony's plant app remains plant and tools only."
+  "notes": "Signed driver-added jobs now use the proof-first live Haultech completion path whenever /ht/driver-add has returned a real Haultech id. Duplicate protection is movement-signature based, so repeated customer references no longer swallow genuine second loads. The historical load writers are proof-gated and revisit recent dates; unsigned scheduled siblings are never inferred complete from a matching reference/material. Existing address, concrete pricing, walkaround and torque protections remain in place. Lane split remains explicit: the Driver App owns driver jobs and walkarounds, Fleet Live supplies Gary and Richard torque state, and Tony's plant app remains plant and tools only. Lineage marker retained: prestart-fleet-torque-source."
 }
