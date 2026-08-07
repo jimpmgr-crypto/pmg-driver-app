@@ -6,6 +6,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
 const worker = fs.readFileSync(path.join(projectRoot, 'worker/index.js'), 'utf8');
 const redirects = fs.readFileSync(path.join(projectRoot, '_redirects'), 'utf8');
+const postChangeCheck = fs.readFileSync(path.join(projectRoot, 'tools/driver_app_post_change_check.py'), 'utf8');
 
 const paulId = '2b5eab8a-0602-47b8-b242-28ef37eb6c2d';
 
@@ -28,6 +29,10 @@ assert(
 assert(
   index.includes('const DRIVER_VEHICLE_OPTIONS = Object.values(VEHICLES);'),
   'Paul must retain the shared all-rounder vehicle list rather than a fixed wagon'
+);
+assert(
+  postChangeCheck.includes('"paul locket"'),
+  'post-change reconciliation must recognise Paul as a Driver App user'
 );
 
 console.log('Paul driver onboarding regression checks passed');

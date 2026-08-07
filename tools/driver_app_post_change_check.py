@@ -21,7 +21,7 @@ from typing import Any
 
 WORKSPACE = Path("/Users/bill/.openclaw/workspace")
 PROJECT = WORKSPACE / "projects" / "pmg-driver-app"
-DRIVER_NAMES = ("john bowman", "andrew whittaker", "richard whittaker", "neil", "ian")
+DRIVER_NAMES = ("john bowman", "andrew whittaker", "richard whittaker", "neil", "ian", "paul locket")
 
 SCRIPTS_DIR = str(WORKSPACE / "scripts")
 if SCRIPTS_DIR not in sys.path:
