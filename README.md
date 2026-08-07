@@ -1,6 +1,6 @@
 # PMG Driver App
 
-John Bowman trial mode is available at `/john/` on the prototype host, or by opening this app with `?driver=john`. Richard Whittaker's personal driver route is `/richard/`; his PIN login still opens the all-driver manager view, which now includes an `Open my driver app` shortcut on Richard's own section.
+John Bowman trial mode is available at `/john/` on the prototype host, or by opening this app with `?driver=john`. Richard Whittaker's personal driver route is `/richard/`; his PIN login still opens the all-driver manager view, which now includes an `Open my driver app` shortcut on Richard's own section. Paul Locket's personal route is `/paul/`; it uses his live Haultech driver identity and leaves the normal vehicle selector available so he can move between the concrete and other wagons.
 
 Plant Information Hub:
 

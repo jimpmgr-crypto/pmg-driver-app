@@ -167,7 +167,7 @@ def verify_live(version: dict, hashes: dict[str, str]) -> None:
                 live_bytes, _ = fetch(f"{LIVE_URL}/{live_path}?release_check={check_token}")
                 live_hash = hashlib.sha256(live_bytes).hexdigest()
                 require(live_hash == hashes[relative], f"live {relative} hash mismatch")
-            for route in ("john", "andrew", "neil", "ian", "richard"):
+            for route in ("john", "andrew", "neil", "ian", "richard", "paul"):
                 body, final_url = fetch(f"{LIVE_URL}/{route}?release_check={check_token}")
                 require(b"PMG Driver" in body, f"/{route} did not serve driver app")
                 require(f"/{route}" in final_url, f"/{route} redirected away from its driver path")

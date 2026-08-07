@@ -28,6 +28,12 @@
 /ian/icon.png /icon.png 200
 /ian/icon-192.png /icon-192.png 200
 /ian/icon-512.png /icon-512.png 200
+/paul/app-version.json /app-version.json 200
+/paul/sw.js /sw.js 200
+/paul/manifest.json /manifest.json 200
+/paul/icon.png /icon.png 200
+/paul/icon-192.png /icon-192.png 200
+/paul/icon-512.png /icon-512.png 200
 /tony /plant 200
 /tony/ /plant 200
 /tony/* /plant 200

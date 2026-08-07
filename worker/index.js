@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260806-proof-backed-haultech-worker-v7';
+const WORKER_BUILD_ID = '20260807-paul-locket-driver-worker-v8';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -139,6 +139,7 @@ const DRIVER_APP_DRIVER_IDS_BY_NAME = {
   'neil anthony': '42374caa-5cf2-446e-823e-a40e9d2a2d28',
   'neil may': '42374caa-5cf2-446e-823e-a40e9d2a2d28',
   'ian slater': '0c472976-88ac-4610-bccb-e5b9ffde707c',
+  'paul locket': '2b5eab8a-0602-47b8-b242-28ef37eb6c2d',
 };
 
 const DRIVER_APP_VEHICLE_IDS_BY_REG = {

@@ -6,7 +6,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const redirects = fs.readFileSync(path.join(projectRoot, '_redirects'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(projectRoot, 'sw.js'), 'utf8');
 
-const driverRoutes = ['john', 'andrew', 'neil', 'ian', 'richard'];
+const driverRoutes = ['john', 'andrew', 'neil', 'ian', 'richard', 'paul'];
 
 for (const driver of driverRoutes) {
   assert(
@@ -32,11 +32,13 @@ assert(
   'named driver shortcuts must retain an offline root fallback'
 );
 
-for (const asset of ['sw.js', 'manifest.json', 'app-version.json', 'icon-192.png']) {
-  assert(
-    redirects.includes(`/john/${asset} /${asset} 200`),
-    `nested driver route must serve ${asset} from the app root`
-  );
+for (const driver of driverRoutes) {
+  for (const asset of ['sw.js', 'manifest.json', 'app-version.json', 'icon-192.png']) {
+    assert(
+      redirects.includes(`/${driver}/${asset} /${asset} 200`),
+      `/${driver} nested route must serve ${asset} from the app root`
+    );
+  }
 }
 
 console.log('driver direct-route regression checks passed');

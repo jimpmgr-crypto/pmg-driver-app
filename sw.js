@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20260806-signed-haultech-prestart-fleet-torque-source-v71';
+const CACHE_NAME = 'pmg-driver-live-v20260807-paul-locket-prestart-fleet-torque-source-v72';
 const APP_SHELL = [
   '/',
   '/index.html',

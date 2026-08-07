@@ -159,7 +159,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260806-proof-backed-haultech-worker-v7$/);
+  assert.match(health.workerBuildId, /^20260807-paul-locket-driver-worker-v8$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
