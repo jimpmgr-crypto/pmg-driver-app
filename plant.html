@@ -249,6 +249,21 @@
       line-height: 1.3;
     }
 
+    .plant-alert-ack {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 2px 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .plant-alert-ack.seen {
+      color: var(--green);
+    }
+
     .notification-card {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1219,7 +1234,24 @@
         state.sortMode = event.target.value;
         renderAssetList();
       });
-      els.serviceAlerts.addEventListener('click', event => {
+      els.serviceAlerts.addEventListener('click', async event => {
+        const acknowledgement = event.target.closest('[data-ack-plant-alert]');
+        if (acknowledgement) {
+          event.preventDefault();
+          event.stopPropagation();
+          try {
+            await api(`/plant/alerts/${encodeURIComponent(acknowledgement.dataset.ackPlantAlert)}/acknowledge`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ acknowledgedBy: 'Tony' })
+            });
+            await loadData();
+            toast('Marked as seen by Tony.');
+          } catch (error) {
+            toast(error.message || 'Could not mark this alert as seen.');
+          }
+          return;
+        }
         const button = event.target.closest('.service-alert-card');
         if (!button) return;
         event.preventDefault();
@@ -1563,6 +1595,9 @@
               <b>${escapeHtml(alert.label)} - ${escapeHtml(asset.displayName || asset.id)}</b>
               <span>${escapeHtml(alert.detail)}</span>
             </button>
+            ${asset.alertAcknowledgement?.current
+              ? `<div class="plant-alert-ack seen">Seen by ${escapeHtml(asset.alertAcknowledgement.acknowledgedBy || 'Tony')} ${escapeHtml(formatDateTime(asset.alertAcknowledgement.acknowledgedAt))}</div>`
+              : `<div class="plant-alert-ack"><button type="button" class="btn btn-primary" data-ack-plant-alert="${escapeHtml(asset.id)}">I’ve seen this</button></div>`}
             ${isInlineExpanded('alert', asset.id) ? inlineAssetDetail(asset, alert) : ''}
           </div>
         `).join('')}
@@ -2455,6 +2490,13 @@
       const date = new Date(`${value}T00:00:00`);
       if (Number.isNaN(date.getTime())) return value;
       return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(String(value).replace(' ', 'T'));
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
     }
 
     function formatMoney(value) {

@@ -14,6 +14,7 @@ Plant Information Hub:
 - Tony can log `Service schedule review` when a machine is time-overdue but the real hours show a full service is not due yet. This records an inspection/review, not a full service, but applies any next due date/hours Tony enters so the overdue alert moves correctly.
 - Tony can log `Pre / post hire check` from the service type dropdown. This records a quick hire/job check as an inspection and keeps comments/parts available. It does not reset the 500-hour/12-month service schedule unless Tony explicitly enters new next due date or next due hours values.
 - Tony sees simple in-app service alerts when a machine is overdue or due in 30 days, 15 days or 2 days. Once Tony logs a service and the next due date moves forward, the alert drops away automatically.
+- Tony explicitly marks a current service alert as seen. Jim's Fleet Live overview shows `Waiting for Tony` or the recorded `Seen by Tony` time; acknowledgements are tied to the current due target and alert band so stale acknowledgements do not carry into a changed or escalated alert.
 - Tony can enable Home Screen app push notifications from the mechanic app. The worker checks around 8am UK time and only sends a phone notification when a plant service alert is actually due/overdue.
 - The worker stores the imported snapshot separately from Tony's live service entries, so a weekly import can refresh Katie's rows without wiping mechanic records.
 - Run a dry check with `python3 tools/plant_import.py --dry-run`.

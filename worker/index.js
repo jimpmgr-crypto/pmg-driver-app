@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260807-paul-locket-driver-worker-v8';
+const WORKER_BUILD_ID = '20260807-alert-ack-worker-v9';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -9,6 +9,7 @@ const PLANT_ASSET_OVERRIDES_KEY = 'plant:asset-overrides:v1';
 const PLANT_FILTER_OVERRIDES_KEY = 'plant:filter-overrides:v1';
 const PLANT_PUSH_SUBSCRIPTIONS_KEY = 'plant:push-subscriptions:v1';
 const PLANT_PUSH_LAST_RUN_KEY = 'plant:push-last-run:v1';
+const PLANT_ALERT_ACKNOWLEDGEMENTS_KEY = 'plant:alert-acknowledgements:v1';
 const HAULTECH_REFRESH_HEALTH_KEY = 'haultech-refresh-health:v1';
 const HAULTECH_AUTH_CACHE_MS = 5 * 60 * 1000;
 const DEFAULT_PLANT_SERVICE_INTERVAL_HOURS = 500;
@@ -1213,6 +1214,52 @@ function plantPushAlertsFromState(state) {
     });
 }
 
+function plantAlertIdentity(asset) {
+  const meta = asset?.dueMeta || plantDueStatus(asset || {});
+  if (!meta) return null;
+  const assetId = cleanText(asset?.id, 140);
+  if (!assetId) return null;
+  let band = '';
+  let target = '';
+  if (meta.dueType === 'hours' && ['overdue', 'due-soon'].includes(meta.state)) {
+    band = meta.state === 'overdue' ? 'hours_overdue' : 'hours_due_soon';
+    target = cleanText(asset?.nextServiceDueHours || meta.nextServiceDueHours || '', 40);
+  } else if (meta.dueType === 'mileage' && ['overdue', 'due-soon'].includes(meta.state)) {
+    band = meta.state === 'overdue' ? 'mileage_overdue' : 'mileage_due_soon';
+    target = cleanText(asset?.nextServiceDueMileage || meta.nextServiceDueMileage || '', 40);
+  } else if (meta.dueType === 'date' && Number.isFinite(Number(meta.days)) && Number(meta.days) <= PLANT_DATE_DUE_SOON_DAYS) {
+    const days = Number(meta.days);
+    band = days < 0 ? 'date_overdue' : days === 0 ? 'date_due_today' : days <= 2 ? 'date_due_2' : days <= 15 ? 'date_due_15' : 'date_due_30';
+    target = cleanText(meta.dueDate || asset?.nextServiceDueDate || '', 40);
+  }
+  if (!band) return null;
+  return {
+    assetId,
+    band,
+    target,
+    fingerprint: `${assetId}|${meta.dueType}|${target}|${band}`,
+  };
+}
+
+function plantAssetWithAcknowledgement(asset, acknowledgements) {
+  const identity = plantAlertIdentity(asset);
+  if (!identity) return { ...asset, alertAcknowledgement: null };
+  const stored = safeObject(acknowledgements?.[identity.assetId]);
+  const current = Boolean(
+    stored.acknowledgedAt
+    && stored.acknowledgedBy === 'Tony'
+    && stored.fingerprint === identity.fingerprint
+  );
+  return {
+    ...asset,
+    alertAcknowledgement: {
+      current,
+      acknowledgedAt: current ? stored.acknowledgedAt : '',
+      acknowledgedBy: current ? stored.acknowledgedBy : '',
+    },
+  };
+}
+
 function normalisePushSubscription(body) {
   const endpoint = cleanText(body?.endpoint, 2000);
   if (!endpoint || !endpoint.startsWith('https://')) return null;
@@ -1573,7 +1620,39 @@ async function loadPlantData(env) {
   const manualEvents = await getKvJson(env, PLANT_MANUAL_EVENTS_KEY, []);
   const assetOverrides = await getKvJson(env, PLANT_ASSET_OVERRIDES_KEY, {});
   const filterOverrides = await getKvJson(env, PLANT_FILTER_OVERRIDES_KEY, {});
-  return mergePlantData(snapshot, manualEvents, assetOverrides, filterOverrides);
+  const acknowledgements = safeObject(await getKvJson(env, PLANT_ALERT_ACKNOWLEDGEMENTS_KEY, {}));
+  const state = mergePlantData(snapshot, manualEvents, assetOverrides, filterOverrides);
+  state.assets = safeArray(state.assets).map(asset => plantAssetWithAcknowledgement(asset, acknowledgements));
+  return state;
+}
+
+async function acknowledgePlantAlert(env, assetId) {
+  const state = await loadPlantData(env);
+  const asset = state.assets.find(item => item?.id === assetId);
+  if (!asset) return { ok: false, error: 'plant_asset_not_found', status: 404 };
+  const identity = plantAlertIdentity(asset);
+  if (!identity) return { ok: false, error: 'plant_alert_not_current', status: 409 };
+  const acknowledgements = safeObject(await getKvJson(env, PLANT_ALERT_ACKNOWLEDGEMENTS_KEY, {}));
+  const existing = safeObject(acknowledgements[assetId]);
+  const idempotent = Boolean(
+    existing.acknowledgedAt
+    && existing.acknowledgedBy === 'Tony'
+    && existing.fingerprint === identity.fingerprint
+  );
+  if (!idempotent) {
+    acknowledgements[assetId] = {
+      assetId,
+      fingerprint: identity.fingerprint,
+      band: identity.band,
+      target: identity.target,
+      acknowledgedBy: 'Tony',
+      acknowledgedAt: new Date().toISOString(),
+    };
+    await putKvJson(env, PLANT_ALERT_ACKNOWLEDGEMENTS_KEY, acknowledgements);
+  }
+  const updated = await loadPlantData(env);
+  const updatedAsset = updated.assets.find(item => item?.id === assetId);
+  return { ok: true, idempotent, asset: updatedAsset, status: 200 };
 }
 
 function torqueTaskFromEvent(event, asset, vehicleRef) {
@@ -2911,6 +2990,14 @@ export default {
         reviewItems: role === 'tony' ? [] : state.reviewItems,
       };
       return corsResponse(JSON.stringify(body));
+    }
+
+    // POST /plant/alerts/{assetId}/acknowledge — Tony explicitly confirms he saw the current alert version.
+    const plantAlertAcknowledge = path.match(/^\/plant\/alerts\/([^/]+)\/acknowledge$/);
+    if (plantAlertAcknowledge && request.method === 'POST') {
+      const assetId = cleanText(decodeURIComponent(plantAlertAcknowledge[1]), 140);
+      const result = await acknowledgePlantAlert(env, assetId);
+      return corsResponse(JSON.stringify(result.ok ? result : { error: result.error }), result.status);
     }
 
     // POST /plant/assets — Tony can add a plant/tool item that is not yet in Katie's feed.

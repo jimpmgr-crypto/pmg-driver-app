@@ -4,7 +4,7 @@
   "version": "69.0.0",
   "scripts": {
     "test:unit": "for f in tests/test_*.js; do node \"$f\" || exit 1; done",
-    "test:browser": "playwright test tests/driver_app_browser_audit.spec.js --reporter=line",
+    "test:browser": "playwright test tests/driver_app_browser_audit.spec.js tests/plant_alert_acknowledgement.spec.js --reporter=line",
     "test": "npm run test:unit && npm run test:browser"
   },
   "devDependencies": {
