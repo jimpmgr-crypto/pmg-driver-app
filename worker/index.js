@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260810-customer-payment-order-worker-v10';
+const WORKER_BUILD_ID = '20260810-driver-movement-idempotency-worker-v11';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -620,6 +620,14 @@ function driverAddSignatureFromJob(job) {
   ].join('|');
 }
 
+function driverMovementIdFromJob(job) {
+  const notes = [job?.accountNotes, job?.accountnotes, job?.trafficNotes, job?.trafficnotes]
+    .filter(Boolean)
+    .join(' | ');
+  const match = notes.match(/driver movement\s*:\s*([^|\r\n]+)/i);
+  return cleanText(match?.[1], 180);
+}
+
 function cleanDriverNote(value) {
   return cleanText(value, 1200)
     .replace(/^(driver\s+note\s*:\s*)+/i, '')
@@ -657,7 +665,8 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const deliveryAddress = normaliseStructuredAddress(body, 'delivery', to);
   const driverName = cleanText(body.driver || body.driverName || body.addedBy || body.createdBy, 120);
   const vehicle = cleanText(body.vehicle || body.vehicleRegistration, 60);
-  const sourceId = cleanText(body.id || body.ticketNo, 180);
+  const movementId = cleanText(body.movementId || body.sourceMovementId || body.id, 180);
+  const sourceId = movementId || cleanText(body.ticketNo, 180);
   const rawRef = cleanDriverAddedReference(body.reference || body.customerReference || body.ticketNo);
   const notes = cleanDriverNote(body.notes || body.driverNotes);
   const exactA1Customer = isA1CustomerName(customerName);
@@ -695,7 +704,8 @@ async function buildDriverAddedHaultechPayload(env, body) {
   if (useA1Fallback) {
     accountParts.push(`Typed customer/site: ${customerName}`);
   }
-  if (sourceId && sourceId !== ref && !isLocalPhoneRowId(sourceId)) accountParts.push(`Phone source: ${sourceId}`);
+  if (movementId) accountParts.push(`Driver movement: ${movementId}`);
+  else if (sourceId && sourceId !== ref && !isLocalPhoneRowId(sourceId)) accountParts.push(`Phone source: ${sourceId}`);
   if (notes) accountParts.push(`Driver note: ${notes}`);
   if (a1PaymentStatus) accountParts.push(`${exactA1Customer ? 'A1' : 'Customer'} payment: ${a1PaymentStatus}`);
   if (a1PaymentStatus) trafficParts.push(a1PaymentStatus);
@@ -749,7 +759,7 @@ async function buildDriverAddedHaultechPayload(env, body) {
     }],
   });
 
-  return { date, ref, sourceId, payload, customerName, useA1Fallback, a1PaymentStatus };
+  return { date, ref, sourceId, movementId, payload, customerName, useA1Fallback, a1PaymentStatus };
 }
 
 function cleanMultiline(value, maxLen = 5000) {
@@ -2798,8 +2808,16 @@ export default {
       }
 
       const existing = safeArray(existingLookup.jobs);
+      // The phone-generated movement id is the idempotency key. It survives an
+      // Android process restart, so retrying one saved row is safe while two
+      // genuinely identical loads still create two Haultech jobs.
+      const movementExisting = built.movementId
+        ? existing.find(job => driverMovementIdFromJob(job) === built.movementId)
+        : null;
       const requestedSignature = driverAddSignatureFromPayload(built.payload);
-      const exactExisting = existing.find(job => driverAddSignatureFromJob(job) === requestedSignature);
+      const exactExisting = movementExisting || (!built.movementId
+        ? existing.find(job => driverAddSignatureFromJob(job) === requestedSignature)
+        : null);
       if (exactExisting) {
         return corsResponse(JSON.stringify({
           ok: true,

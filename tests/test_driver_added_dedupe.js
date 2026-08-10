@@ -13,6 +13,8 @@ for (const fn of [
   'parseDriverAppSourceNote',
   'driverAddedFingerprint',
   'sameDriverAddedFingerprint',
+  'driverMovementId',
+  'sameDriverAddedMovement',
   'findMatchingLiveDriverJob',
   'clearMatchedDriverWritebackQueue',
 ]) {
@@ -24,8 +26,8 @@ const mergeEnd = indexHtml.indexOf('// ═════════════�
 assert(mergeStart > 0 && mergeEnd > mergeStart, 'mergeWithLocal function not found');
 const mergeWithLocal = indexHtml.slice(mergeStart, mergeEnd);
 assert(
-  mergeWithLocal.includes('cloudDriverMatches') && mergeWithLocal.includes('sameDriverAddedFingerprint'),
-  'mergeWithLocal must compare temporary phone rows against real Haultech rows semantically'
+  mergeWithLocal.includes('cloudDriverMatches') && mergeWithLocal.includes('sameDriverAddedMovement'),
+  'mergeWithLocal must use durable movement identity before legacy semantic matching'
 );
 assert(
   mergeWithLocal.includes('clearMatchedDriverWritebackQueue(localJobs, cloudJobs)'),
@@ -83,6 +85,18 @@ assert(
 assert(
   indexHtml.includes("'8fe4fd9e-a8bd-4e80-9257-68a39942e879': 'YX02DVT'"),
   'YX02DVT must stay mapped to its Haultech vehicle id before it is offered in the dropdown'
+);
+assert(
+  indexHtml.includes('job?.movementId || job?._movementId') &&
+  indexHtml.includes("job.haultechWriteState !== 'pending Haultech'") &&
+  indexHtml.includes("api('/ht/driver-add'") &&
+  indexHtml.includes("job.status === 'complete'") &&
+  indexHtml.includes("api(`/ht/complete/${job.haultechJobId}`"),
+  'Android restart recovery must keep the movement id and automatically retry pending Haultech rows'
+);
+assert(
+  indexHtml.includes('loadCustomers({ force: true })'),
+  'opening Add row must refresh the current Haultech customer list instead of keeping a stale Android session list'
 );
 
 console.log('driver-added row semantic dedupe regression checks passed');

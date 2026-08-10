@@ -30,8 +30,9 @@ async function installInlineCameraStub(page) {
   });
 }
 
-async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null, jobs = null } = {}) {
+async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null, jobs = null, driverAddFailures = 0 } = {}) {
   const effectiveJobs = Array.isArray(jobs) ? jobs : haultechJobs;
+  let remainingDriverAddFailures = driverAddFailures;
   await page.route(`${WORKER_URL}/**`, async route => {
     const url = route.request().url();
     if (captured) {
@@ -103,6 +104,14 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
       });
     }
     if (url.includes('/ht/driver-add')) {
+      if (remainingDriverAddFailures > 0) {
+        remainingDriverAddFailures -= 1;
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'temporary_android_network_loss' }),
+        });
+      }
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -449,6 +458,51 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests[0].body.a1PaymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.paymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.notes).toBe('Leave cones by the gate');
+  });
+
+  test('Android restart automatically retries the same durable movement without creating a new identity', async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+    await stubExternalApis(page, { captured, driverAddFailures: 1 });
+    await page.goto(`${APP_URL}/?driver=neil`);
+    await page.locator('#add-job-btn').click();
+    await page.locator('#f-vehicle').selectOption('EY15BOV');
+    await page.locator('#f-customer').fill('Test Customer');
+    await page.locator('#f-material').fill('6F2');
+    await page.locator('#f-from').fill('PMG Yard');
+    await page.locator('#f-to').fill('Goosnargh Lodge Park');
+    await page.locator('#f-qty').fill('20');
+    await page.locator('#f-ref').fill('Simon Ward');
+    await page.locator('#f-notes').fill('20t 6F2');
+    await page.locator('#add-job-submit').click();
+    await expect(page.locator('#job-confirm-modal')).toBeVisible();
+    expect(captured.driverAddRequests).toHaveLength(1);
+    const originalMovementId = captured.driverAddRequests[0].body.movementId;
+    expect(originalMovementId).toMatch(/^driver-/);
+    const beforeRestart = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find(name => name.startsWith('pmg_local_jobs_'));
+      const jobs = JSON.parse(localStorage.getItem(key) || '[]');
+      const saved = jobs.find(job => job.movementId);
+      saved.status = 'complete';
+      localStorage.setItem(key, JSON.stringify(jobs));
+      const queue = JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]');
+      const queued = queue.flatMap(entry => entry.jobs || []).find(job => job.movementId === saved.movementId);
+      queued.status = 'complete';
+      localStorage.setItem('pmg_retry_queue', JSON.stringify(queue));
+      return saved;
+    });
+    expect(beforeRestart.haultechWriteState).toBe('pending Haultech');
+
+    await page.reload();
+    await expect.poll(() => captured.driverAddRequests.length).toBe(2);
+    expect(captured.driverAddRequests[1].body.movementId).toBe(originalMovementId);
+    await expect.poll(() => (captured.completionRequests || []).length).toBe(1);
+    expect(captured.completionRequests[0].body.originalReference).toBe('Simon Ward');
+    const afterRestart = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find(name => name.startsWith('pmg_local_jobs_'));
+      return JSON.parse(localStorage.getItem(key) || '[]').find(job => job.movementId);
+    });
+    expect(afterRestart.haultechWriteState).toBe('written');
+    expect(afterRestart.haultechJobId).toBe('Phil Smith');
   });
 
   test('concrete row selects a full address and sends postcode pricing inputs', async ({ page }) => {

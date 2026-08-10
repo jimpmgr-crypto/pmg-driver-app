@@ -1651,7 +1651,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260810-haultech-job-order-prestart-fleet-torque-source-v74';
+const APP_BUILD_ID = '20260810-android-movement-persistence-prestart-fleet-torque-source-v75';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2196,6 +2196,9 @@ function jobToLocal(j) {
   const driver = getJobDriver(j) || addedBy;
   return {
     id: j.id || j.jobId,
+    movementId: j.movementId || j._movementId || '',
+    haultechJobId: j.haultechJobId || j._haultechJobId || '',
+    haultechWriteState: j.haultechWriteState || j._haultechWriteState || '',
     driver,
     addedBy,
     createdBy: addedBy,
@@ -2473,7 +2476,40 @@ async function flushRetryQueue() {
   const remaining = [];
   for (const entry of q) {
     try {
+      let liveWritePending = false;
+      for (const job of entry.jobs) {
+        if (!job?.movementId || job.haultechWriteState !== 'pending Haultech') continue;
+        try {
+          const liveResp = await api('/ht/driver-add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...job, date: entry.date }),
+          });
+          const liveResult = await liveResp.json().catch(() => ({}));
+          if (!liveResp.ok || !liveResult.ok) throw new Error(liveResult.message || liveResult.error || `HTTP ${liveResp.status}`);
+          job.haultechJobId = liveResult.jobId || liveResult.ref || job.haultechJobId || '';
+          if (job.status === 'complete' && job.haultechJobId) {
+            const completeResp = await api(`/ht/complete/${job.haultechJobId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                date: entry.date,
+                driverNotes: job.notes || '',
+                originalReference: job.reference || job.ticketNo || '',
+                quantity: Number(job.quantity) || 0,
+                weight: Number(job.quantity) || 0,
+              }),
+            });
+            if (!completeResp.ok) throw new Error(await responseError(completeResp, 'Complete retry failed'));
+          }
+          job.haultechWriteState = 'written';
+        } catch {
+          liveWritePending = true;
+        }
+      }
+      localStorage.setItem('pmg_local_jobs_' + entry.date, JSON.stringify(entry.jobs));
       await cloudPutJobs(entry.date, entry.jobs);
+      if (liveWritePending) remaining.push(entry);
     } catch {
       remaining.push(entry);
     }
@@ -2632,12 +2668,28 @@ function sameDriverAddedFingerprint(a, b) {
   return Math.abs(a.quantity - b.quantity) < 0.05;
 }
 
+function driverMovementId(job) {
+  const direct = job?.movementId || job?._movementId;
+  if (direct) return String(direct).trim();
+  const localId = [job?.id, job?.jobId].find(value => /^driver-/i.test(String(value || '')));
+  if (localId) return String(localId).trim();
+  const notes = [job?.accountNotes, job?.accountnotes, job?.trafficNotes, job?.trafficnotes, job?.notes, job?._notes]
+    .filter(Boolean)
+    .join(' | ');
+  return (notes.match(/driver movement\s*:\s*([^|\r\n]+)/i)?.[1] || '').trim();
+}
+
+function sameDriverAddedMovement(a, b) {
+  const aMovement = driverMovementId(a);
+  const bMovement = driverMovementId(b);
+  if (aMovement && bMovement) return aMovement === bMovement;
+  return sameDriverAddedFingerprint(driverAddedFingerprint(a), driverAddedFingerprint(b));
+}
+
 function findMatchingLiveDriverJob(localJob, jobs = allJobs) {
-  const localFp = driverAddedFingerprint(localJob);
-  if (!localFp) return null;
   return (jobs || []).find(candidate => {
-    if (!candidate || candidate === localJob || candidate._cached || isLocalDriverTempJob(candidate)) return false;
-    return sameDriverAddedFingerprint(localFp, driverAddedFingerprint(candidate));
+    if (!candidate || candidate === localJob || isLocalDriverTempJob(candidate)) return false;
+    return sameDriverAddedMovement(localJob, candidate);
   }) || null;
 }
 
@@ -2652,7 +2704,7 @@ function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
     const matched = cloudJobs.find(j =>
       !j?._cached &&
       !isLocalDriverTempJob(j) &&
-      sameDriverAddedFingerprint(driverAddedFingerprint(localJob), driverAddedFingerprint(j))
+      sameDriverAddedMovement(localJob, j)
     );
     if (!matched || getJobStatus(matched) !== 'complete') return item;
     changed = true;
@@ -2681,7 +2733,7 @@ function mergeWithLocal(date, cloudJobs) {
     const k = j.ticketNo || j.jobNumber || j.id || j.jobId;
     if (k) cloudKeys.add(String(k));
     const fp = driverAddedFingerprint(j);
-    if (fp) cloudDriverMatches.push({ job: j, fp });
+    if (fp || driverMovementId(j)) cloudDriverMatches.push({ job: j, fp });
   }
 
   cloudJobs = cloudJobs.map(j => {
@@ -2689,7 +2741,7 @@ function mergeWithLocal(date, cloudJobs) {
     const local = localByKey.get(k);
     const semanticLocal = local || localJobs.find(lj =>
       isLocalDriverTempJob(lj) &&
-      sameDriverAddedFingerprint(driverAddedFingerprint(lj), driverAddedFingerprint(j))
+      sameDriverAddedMovement(lj, j)
     );
     if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return j;
     const liveStatus = getJobStatus(j);
@@ -2704,8 +2756,7 @@ function mergeWithLocal(date, cloudJobs) {
     const k = String(lj.ticketNo || lj.id || '');
     if (!k || cloudKeys.has(k)) continue;
     if (isLocalDriverTempJob(lj)) {
-      const localFp = driverAddedFingerprint(lj);
-      if (cloudDriverMatches.some(match => sameDriverAddedFingerprint(localFp, match.fp))) {
+      if (cloudDriverMatches.some(match => sameDriverAddedMovement(lj, match.job))) {
         continue;
       }
     }
@@ -2718,6 +2769,9 @@ function mergeWithLocal(date, cloudJobs) {
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
       _haultechOrder: lj.haultechOrder,
       _unit: lj.unit,
+      _movementId: lj.movementId || '',
+      _haultechJobId: lj.haultechJobId || '',
+      _haultechWriteState: lj.haultechWriteState || '',
       _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
       _reference: lj.reference || lj.ticketNo || '',
       _notes: lj.notes || '',
@@ -3063,6 +3117,9 @@ async function loadJobsFallback(date) {
           _vehicle: lj.vehicle,
           _quantity: lj.quantity, _price: lj.price, _status: lj.status,
           _unit: lj.unit,
+          _movementId: lj.movementId || '',
+          _haultechJobId: lj.haultechJobId || '',
+          _haultechWriteState: lj.haultechWriteState || '',
           _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
           _haultechOrder: lj.haultechOrder,
           _reference: lj.reference || lj.ticketNo || '',
@@ -6224,7 +6281,9 @@ function isBlankCanvas(canvas) {
 function openAddJobModal() {
   $('add-job-modal').classList.remove('hidden');
   $('add-row-more-details').open = false;
-  loadCustomers();
+  // Always refresh when a driver starts a row. New Haultech accounts should
+  // appear without the driver closing the Android PWA or clearing its cache.
+  loadCustomers({ force: true });
   populateMaterialList();
   $('f-vehicle').innerHTML = vehicleOptionsHTML(getSelectedDriverVehicle());
   if (!fSigCtx) initAddJobSig();
@@ -6341,10 +6400,10 @@ $('f-ewc-code').addEventListener('input', () => {
   updateWasteFieldsVisibility();
 });
 
-async function loadCustomers() {
-  if (customers.length) return;
+async function loadCustomers(options = {}) {
+  if (customers.length && !options.force) return;
   try {
-    const resp = await api('/customers');
+    const resp = await api(`/customers?t=${Date.now()}`);
     if (resp.ok) customers = await resp.json();
   } catch {}
 }
@@ -6414,8 +6473,13 @@ $('add-job-form').addEventListener('submit', async (e) => {
     // creation remains server/office-owned because the driver app cannot verify
     // pricing, allocation and duplicate state at the point of entry.
     const localDate = date;
+    const movementId = typeof crypto?.randomUUID === 'function'
+      ? `driver-${crypto.randomUUID()}`
+      : `driver-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const localJob = {
-	      id: 'driver-' + Date.now(),
+	      id: movementId,
+	      movementId,
+	      haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
 	      driver: currentUser.name,
 	      driverName: currentUser.name,
 	      addedBy: currentUser.name,
@@ -6471,14 +6535,19 @@ $('add-job-form').addEventListener('submit', async (e) => {
         }
         haultechWriteState = 'written';
         confirmedJobId = liveResult.jobId || liveResult.ref || localJob.id;
+        localJob.haultechWriteState = 'written';
+        localJob.haultechJobId = confirmedJobId;
         haultechReason = liveResult.alreadyPresent
           ? 'Already present in Haultech; not duplicated'
           : DRIVER_ADDED_LIVE_REASON;
       } catch (writeErr) {
         haultechWriteState = 'saved locally';
+        localJob.haultechWriteState = 'pending Haultech';
         haultechReason = `${DRIVER_ADDED_BACKUP_REASON}: ${writeErr.message || 'Haultech write failed'}`;
       }
     }
+    localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
+    if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
     queueTrialEvent('day_sheet_row_added', localJob, {
 	      customer: localJob.customer,
 	      addedBy: localJob.addedBy,
@@ -6506,6 +6575,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
     });
     allJobs.push({
 	      jobId: confirmedJobId, _cached: true, _driverAdded: true,
+	      _movementId: movementId,
+	      _haultechJobId: localJob.haultechJobId || '',
+	      _haultechWriteState: localJob.haultechWriteState,
 	      _driver: localJob.driver, _customer: localJob.customer,
 	      _addedBy: localJob.addedBy,
       _material: localJob.material, _from: localJob.from, _to: localJob.to,

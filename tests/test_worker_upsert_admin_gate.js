@@ -163,7 +163,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260810-customer-payment-order-worker-v10$/);
+  assert.match(health.workerBuildId, /^20260810-driver-movement-idempotency-worker-v11$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -276,6 +276,49 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(referenceCollisionAdd.alreadyPresent, false, 'same reference with different movement signature must be created');
   assert.strictEqual(referenceCollisionAdd.referenceCollision, true, 'reference collision should remain visible in the response');
   assert.strictEqual(sandbox.__fetches.length, 2, 'reference collision must still upsert the distinct movement');
+  sandbox.__haultechJobs = [];
+
+  const identicalSimonBody = {
+    date: '2026-08-10',
+    customer: 'Customer One',
+    driver: 'Neil Antony',
+    vehicle: 'EY15BOV',
+    material: '6F2',
+    quantity: 20,
+    unit: 't',
+    from: 'PMG Yard',
+    to: 'Goosnargh Lodge Park',
+    reference: 'SIMON WARD',
+    notes: '20t 6F2',
+  };
+  sandbox.__haultechJobs = [{
+    jobId: 10037,
+    id: '11111111-2222-4333-8444-555555555557',
+    customerReference: 'SIMON WARD',
+    accountNotes: 'Driver movement: driver-simon-load-1 | Driver app source: Neil Antony / EY15BOV / 20t / PMG Yard to Goosnargh Lodge Park',
+    consignments: [{ goodsDescription: '6F2', quantity: 20 }],
+  }];
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({ ...identicalSimonBody, id: 'driver-simon-load-1' }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const sameMovementRetry = await resp.json();
+  assert.strictEqual(sameMovementRetry.alreadyPresent, true, 'retrying the same Android movement id must remain idempotent');
+  assert.strictEqual(sandbox.__fetches.length, 1, 'same movement retry must not upsert a second Haultech job');
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({ ...identicalSimonBody, id: 'driver-simon-load-2' }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const secondIdenticalMovement = await resp.json();
+  assert.strictEqual(secondIdenticalMovement.alreadyPresent, false, 'a second genuine identical load with a distinct movement id must be created');
+  assert.strictEqual(sandbox.__fetches.length, 2, 'distinct movement id must reach Haultech UpsertJob');
+  const secondSimonPayload = JSON.parse(sandbox.__fetches[1].options.body);
+  assert(secondSimonPayload.accountNotes.includes('Driver movement: driver-simon-load-2'));
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
@@ -730,7 +773,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   });
   assert.strictEqual(resp.status, 200);
   const localOnlyPayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert(!JSON.stringify(localOnlyPayload).toLowerCase().includes('local-1781192374242'), 'local phone ids must not leak into Haultech payloads');
+  assert(!JSON.stringify(localOnlyPayload).toLowerCase().includes('local-1781192374242'), 'a legacy ticket number alone must not be treated as a durable movement id');
   assert(localOnlyPayload.customerReference.includes('CUSTOMER ONE'), 'local-only references must fall back to a readable customer/site reference');
 
   const overrideEnv = env();
@@ -785,7 +828,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const fallbackPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(fallbackPayload.customerId, 'a1');
   assert.strictEqual(fallbackPayload.customerReference, 'UNKNOWN SITE NAME ck-1');
-  assert(fallbackPayload.accountNotes.includes('Phone source: driver-fallback-1'));
+  assert(fallbackPayload.accountNotes.includes('Driver movement: driver-fallback-1'));
   assert(fallbackPayload.accountNotes.includes('Typed customer/site: Unknown Site Name'));
   assert.strictEqual(fallbackPayload.trafficNotes, 'fallback test note');
   assert(!fallbackPayload.trafficNotes.includes('Typed customer/site:'), 'traffic notes should not carry customer/reference repair labels');
