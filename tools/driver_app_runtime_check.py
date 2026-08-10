@@ -17,7 +17,7 @@ from typing import Any
 
 APP = "https://pmg-driver-app.pages.dev"
 WORKER = "https://pmg-driver-sync.jimpmgr.workers.dev"
-DRIVERS = ("john", "andrew", "neil", "ian", "richard")
+DRIVERS = ("john", "andrew", "neil", "ian", "richard", "paul")
 STATE = Path("/Users/bill/.openclaw/workspace/OPENCORE/state/pmg-driver-app-runtime-health")
 PROJECT_INDEX = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/index.html")
 LOCAL_APP_VERSION = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/app-version.json")

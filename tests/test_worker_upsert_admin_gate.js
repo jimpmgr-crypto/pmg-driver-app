@@ -64,10 +64,14 @@ const sandbox = {
     if (String(url).includes('/api/Display/GetJobsByDatePaginated')) {
       return new Response(JSON.stringify({ items: sandbox.__haultechJobs || [] }), { status: 200 });
     }
+    if (String(url).includes('/api/Customer/GetCustomerPaginated')) {
+      return new Response(JSON.stringify(sandbox.__haultechCustomers || []), { status: 200 });
+    }
     return new Response(JSON.stringify({ jobId: 'JOB-ADMIN-1' }), { status: 200 });
   },
   __fetches: [],
   __haultechJobs: [],
+  __haultechCustomers: [],
   __calculatorReply: null,
   __serviceBindingCalls: 0,
 };
@@ -159,7 +163,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260807-alert-ack-worker-v9$/);
+  assert.match(health.workerBuildId, /^20260810-customer-payment-order-worker-v10$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -651,6 +655,60 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 403, 'payment endpoint must reject office-created jobs');
   assert.strictEqual((await resp.json()).error, 'payment_update_not_driver_added');
   assert(!sandbox.__fetches.some(call => call.url.endsWith('/api/Job/UpsertJob?formId=')), 'rejected job must not be upserted');
+  sandbox.__haultechJobs = [];
+
+  const yardPaymentJob = {
+    jobId: 9641,
+    id: '22222222-3333-4444-8555-666666666666',
+    customerReference: 'Paul Wright',
+    trafficNotes: 'Internal Yard ticket ref: YARD-20260723-080146-D5E9 | Existing note',
+    accountNotes: 'Office entry',
+    quotedPrice: 153.2,
+    totalPrice: 153.2,
+    status: 'Completed',
+    consignments: [{ consignmentId: 9641, jobId: '22222222-3333-4444-8555-666666666666' }],
+  };
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [yardPaymentJob];
+  resp = await workerRequest('/ht/yard-payment', {
+    method: 'PATCH',
+    headers: { 'X-PMG-Admin-Key': 'admin-key' },
+    body: JSON.stringify({
+      date: '2026-07-23',
+      ticketRef: 'YARD-20260723-080146-D5E9',
+      paymentStatus: 'paid',
+    }),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 200);
+  const yardPaymentResult = await resp.json();
+  assert.strictEqual(yardPaymentResult.matches, 1);
+  const yardPaymentUpsert = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  assert(yardPaymentUpsert, 'retrospective Yard payment should upsert the exact internal ticket match');
+  const yardPaymentPayload = JSON.parse(yardPaymentUpsert.options.body);
+  assert.strictEqual(yardPaymentPayload.trafficNotes, 'Paid | Internal Yard ticket ref: YARD-20260723-080146-D5E9 | Existing note');
+  assert.strictEqual(yardPaymentPayload.accountNotes, 'Office entry | Yard payment: Paid');
+  assert.strictEqual(yardPaymentPayload.quotedPrice, 153.2, 'Yard payment must preserve quoted price');
+  assert.strictEqual(yardPaymentPayload.totalPrice, 153.2, 'Yard payment must preserve total price');
+  assert.strictEqual(yardPaymentPayload.status, 'Completed', 'Yard payment must preserve job status');
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/yard-payment', {
+    method: 'PATCH',
+    headers: { 'X-PMG-Admin-Key': 'admin-key' },
+    body: JSON.stringify({
+      date: '2026-07-23',
+      ticketRef: 'YARD-20260723-NOT-THERE',
+      paymentStatus: 'paid',
+    }),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 404, 'missing exact Yard ticket reference must fail closed');
+  assert(!sandbox.__fetches.some(call => call.url.endsWith('/api/Job/UpsertJob?formId=')), 'missing match must not upsert any Haultech job');
+
+  resp = await workerRequest('/ht/yard-payment', {
+    method: 'PATCH',
+    body: JSON.stringify({date: '2026-07-23', ticketRef: 'YARD-20260723-080146-D5E9', paymentStatus: 'paid'}),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 403, 'Yard payment route must require the admin key');
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
@@ -1234,6 +1292,18 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(mileageRecord.asset.lastServiceMileage, 74200);
   assert.strictEqual(mileageRecord.asset.nextServiceDueMileage, 84200);
   assert.strictEqual(mileageRecord.history[0].createdBy, 'Gary');
+
+  sandbox.__haultechCustomers = [
+    { id: '529827d7-2caf-414e-8ced-101832aafdd7', companyName: 'Garstang Ground Services Ltd', customerCode: 'GGSLTD', active: true },
+    { id: 'f3504eff-30f2-48f8-a10b-87ffc9923cea', companyName: 'P. Baker Groundworks', customerCode: 'PB Groundworks', active: true },
+    { id: 'a1d6a399-4dda-4205-9383-f459669c381c', companyName: 'Resource Recycling Solutions', customerCode: 'Duncan Clitheroe', active: true },
+  ];
+  const aliasedCustomers = await sandbox.fetchLiveHaultechCustomers(env());
+  const aliasesByName = Object.fromEntries(aliasedCustomers.map(customer => [customer.name, customer.aliases]));
+  assert(aliasesByName['Garstang Ground Services Ltd'].includes('Garstang Grab'));
+  assert(aliasesByName['P. Baker Groundworks'].includes('PB Groundworks'));
+  assert(aliasesByName['Resource Recycling Solutions'].includes('RRS'));
+  assert(aliasesByName['Resource Recycling Solutions'].includes('Duncan'));
 
   console.log('worker admin gate regression checks passed');
 })().catch(err => {

@@ -1264,41 +1264,41 @@ const MATERIAL_PRICING = {
   "Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Spoil Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Clay Tip": { type: "flat", rate: 15, unit: "tonnes" },
-  "Topsoil Tip": { type: 'banded', bands: [{"min":15,"rate":15},{"min":10,"rate":19},{"min":0,"rate":20}], unit: "tonnes" },
+  "Topsoil Tip": { type: 'banded', strictAboveThreshold: 10, bands: [{"min":15,"rate":15},{"min":10,"rate":19},{"min":0,"rate":20}], unit: "tonnes" },
   "Clean Concrete/Brick": { type: "flat", rate: 0, unit: "tonnes" },
   "Rubble Tip": { type: "flat", rate: 0, unit: "tonnes" },
   "Rubble Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Tree Stump Disposal": { type: "job", rate: 40, unit: "each" },
-  "6F2 Crushed Concrete": { type: 'tiered', under10: 11.5, over10: 10, unit: "tonnes" },
-  "40mm Recycled MOT": { type: 'tiered', under10: 20, over10: 18, unit: "tonnes" },
-  "Large Clean Crush": { type: 'tiered', under10: 19.5, over10: 17.5, unit: "tonnes" },
-  "Road Plainings": { type: 'tiered', under10: 18, over10: 16, unit: "tonnes" },
+  "6F2 Crushed Concrete": { type: 'tiered', threshold: 10, under10: 11.5, over10: 10, unit: "tonnes" },
+  "40mm Recycled MOT": { type: 'tiered', threshold: 10, under10: 20, over10: 18, unit: "tonnes" },
+  "Large Clean Crush": { type: 'tiered', threshold: 10, under10: 19.5, over10: 17.5, unit: "tonnes" },
+  "Road Plainings": { type: 'tiered', threshold: 10, under10: 18, over10: 16, unit: "tonnes" },
   "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
-  "Recycled 20mm Clean Washed": { type: 'tiered', under10: 26.5, over10: 23.5, unit: "tonnes" },
-  "Recycled 10mm Clean Washed": { type: 'tiered', under10: 28.5, over10: 26.5, unit: "tonnes" },
-  "40mm Quarried MOT": { type: 'tiered', under10: 29.5, over10: 27.5, unit: "tonnes" },
-  "20mm Quarried MOT": { type: 'tiered', under10: 31.5, over10: 29.5, unit: "tonnes" },
-  "40mm Scalpings Blue": { type: 'tiered', under10: 26, over10: 26, unit: "tonnes" },
+  "Recycled 20mm Clean Washed": { type: 'tiered', threshold: 10, under10: 26.5, over10: 23.5, unit: "tonnes" },
+  "Recycled 10mm Clean Washed": { type: 'tiered', threshold: 10, under10: 28.5, over10: 26.5, unit: "tonnes" },
+  "40mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 29.5, over10: 27.5, unit: "tonnes" },
+  "20mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 31.5, over10: 29.5, unit: "tonnes" },
+  "40mm Scalpings Blue": { type: 'tiered', threshold: 10, under10: 26, over10: 26, unit: "tonnes" },
   "Type 3 MOT": { type: "flat", rate: 33, unit: "tonnes" },
-  "Quarried 20mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
-  "Quarried 6mm Clean Stone": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
-  "Grade 1 Topsoil": { type: 'banded', bands: [{"min":15,"rate":15},{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
-  "Blended Topsoil/Compost": { type: 'tiered', under10: 32, over10: 30, unit: "tonnes" },
+  "Quarried 20mm Clean Stone": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Quarried 6mm Clean Stone": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Grade 1 Topsoil": { type: 'banded', strictAboveThreshold: 10, bands: [{"min":15,"rate":15},{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
+  "Blended Topsoil/Compost": { type: 'tiered', threshold: 10, under10: 32, over10: 30, unit: "tonnes" },
   "Fill": { type: "flat", rate: 5, unit: "tonnes" },
-  "Recycled Grit Sand": { type: 'tiered', under10: 31, over10: 29, unit: "tonnes" },
-  "Quarried Grit Sand": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Recycled Grit Sand": { type: 'tiered', threshold: 10, under10: 31, over10: 29, unit: "tonnes" },
+  "Quarried Grit Sand": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
   "Building Sand loose": { type: "flat", rate: 37, unit: "tonnes" },
   "Building Sand tonne bag": { type: "bag", rate: 54, unit: "bags" },
-  "Ballast": { type: 'tiered', under10: 39.5, over10: 39.5, unit: "tonnes" },
-  "Fill Sand": { type: 'tiered', under10: 15, over10: 14.5, unit: "tonnes" },
-  "Grano Dust": { type: 'tiered', under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Ballast": { type: 'tiered', threshold: 10, under10: 39.5, over10: 39.5, unit: "tonnes" },
+  "Fill Sand": { type: 'tiered', threshold: 10, under10: 15, over10: 14.5, unit: "tonnes" },
+  "Grano Dust": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
   "Blended Sand": { type: "flat", rate: 37.5, unit: "tonnes" },
-  "Black Ice": { type: 'tiered', under10: 132, over10: 127, unit: "tonnes" },
-  "Purple Slate": { type: 'tiered', under10: 80, over10: 77, unit: "tonnes" },
-  "20mm Blue Slate": { type: 'tiered', under10: 71, over10: 69, unit: "tonnes" },
-  "Golden Gravel": { type: 'tiered', under10: 76, over10: 76, unit: "tonnes" },
-  "40mm Blue Slate": { type: 'tiered', under10: 77, over10: 68, unit: "tonnes" },
-  "Cotswold Buff": { type: 'tiered', under10: 71, over10: 69, unit: "tonnes" },
+  "Black Ice": { type: 'tiered', threshold: 10, under10: 132, over10: 127, unit: "tonnes" },
+  "Purple Slate": { type: 'tiered', threshold: 10, under10: 80, over10: 77, unit: "tonnes" },
+  "20mm Blue Slate": { type: 'tiered', threshold: 10, under10: 71, over10: 69, unit: "tonnes" },
+  "Golden Gravel": { type: 'tiered', threshold: 10, under10: 76, over10: 76, unit: "tonnes" },
+  "40mm Blue Slate": { type: 'tiered', threshold: 10, under10: 77, over10: 68, unit: "tonnes" },
+  "Cotswold Buff": { type: 'tiered', threshold: 10, under10: 71, over10: 69, unit: "tonnes" },
   "Cobbles": { type: "flat", rate: 75, unit: "tonnes" },
   "Post Mix/Post Crete": { type: "bag", rate: 5.75, unit: "bags" },
   "Plastic Cement Bags": { type: "bag", rate: 7.05, unit: "bags" },
@@ -1651,7 +1651,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260807-alert-ack-prestart-fleet-torque-source-v73';
+const APP_BUILD_ID = '20260810-haultech-job-order-prestart-fleet-torque-source-v74';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1797,6 +1797,7 @@ const CUSTOMER_MAP = {
   "f490a636-2b42-4767-9907-6af71fc64378": "ASHPHALT PAVING SERVICES LTD",
   "0d8b9791-aebb-4622-a537-c785586d6c69": "AVPM LTD",
   "066bd8e9-e35a-46e1-a1e5-b46eda26fcbf": "B & J Parkinson",
+  "347cf868-8144-456e-a9e7-39ba529bb61e": "Ben Greenwood",
   "c640c695-31c2-43d0-bd6b-2f031387dc73": "Bespoke Landscapes",
   "0d8bab64-d0b7-4e0d-9a74-3b22d7d4e898": "BGS Projects",
   "806203c0-9c49-4c65-a370-ace342f7d670": "Boothfield House Caravan Park",
@@ -1837,6 +1838,7 @@ const CUSTOMER_MAP = {
   "6504c7d1-2b26-4834-87f5-94f123de3cb7": "Heathland Beach",
   "40d9a07b-3459-4ee1-a219-39378c58909e": "Highfield fisheries",
   "6332fd43-eb7d-454e-9ca2-53658eafd94c": "Highgate Farm",
+  "481b3c09-51d8-4b5d-89ec-dd16bf8f8ec4": "Hosk Resin Surfacing",
   "f1800e62-54c0-4ebc-a161-24833a483848": "Hoyles Contractors",
   "b40433c9-4060-4435-a7eb-4b72cf37edb4": "Huck Construction Ltd",
   "5d29a8a2-f4f8-4545-a429-05a23fd20c31": "Huck Properties Ltd",
@@ -1862,6 +1864,7 @@ const CUSTOMER_MAP = {
   "f266fdac-3c22-4579-8cb5-6f48b8a7bfd2": "Lancashire Building and Brickwork",
   "37faa1d5-d282-436e-84be-56ad72643885": "Lawson",
   "884096de-3fad-4516-9ae9-311e342b775e": "LG Property Development and Services Limited",
+  "fd9c0c1b-85d8-41df-9802-91bc1e50f1a5": "Liam Wellings Contracting",
   "3cd263eb-92c5-4b07-b820-e5d020987828": "Luscombe Plant Hire",
   "df05b8e4-c377-492d-b349-8c9e65b69c72": "Lytham Edge Lodge Resorts",
   "9b5ffa30-25c8-4ad4-98a0-7db918d73e14": "Mark Jackson Joinery Limited",
@@ -1882,6 +1885,7 @@ const CUSTOMER_MAP = {
   "f3504eff-30f2-48f8-a10b-87ffc9923cea": "P. Baker Groundworks",
   "c939427a-892a-41ab-8717-812cb347f824": "Park Farm",
   "548a0f39-7d75-4c47-8cac-1c28e9b1b1d8": "Paul Kendall",
+  "521d8060-1c10-4632-9275-ea14a42de67b": "Paul Torkington Paving services Ltd",
   "749487fe-a864-451b-8f47-2ea660c4ca9d": "Pete Nicholson",
   "3dc00288-8c4e-4abb-8f8e-784f266a0362": "Pipescan Ltd",
   "e5a6600a-36ee-4f82-a737-bdcdc319d0a1": "Plan It Developments",
@@ -1907,6 +1911,7 @@ const CUSTOMER_MAP = {
   "dd059b9a-426e-456e-8460-523fd2254a23": "SJH Plant Ltd",
   "c40c8be1-76c4-4547-b09d-5c3554f71f8b": "SJM Builders",
   "7857e9ac-01d0-4174-ad60-e8d1428efe89": "SR MOORE",
+  "d04875d3-883b-48cd-97c7-02e210da0cd4": "Stainforth Construction LLP",
   "8b28ba5d-ad9e-4055-b9c3-cdc17ceb4b47": "Stephen Rogerson Fencing",
   "ea18b5b3-1085-4dca-b1d7-c656e6a76cb2": "STEVE WRIGHT",
   "c25d81bc-001f-4f09-91cc-dace9b54c609": "STONE UK LTD",
@@ -2210,6 +2215,7 @@ function jobToLocal(j) {
     ticketNo: j.ticketNo || j.jobNumber || j.id || j.jobId || '',
     routeOrder: getJobRouteOrder(j),
     loadNumber: getJobLoadNumber(j),
+    haultechOrder: getJobHaultechOrder(j),
     wtn,
     wasteTransferNote: wtn,
     ewcCode: wtn?.ewcCode || '',
@@ -2710,6 +2716,7 @@ function mergeWithLocal(date, cloudJobs) {
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
+      _haultechOrder: lj.haultechOrder,
       _unit: lj.unit,
       _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
       _reference: lj.reference || lj.ticketNo || '',
@@ -3004,7 +3011,14 @@ async function loadJobs(options = {}) {
     const data = await resp.json();
     const now = new Date().toISOString();
     let jobs = Array.isArray(data) ? data : (data.items || data.data || []);
-    jobs = jobs.map(j => ({ ...j, savedAt: j.savedAt || now }));
+    // Haultech returns diary jobs in the order arranged inside each load.
+    // Keep that source sequence: hidden timestamps are creation/update times,
+    // not the driver's planned order of work.
+    jobs = jobs.map((j, haultechOrder) => ({
+      ...j,
+      _haultechOrder: haultechOrder,
+      savedAt: j.savedAt || now,
+    }));
     jobs = mergeWithLocal(date, jobs);
     allJobs = jobs;
     lastJobsUpdatedAt = new Date();
@@ -3021,7 +3035,7 @@ async function loadJobsFallback(date) {
   try {
     const resp = await api(`/haultech-jobs/${date}`);
     const cached = resp.ok ? await resp.json() : [];
-    let jobs = cached.map(j => ({
+    let jobs = cached.map((j, haultechOrder) => ({
       jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
       _addedBy: j.addedBy || j.createdBy || j.driver || '',
       _material: j.material, _from: j.from, _to: j.to,
@@ -3029,6 +3043,7 @@ async function loadJobsFallback(date) {
       _quantity: j.quantity, _price: j.price, _status: j.status,
       _paymentStatus: j.paymentStatus || j.a1PaymentStatus || '',
       _a1PaymentStatus: j.a1PaymentStatus || j.paymentStatus || '',
+      _haultechOrder: Number.isFinite(Number(j.haultechOrder)) ? Number(j.haultechOrder) : haultechOrder,
       savedAt: j.savedAt,
     }));
     try {
@@ -3049,6 +3064,7 @@ async function loadJobsFallback(date) {
           _quantity: lj.quantity, _price: lj.price, _status: lj.status,
           _unit: lj.unit,
           _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
+          _haultechOrder: lj.haultechOrder,
           _reference: lj.reference || lj.ticketNo || '',
           _notes: lj.notes || '',
           _paymentStatus: lj.paymentStatus || lj.a1PaymentStatus || '',
@@ -3077,6 +3093,7 @@ async function loadJobsFallback(date) {
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _paymentStatus: lj.paymentStatus || lj.a1PaymentStatus || '',
       _a1PaymentStatus: lj.a1PaymentStatus || lj.paymentStatus || '',
+      _haultechOrder: lj.haultechOrder,
       savedAt: lj.savedAt,
     }));
     renderJobs();
@@ -3227,11 +3244,25 @@ function getJobStableNumber(job) {
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
+function getJobHaultechOrder(job) {
+  const raw = job?._haultechOrder ?? job?.haultechOrder;
+  if (raw === null || raw === undefined || raw === '') return Number.POSITIVE_INFINITY;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : Number.POSITIVE_INFINITY;
+}
+
 function sortJobsForDriver(jobs) {
   return [...jobs].sort((a, b) => {
     const aAdded = !!(a._driverAdded || (a.id && String(a.id).startsWith('driver-')));
     const bAdded = !!(b._driverAdded || (b.id && String(b.id).startsWith('driver-')));
     if (aAdded !== bAdded) return aAdded ? 1 : -1;
+
+    // The live Haultech response order mirrors the manual row order within
+    // Richard's load, so it is the authoritative driver sequence. Phone-added
+    // rows have no source order and continue through the stable fallback below.
+    const aHaultechOrder = getJobHaultechOrder(a);
+    const bHaultechOrder = getJobHaultechOrder(b);
+    if (aHaultechOrder !== bHaultechOrder) return aHaultechOrder - bHaultechOrder;
 
     const aLoad = numberOrInfinity(getJobLoadNumber(a));
     const bLoad = numberOrInfinity(getJobLoadNumber(b));
@@ -6068,15 +6099,19 @@ function unitForMaterial(material) {
   return pricing.unit || '';
 }
 
+function tonnageBandMatches(qty, band, pricing) {
+  return band.min === pricing.strictAboveThreshold ? qty > band.min : qty >= band.min;
+}
+
 function rateForMaterial(material, qty) {
   const pricing = MATERIAL_PRICING[material];
   if (!pricing) return null;
   if (pricing.type === 'banded' && Array.isArray(pricing.bands)) {
     const q = parseFloat(qty) || 0;
-    const band = pricing.bands.find(b => q >= b.min) || pricing.bands[pricing.bands.length - 1];
+    const band = pricing.bands.find(b => tonnageBandMatches(q, b, pricing)) || pricing.bands[pricing.bands.length - 1];
     return band ? band.rate : null;
   }
-  if (pricing.type === 'tiered') return (parseFloat(qty) || 0) >= 10 ? pricing.over10 : pricing.under10;
+  if (pricing.type === 'tiered') return (parseFloat(qty) || 0) > pricing.threshold ? pricing.over10 : pricing.under10;
   return pricing.rate;
 }
 

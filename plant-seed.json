@@ -1,6 +1,6 @@
 {
   "schema": "pmg-plant-snapshot-v1",
-  "generatedAt": "2026-08-06T00:45:01+00:00",
+  "generatedAt": "2026-08-10T00:45:01+00:00",
   "sharePointEvidenceRoot": "SHARED/Plant and Tool Service Records",
   "sources": {
     "plantScheduleWorkbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",

@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260807-alert-ack-worker-v9';
+const WORKER_BUILD_ID = '20260810-customer-payment-order-worker-v10';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -34,6 +34,12 @@ const IAN_CARTER_CUSTOMER_ID = '39ba827d-b6da-4903-94c8-fdec4b76cced';
 const IAN_CARTER_ALIASES = ["Carter's Landscapes", 'Carters Landscapes', 'Carter Landscapes'];
 const W_ROBINSON_CUSTOMER_ID = '0424b2a9-2b2c-4ad3-86b5-c2fbcd84d915';
 const W_ROBINSON_ALIASES = ['W Robinson', 'Robbies', 'Robbings'];
+const GARSTANG_GROUND_CUSTOMER_ID = '529827d7-2caf-414e-8ced-101832aafdd7';
+const GARSTANG_GROUND_ALIASES = ['GGSLTD', 'Garstang Grab', 'Garstang Ground Services'];
+const P_BAKER_CUSTOMER_ID = 'f3504eff-30f2-48f8-a10b-87ffc9923cea';
+const P_BAKER_ALIASES = ['PB Groundworks', 'P B Groundworks'];
+const RESOURCE_RECYCLING_CUSTOMER_ID = 'a1d6a399-4dda-4205-9383-f459669c381c';
+const RESOURCE_RECYCLING_ALIASES = ['RRS', 'Duncan', 'Duncan Clitheroe', 'Resource Recycling'];
 const YARD_CUSTOMERS_PIN = '2312';
 const JOB_TYPE_STD = '4cbd566c-7fd6-41e2-b11a-29a5116457e2';
 const SERVICE_LEVEL_STD = '6c19efc0-0664-41df-a2f3-ad2375659a66';
@@ -1848,6 +1854,12 @@ async function fetchLiveHaultechCustomers(env) {
       aliases = IAN_CARTER_ALIASES.slice();
     } else if (id === W_ROBINSON_CUSTOMER_ID || name.toLowerCase() === 'w.robinson') {
       aliases = W_ROBINSON_ALIASES.slice();
+    } else if (id === GARSTANG_GROUND_CUSTOMER_ID || name.toLowerCase() === 'garstang ground services ltd') {
+      aliases = GARSTANG_GROUND_ALIASES.slice();
+    } else if (id === P_BAKER_CUSTOMER_ID || name.toLowerCase() === 'p. baker groundworks') {
+      aliases = P_BAKER_ALIASES.slice();
+    } else if (id === RESOURCE_RECYCLING_CUSTOMER_ID || name.toLowerCase() === 'resource recycling solutions') {
+      aliases = RESOURCE_RECYCLING_ALIASES.slice();
     }
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
@@ -2035,6 +2047,73 @@ function applyDriverPaymentStatusToHaultechJob(job, paymentStatus) {
     changed,
     paymentStatus: status,
   };
+}
+
+function yardTicketRefMatchesHaultechJob(job, ticketRef) {
+  const target = cleanText(ticketRef, 160).toUpperCase();
+  if (!target) return false;
+  const notes = [job?.trafficNotes, job?.trafficnotes, job?.accountNotes, job?.accountnotes]
+    .map(value => cleanText(value, 4000).toUpperCase())
+    .filter(Boolean);
+  return notes.some(value => value
+    .split('|')
+    .map(part => part.trim())
+    .some(part => part === `INTERNAL YARD TICKET REF: ${target}`));
+}
+
+function mergeYardPaymentAccountNotes(existing, paymentStatus) {
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  const parts = cleanText(existing, 4000)
+    .split('|')
+    .map(part => cleanText(part, 1200))
+    .filter(Boolean)
+    .filter(part => !/^Yard payment\s*:/i.test(part));
+  return status ? [...parts, `Yard payment: ${status}`].join(' | ') : parts.join(' | ');
+}
+
+function applyYardPaymentStatusToHaultechJob(job, paymentStatus) {
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  if (!status) return { job, changed: false, error: 'bad_payment_status' };
+  const trafficNotes = mergePaymentTrafficNotes(job?.trafficNotes || job?.trafficnotes || '', status);
+  const accountNotes = mergeYardPaymentAccountNotes(job?.accountNotes || job?.accountnotes || '', status);
+  const changed = trafficNotes !== cleanText(job?.trafficNotes || job?.trafficnotes || '', 4000)
+    || accountNotes !== cleanText(job?.accountNotes || job?.accountnotes || '', 4000);
+  return {
+    job: { ...job, trafficNotes, accountNotes },
+    changed,
+    paymentStatus: status,
+  };
+}
+
+async function updateYardTicketPaymentInHaultech(env, { date, ticketRef, paymentStatus }) {
+  const jobDate = maybeIsoDate(date);
+  const ref = cleanText(ticketRef, 160);
+  const status = normaliseA1PaymentStatus({ paymentStatus });
+  if (!jobDate || !ref || !status) return { ok: false, error: 'bad_yard_payment_request' };
+  const lookup = await fetchHaultechJobsByDate(env, jobDate);
+  if (!lookup.ok) return { ok: false, error: lookup.error || 'haultech_lookup_failed' };
+  const matches = safeArray(lookup.jobs).filter(job => yardTicketRefMatchesHaultechJob(job, ref));
+  if (!matches.length) return { ok: false, error: 'yard_ticket_haultech_match_not_found' };
+  const results = [];
+  for (const job of matches) {
+    const updated = applyYardPaymentStatusToHaultechJob(job, status);
+    if (updated.error) return { ok: false, error: updated.error };
+    const jobId = cleanText(job?.id || job?._id || job?.jobId, 120);
+    if (!updated.changed) {
+      results.push({ jobId, unchanged: true });
+      continue;
+    }
+    const response = await htFetch(env, '/api/Job/UpsertJob?formId=', {
+      method: 'POST',
+      body: JSON.stringify(updated.job),
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { ok: false, error: `yard_payment_update_failed:${jobId}:${responseText || response.status}`, partialResults: results };
+    }
+    results.push({ jobId, unchanged: false });
+  }
+  return { ok: true, paymentStatus: status, matches: matches.length, results };
 }
 
 function storedDriverJobIds(job) {
@@ -2609,6 +2688,20 @@ export default {
         }), 502);
       }
       return corsResponse(JSON.stringify({ ok: true, notes: noteResult.notes || '', unchanged: !!noteResult.unchanged }));
+    }
+
+    // PATCH /ht/yard-payment — set Paid / Not paid on exact Yard-ticket Haultech rows.
+    if (path === '/ht/yard-payment' && request.method === 'PATCH') {
+      if (!hasAdminKey(request, env)) {
+        return corsResponse(JSON.stringify({ error: 'admin_key_required' }), 403);
+      }
+      const body = safeJsonParse(await request.text(), {}) || {};
+      const result = await updateYardTicketPaymentInHaultech(env, body);
+      if (!result.ok) {
+        const status = result.error === 'yard_ticket_haultech_match_not_found' ? 404 : 502;
+        return corsResponse(JSON.stringify(result), status);
+      }
+      return corsResponse(JSON.stringify(result));
     }
 
     // PATCH /ht/payment/{jobId} — set Paid / Not paid on a driver-added job.
