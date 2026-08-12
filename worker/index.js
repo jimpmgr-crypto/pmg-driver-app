@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260810-driver-movement-idempotency-worker-v11';
+const WORKER_BUILD_ID = '20260812-address-price-resolution-worker-v14';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -259,12 +259,70 @@ async function geoapifyRequest(env, input) {
   return { ok: true, payload };
 }
 
+function normaliseAddressMatchText(value) {
+  return cleanText(value, 500).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+async function resolveDeliveryPostcodeFromAddress(env, delivery) {
+  const addressLine = normaliseAddressMatchText(delivery?.line1);
+  const locality = normaliseAddressMatchText(delivery?.line3);
+  const county = normaliseAddressMatchText(delivery?.line4);
+  if (!env || !addressLine || (!locality && !county)) {
+    return { ok: false, reason: 'address_not_specific_enough' };
+  }
+  const input = [delivery.line1, delivery.line2, delivery.line3, delivery.line4, delivery.country]
+    .map(value => cleanText(value, 240))
+    .filter(Boolean)
+    .join(', ');
+  const result = await geoapifyRequest(env, input);
+  if (!result.ok) return { ok: false, reason: result.error || 'address_lookup_failed' };
+
+  const exactMatches = safeArray(result.payload?.results).map((place, index) => {
+    const address = structuredAddressFromGeoapifyPlace(place);
+    const candidateLines = [place?.name, place?.address_line1, place?.street, address.line1, address.line2]
+      .map(normaliseAddressMatchText)
+      .filter(Boolean);
+    const context = normaliseAddressMatchText([
+      place?.address_line2,
+      place?.suburb,
+      place?.village,
+      place?.town,
+      place?.city,
+      place?.county,
+      place?.state,
+      place?.formatted,
+      address.formattedAddress,
+    ].filter(Boolean).join(' '));
+    const exactLine = candidateLines.includes(addressLine);
+    const localityMatch = locality && context.includes(locality);
+    const countyMatch = county && context.includes(county);
+    return { address, index, exactLine, localityMatch: Boolean(localityMatch), countyMatch: Boolean(countyMatch) };
+  }).filter(item => item.address.postcode && item.exactLine && (locality ? item.localityMatch : item.countyMatch));
+
+  if (!exactMatches.length) return { ok: false, reason: 'no_exact_address_match' };
+  exactMatches.sort((a, b) => Number(b.localityMatch) - Number(a.localityMatch) || a.index - b.index);
+  const selected = exactMatches[0].address;
+  return {
+    ok: true,
+    postcode: selected.postcode,
+    formattedAddress: selected.formattedAddress,
+    placeId: selected.placeId,
+    source: 'geoapify_exact_address',
+  };
+}
+
 async function concreteDeliveryPrice(body, quantity, concreteType, basePrice, { requirePostcode = false, env = null } = {}) {
-  const delivery = normaliseStructuredAddress(body, 'delivery', body.to);
+  let delivery = normaliseStructuredAddress(body, 'delivery', body.to);
+  let addressResolution = null;
   if (!delivery.postcode) {
-    return requirePostcode
-      ? { quotedPrice: 0, useQuotedPrice: false, note: 'Concrete route price needs office review: valid delivery postcode missing' }
-      : basePrice;
+    addressResolution = await resolveDeliveryPostcodeFromAddress(env, delivery);
+    if (addressResolution.ok) {
+      delivery = { ...delivery, postcode: addressResolution.postcode };
+    } else {
+      return requirePostcode
+        ? { quotedPrice: 0, useQuotedPrice: false, note: `Concrete route price needs office review: valid delivery postcode missing and address lookup ${addressResolution.reason || 'failed'}` }
+        : basePrice;
+    }
   }
   try {
     const request = new Request(CONCRETE_PRICE_API, {
@@ -293,7 +351,9 @@ async function concreteDeliveryPrice(body, quantity, concreteType, basePrice, { 
     return {
       quotedPrice: Math.round(total * 100) / 100,
       useQuotedPrice: true,
-      note: `Auto-priced ${concreteType} concrete to ${delivery.postcode}: ${quote.route?.oneWayMinutes ?? '?'} minutes / ${quote.calculation.deliveryBand?.label || 'route checked'} = £${total.toFixed(2)} ex VAT (${cleanText(quote.pricingVersion, 80)})`,
+      deliveryPostcode: delivery.postcode,
+      addressResolution: addressResolution?.ok ? addressResolution : null,
+      note: `${addressResolution?.ok ? `Address-derived postcode ${delivery.postcode} from exact address match | ` : ''}Auto-priced ${concreteType} concrete to ${delivery.postcode}: ${quote.route?.oneWayMinutes ?? '?'} minutes / ${quote.calculation.deliveryBand?.label || 'route checked'} = £${total.toFixed(2)} ex VAT (${cleanText(quote.pricingVersion, 80)})`,
     };
   } catch {
     return { quotedPrice: 0, useQuotedPrice: false, note: 'Concrete route price needs office review: pricing service unavailable' };
@@ -2345,6 +2405,16 @@ function completionPricingBody(job) {
   };
 }
 
+function applyResolvedDeliveryPostcode(job, pricing) {
+  const postcode = normaliseUkPostcode(pricing?.deliveryPostcode);
+  if (!postcode || !pricing?.addressResolution?.ok) return job;
+  const field = Array.isArray(job?.consignments) ? 'consignments' : (Array.isArray(job?.Consignments) ? 'Consignments' : '');
+  if (!field || !job[field].length) return job;
+  const consignments = [...job[field]];
+  consignments[0] = { ...consignments[0], deliveryPostcode: postcode };
+  return { ...job, [field]: consignments };
+}
+
 async function completionAutoPrice(job, quantity, env = null) {
   const qty = Number(quantity);
   if (!Number.isFinite(qty) || qty <= 0 || jobHasExistingPrice(job)) {
@@ -2382,11 +2452,14 @@ async function completionAutoPrice(job, quantity, env = null) {
       return completionPricingReview(job, 'concrete_review_required', pricing.note || 'concrete calculator did not return a safe price');
     }
     const accountNotes = mergePlainNoteText(clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''), pricing.note);
+    const postcodeUpdatedJob = applyResolvedDeliveryPostcode(job, pricing);
     return {
-      job: { ...job, quotedPrice: pricing.quotedPrice, totalPrice: pricing.quotedPrice, useQuotedPrice: true, accountNotes },
+      job: { ...postcodeUpdatedJob, quotedPrice: pricing.quotedPrice, totalPrice: pricing.quotedPrice, useQuotedPrice: true, accountNotes },
       changed: true,
       quotedPrice: pricing.quotedPrice,
       basis: 'concrete',
+      deliveryPostcode: pricing.deliveryPostcode || undefined,
+      addressResolved: !!pricing.addressResolution?.ok,
     };
   }
 
@@ -2411,6 +2484,38 @@ async function completionAutoPrice(job, quantity, env = null) {
     changed: true,
     quotedPrice,
     basis: `wyre_${rateRule.key}`,
+  };
+}
+
+async function repriceHaultechJob(env, jobId, date, quantity = null) {
+  const jobLookup = await fetchHaultechJobsByDate(env, date);
+  if (!jobLookup.ok) return { ok: false, status: 502, error: jobLookup.error || 'haultech_lookup_failed' };
+  const job = findHaultechJobById(jobLookup.jobs, jobId);
+  if (!job) return { ok: false, status: 404, error: 'haultech_job_not_found' };
+  const qty = Number(quantity) > 0 ? Number(quantity) : jobQuantity(job);
+  const pricing = await completionAutoPrice(job, qty, env);
+  if (!pricing.changed || pricing.reviewRequired || !pricing.quotedPrice) {
+    return {
+      ok: false,
+      status: pricing.reason === 'existing_price' ? 409 : 422,
+      error: pricing.reason || 'safe_price_not_available',
+      reviewRequired: !!pricing.reviewRequired,
+    };
+  }
+  const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {
+    method: 'POST',
+    body: JSON.stringify(pricing.job),
+  });
+  const upsertText = await upsertResp.text();
+  if (!upsertResp.ok) return { ok: false, status: 502, error: `reprice_upsert_failed:${upsertText || upsertResp.status}` };
+  return {
+    ok: true,
+    jobId: cleanText(job.jobId || job.id, 120),
+    quantity: qty,
+    quotedPrice: pricing.quotedPrice,
+    pricingBasis: pricing.basis,
+    deliveryPostcode: pricing.deliveryPostcode || normaliseUkPostcode(firstConsignment(pricing.job)?.deliveryPostcode),
+    addressResolved: !!pricing.addressResolved,
   };
 }
 
@@ -2712,6 +2817,21 @@ export default {
         return corsResponse(JSON.stringify(result), status);
       }
       return corsResponse(JSON.stringify(result));
+    }
+
+    // POST /ht/reprice/{jobId} — safely re-run automatic pricing without changing job status.
+    const repriceMatch = path.match(/^\/ht\/reprice\/([^/]+)$/);
+    if (repriceMatch && request.method === 'POST') {
+      if (!hasAdminKey(request, env)) {
+        return corsResponse(JSON.stringify({ error: 'admin_key_required' }), 403);
+      }
+      const jobId = safePathParam(repriceMatch[1]);
+      if (!jobId) return corsResponse(JSON.stringify({ error: 'bad_job_id' }), 400);
+      const body = safeJsonParse(await request.text(), {}) || {};
+      const date = maybeIsoDate(body.date);
+      if (!date) return corsResponse(JSON.stringify({ error: 'bad_date' }), 400);
+      const result = await repriceHaultechJob(env, jobId, date, body.quantity);
+      return corsResponse(JSON.stringify(result), result.ok ? 200 : (result.status || 502));
     }
 
     // PATCH /ht/payment/{jobId} — set Paid / Not paid on a driver-added job.
@@ -3488,6 +3608,20 @@ export default {
       if (!ticketId) return corsResponse(JSON.stringify({ error: 'bad_ticket_id' }), 400);
       const body = await request.text();
       await env.PMG_DATA.put(`ticket:${ticketId}`, body);
+      const event = safeJsonParse(body);
+      const proof = event?.payload && typeof event.payload === 'object' ? event.payload : {};
+      if (
+        event?.type === 'proof_complete'
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(event?.date || ''))
+        && (proof.hasSignature === true || proof.hasPhoto === true)
+      ) {
+        const indexKey = `proof-completions:${event.date}`;
+        const existing = safeJsonParse(await env.PMG_DATA.get(indexKey), { date: event.date, jobIds: [] });
+        const jobIds = new Set(safeArray(existing?.jobIds).map(value => cleanText(value, 120)).filter(Boolean));
+        const value = cleanText(event.jobId || event.jobNumber, 120);
+        if (value) jobIds.add(value);
+        await env.PMG_DATA.put(indexKey, JSON.stringify({ date: event.date, jobIds: [...jobIds] }));
+      }
       return corsResponse(JSON.stringify({ ok: true }));
     }
 
@@ -3505,6 +3639,42 @@ export default {
         cursor = list.list_complete ? undefined : list.cursor;
       } while (cursor);
       return corsResponse(JSON.stringify(tickets.filter(Boolean)));
+    }
+
+    // GET /proof-completions/YYYY-MM-DD
+    // Narrow watchdog read: avoid returning the ever-growing full ticket archive.
+    const proofCompletionsMatch = path.match(/^\/proof-completions\/(\d{4}-\d{2}-\d{2})$/);
+    if (proofCompletionsMatch && request.method === 'GET') {
+      const date = proofCompletionsMatch[1];
+      const indexKey = `proof-completions:${date}`;
+      const cached = safeJsonParse(await env.PMG_DATA.get(indexKey));
+      if (cached && Array.isArray(cached.jobIds)) {
+        return corsResponse(JSON.stringify({ date, jobIds: cached.jobIds }), 200, { 'Cache-Control': 'no-store' });
+      }
+      const jobIds = new Set();
+      let cursor;
+      do {
+        const list = await env.PMG_DATA.list({ prefix: 'ticket:', cursor });
+        const page = await Promise.all(list.keys.map(async ({ name }) => {
+          const val = await env.PMG_DATA.get(name);
+          return safeJsonParse(val);
+        }));
+        for (const event of page.filter(Boolean)) {
+          const proof = event?.payload && typeof event.payload === 'object' ? event.payload : {};
+          if (
+            event?.type === 'proof_complete'
+            && event?.date === date
+            && (proof.hasSignature === true || proof.hasPhoto === true)
+          ) {
+            const value = cleanText(event.jobId || event.jobNumber, 120);
+            if (value) jobIds.add(value);
+          }
+        }
+        cursor = list.list_complete ? undefined : list.cursor;
+      } while (cursor);
+      const result = { date, jobIds: [...jobIds] };
+      await env.PMG_DATA.put(indexKey, JSON.stringify(result));
+      return corsResponse(JSON.stringify(result), 200, { 'Cache-Control': 'no-store' });
     }
 
     // GET /haultech-jobs/{date} (legacy — cached diary from KV)

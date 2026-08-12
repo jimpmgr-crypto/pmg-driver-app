@@ -42,7 +42,7 @@ const sandbox = {
     sandbox.__fetches.push({ url: String(url), options });
     if (String(url).includes('api.geoapify.com/v1/geocode/autocomplete')) {
       return new Response(JSON.stringify({
-        results: [{
+        results: sandbox.__geoapifyResults || [{
           place_id: 'geo-test-place',
           name: 'High View',
           street: 'Sower Carr Lane',
@@ -73,6 +73,7 @@ const sandbox = {
   __haultechJobs: [],
   __haultechCustomers: [],
   __calculatorReply: null,
+  __geoapifyResults: null,
   __serviceBindingCalls: 0,
 };
 
@@ -163,7 +164,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260810-driver-movement-idempotency-worker-v11$/);
+  assert.match(health.workerBuildId, /^20260812-address-price-resolution-worker-v14$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -392,6 +393,58 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(completionPricing.calculatorCalls.length, 0);
   assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'unpriced completion must leave a durable office-review marker');
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'review-marked rows may complete without blocking the driver');
+
+  completionPricing = await completeJobFixture({
+    jobId: 9809,
+    id: '99999999-9999-4999-8999-999999999999',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Full address without postcode',
+    quotedPrice: 0,
+    accountNotes: 'OFFICE PRICE REVIEW REQUIRED: valid delivery postcode missing | QUARRIED concrete',
+    consignments: [{
+      consignmentId: 9809,
+      goodsDescription: 'C35pmg Qu',
+      deliveryAddressLine1: 'High View',
+      deliveryAddressLine3: 'Poulton-le-Fylde',
+      deliveryAddressLine4: 'Lancashire',
+      deliveryPostcode: '',
+    }],
+  }, 1.77);
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555, 'a full exact address must be resolved and priced when its postcode is blank');
+  assert.strictEqual(completionPricing.upsertPayload.consignments[0].deliveryPostcode, 'FY6 9DJ', 'resolved postcode must be persisted to Haultech');
+  assert(completionPricing.upsertPayload.accountNotes.includes('Address-derived postcode FY6 9DJ from exact address match'));
+  assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'resolved address must clear stale price review');
+  assert(sandbox.__fetches.some(call => call.url.includes('api.geoapify.com/v1/geocode/autocomplete')), 'blank postcode must trigger address resolution');
+
+  sandbox.__geoapifyResults = [{
+    place_id: 'wrong-road',
+    name: 'Different Road',
+    street: 'Different Road',
+    city: 'Poulton-le-Fylde',
+    county: 'Lancashire',
+    postcode: 'FY6 9ZZ',
+    formatted: 'Different Road, Poulton-le-Fylde, Lancashire FY6 9ZZ',
+  }];
+  completionPricing = await completeJobFixture({
+    jobId: 9821,
+    id: '21212121-2121-4121-8121-212121212121',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Ambiguous address',
+    quotedPrice: 0,
+    accountNotes: 'QUARRIED concrete',
+    consignments: [{
+      consignmentId: 9821,
+      goodsDescription: 'C35pmg Qu',
+      deliveryAddressLine1: 'Church Lane',
+      deliveryAddressLine3: 'Poulton-le-Fylde',
+      deliveryAddressLine4: 'Lancashire',
+    }],
+  }, 1);
+  sandbox.__geoapifyResults = null;
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'non-matching address suggestions must fail closed');
+  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
 
   completionPricing = await completeJobFixture({
     jobId: 9804,
@@ -733,6 +786,60 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(yardPaymentPayload.quotedPrice, 153.2, 'Yard payment must preserve quoted price');
   assert.strictEqual(yardPaymentPayload.totalPrice, 153.2, 'Yard payment must preserve total price');
   assert.strictEqual(yardPaymentPayload.status, 'Completed', 'Yard payment must preserve job status');
+
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [{
+    jobId: 10079,
+    id: '79797979-7979-4979-8979-797979797979',
+    customerId: 'external-customer',
+    customerName: 'External Customer',
+    customerReference: 'Church Lane concrete',
+    quantity: 0.55,
+    deliveryStatus: 'Completed',
+    quotedPrice: 0,
+    accountNotes: 'OFFICE PRICE REVIEW REQUIRED: valid delivery postcode missing | QUARRIED concrete',
+    consignments: [{
+      consignmentId: 10074,
+      goodsDescription: 'CONCRETE',
+      quantity: 0.55,
+      deliveryAddressLine1: 'Church Lane',
+      deliveryAddressLine3: 'Poulton-le-Fylde',
+      deliveryAddressLine4: 'Lancashire',
+    }],
+  }];
+  sandbox.__geoapifyResults = [{
+    place_id: 'church-lane',
+    name: 'Church Lane',
+    street: 'Church Lane',
+    town: 'Hambleton',
+    county: 'Lancashire',
+    postcode: 'FY6 9EF',
+    formatted: 'Church Lane, Hambleton, Poulton-le-Fylde FY6 9EF, United Kingdom',
+  }];
+  resp = await workerRequest('/ht/reprice/10079', {
+    method: 'POST',
+    headers: { 'X-PMG-Admin-Key': 'admin-key' },
+    body: JSON.stringify({ date: '2026-08-12' }),
+  }, paymentEnv);
+  sandbox.__geoapifyResults = null;
+  assert.strictEqual(resp.status, 200, 'admin reprice must safely update a completed review row without completing it again');
+  const repriceResult = await resp.json();
+  assert.strictEqual(repriceResult.quotedPrice, 555);
+  assert.strictEqual(repriceResult.deliveryPostcode, 'FY6 9EF');
+  const repriceUpsert = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
+  assert(repriceUpsert, 'reprice must upsert the existing full job');
+  const repricePayload = JSON.parse(repriceUpsert.options.body);
+  assert.strictEqual(repricePayload.deliveryStatus, 'Completed', 'reprice must preserve completed status');
+  assert.strictEqual(repricePayload.consignments[0].deliveryPostcode, 'FY6 9EF');
+  assert(!sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'reprice must never call completion');
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/reprice/10079', {
+    method: 'POST',
+    body: JSON.stringify({ date: '2026-08-12' }),
+  }, paymentEnv);
+  assert.strictEqual(resp.status, 403, 'reprice route must require the admin key');
+  assert(!sandbox.__fetches.some(call => call.url.endsWith('/api/Job/UpsertJob?formId=')), 'unauthorised reprice must not write');
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/yard-payment', {
