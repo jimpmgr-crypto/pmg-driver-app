@@ -164,7 +164,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260812-address-price-resolution-worker-v14$/);
+  assert.match(health.workerBuildId, /^20260812-address-price-resolution-worker-v15$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -365,6 +365,15 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert(completionPricing.upsertPayload.accountNotes.includes('Auto-priced quarried concrete to FY6 9DJ'));
   assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'successful retry must clear its stale office-review marker');
 
+  sandbox.__geoapifyResults = [{
+    place_id: 'sower-carr-lane',
+    name: 'Sower Carr Lane',
+    street: 'Sower Carr Lane',
+    town: 'Hambleton',
+    county: 'Lancashire',
+    postcode: 'FY6 9DJ',
+    formatted: 'Sower Carr Lane, Hambleton, Lancashire FY6 9DJ, United Kingdom',
+  }];
   completionPricing = await completeJobFixture({
     jobId: 9802,
     id: '22222222-2222-4222-8222-222222222222',
@@ -405,17 +414,21 @@ async function completeJobFixture(job, quantity, extras = {}) {
     consignments: [{
       consignmentId: 9809,
       goodsDescription: 'C35pmg Qu',
-      deliveryAddressLine1: 'High View',
+      deliveryAddressLine1: 'Sower Carr Lane',
+      deliveryAddressLine2: 'Sower Carr Lane',
       deliveryAddressLine3: 'Poulton-le-Fylde',
       deliveryAddressLine4: 'Lancashire',
       deliveryPostcode: '',
     }],
   }, 1.77);
+  sandbox.__geoapifyResults = null;
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555, 'a full exact address must be resolved and priced when its postcode is blank');
   assert.strictEqual(completionPricing.upsertPayload.consignments[0].deliveryPostcode, 'FY6 9DJ', 'resolved postcode must be persisted to Haultech');
   assert(completionPricing.upsertPayload.accountNotes.includes('Address-derived postcode FY6 9DJ from exact address match'));
   assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'resolved address must clear stale price review');
   assert(sandbox.__fetches.some(call => call.url.includes('api.geoapify.com/v1/geocode/autocomplete')), 'blank postcode must trigger address resolution');
+  const addressLookupCall = sandbox.__fetches.find(call => call.url.includes('api.geoapify.com/v1/geocode/autocomplete'));
+  assert.strictEqual((new URL(addressLookupCall.url)).searchParams.get('text').match(/Sower Carr Lane/g).length, 1, 'duplicate Haultech address lines must be removed before lookup');
 
   sandbox.__geoapifyResults = [{
     place_id: 'wrong-road',

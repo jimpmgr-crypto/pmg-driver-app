@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260812-address-price-resolution-worker-v14';
+const WORKER_BUILD_ID = '20260812-address-price-resolution-worker-v15';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -270,9 +270,15 @@ async function resolveDeliveryPostcodeFromAddress(env, delivery) {
   if (!env || !addressLine || (!locality && !county)) {
     return { ok: false, reason: 'address_not_specific_enough' };
   }
+  const seenParts = new Set();
   const input = [delivery.line1, delivery.line2, delivery.line3, delivery.line4, delivery.country]
     .map(value => cleanText(value, 240))
-    .filter(Boolean)
+    .filter(value => {
+      const key = normaliseAddressMatchText(value);
+      if (!key || seenParts.has(key)) return false;
+      seenParts.add(key);
+      return true;
+    })
     .join(', ');
   const result = await geoapifyRequest(env, input);
   if (!result.ok) return { ok: false, reason: result.error || 'address_lookup_failed' };
@@ -297,7 +303,7 @@ async function resolveDeliveryPostcodeFromAddress(env, delivery) {
     const localityMatch = locality && context.includes(locality);
     const countyMatch = county && context.includes(county);
     return { address, index, exactLine, localityMatch: Boolean(localityMatch), countyMatch: Boolean(countyMatch) };
-  }).filter(item => item.address.postcode && item.exactLine && (locality ? item.localityMatch : item.countyMatch));
+  }).filter(item => item.address.postcode && item.exactLine && (item.localityMatch || item.countyMatch));
 
   if (!exactMatches.length) return { ok: false, reason: 'no_exact_address_match' };
   exactMatches.sort((a, b) => Number(b.localityMatch) - Number(a.localityMatch) || a.index - b.index);

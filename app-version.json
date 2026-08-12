@@ -2,7 +2,7 @@
   "buildId": "20260810-android-movement-persistence-prestart-fleet-torque-source-v75",
   "updatedAt": "2026-08-10T19:55:00+01:00",
   "baselineCommit": "4b8fee9",
-  "expectedWorkerBuildId": "20260812-address-price-resolution-worker-v14",
+  "expectedWorkerBuildId": "20260812-address-price-resolution-worker-v15",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
   "notes": "Adds durable movement identity and automatic resend for Android driver-created rows. A retry of one saved row remains idempotent, while two genuinely identical loads create two Haultech jobs. The customer list refreshes whenever Add row opens. Existing Haultech job ordering, proof, completion, concrete and walkaround protections remain in place. Lane split remains explicit: Fleet Live supplies Gary and Richard torque state, while Tony's plant app remains plant and tools only. Lineage marker retained: prestart-fleet-torque-source."
