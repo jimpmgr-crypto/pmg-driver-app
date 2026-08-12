@@ -164,7 +164,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260812-address-price-resolution-worker-v15$/);
+  assert.match(health.workerBuildId, /^20260812-small-load-pricing-worker-v16$/);
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -1104,7 +1104,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
       driver: 'Ian Slater',
       vehicle: 'PN25FLF',
       material: 'C35pmg Qu',
-      quantity: 0.91,
+      quantity: 0.55,
       unit: 'm3',
       from: 'Yard',
       to: 'Nottend',
@@ -1113,11 +1113,11 @@ async function completeJobFixture(job, quantity, extras = {}) {
   });
   assert.strictEqual(resp.status, 200);
   const concretePayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert.strictEqual(concretePayload.quotedPrice, 150.15);
+  assert.strictEqual(concretePayload.quotedPrice, 113.44);
   assert.strictEqual(concretePayload.useQuotedPrice, true);
   assert.strictEqual(concretePayload.consignments[0].goodsDescription, 'C35pmg Qu');
-  assert(concretePayload.accountNotes.includes('Driver app source: Ian Slater / PN25FLF / 0.91m3 / Yard to Nottend'));
-  assert(concretePayload.accountNotes.includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £150.15'));
+  assert(concretePayload.accountNotes.includes('Driver app source: Ian Slater / PN25FLF / 0.55m3 / Yard to Nottend'));
+  assert(concretePayload.accountNotes.includes('Auto-priced PMG quarried concrete: 0.55m3 @ £165.00/m3 x 1.25 small-load multiplier = £113.44'));
 
   sandbox.__fetches.length = 0;
   const addressedServiceBindingCallsBefore = sandbox.__serviceBindingCalls;

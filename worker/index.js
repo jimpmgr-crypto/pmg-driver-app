@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260812-address-price-resolution-worker-v15';
+const WORKER_BUILD_ID = '20260812-small-load-pricing-worker-v16';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -166,6 +166,8 @@ const CONCRETE_RATES = {
   quarried: { over3: 145, under3: 165 },
 };
 const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;
+const CONCRETE_SUB_HALF_M3_MULTIPLIER = 1.75;
+const CONCRETE_SUB_POINT_EIGHT_M3_MULTIPLIER = 1.25;
 const CONCRETE_PRICE_API = 'https://pmg-concrete-price.jimpmgr.workers.dev/api/quote';
 const PM_GROUNDWORKS_CUSTOMER_ID = '6861767c-4418-45ec-ac56-a0673ecce127';
 const WYRE_BUILDING_SUPPLIES_CUSTOMER_ID = '650fea1c-aa1d-47f5-891e-77300886eef4';
@@ -587,11 +589,18 @@ async function driverAddedConcreteAutoPrice(body, quantity, env = null) {
     return { quotedPrice: 0, useQuotedPrice: false, note: '' };
   }
   const rate = qty > CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? CONCRETE_RATES[concreteType].over3 : CONCRETE_RATES[concreteType].under3;
-  const quotedPrice = Math.round(qty * rate * 100) / 100;
+  const smallLoadMultiplier = qty < 0.5
+    ? CONCRETE_SUB_HALF_M3_MULTIPLIER
+    : qty < 0.8
+      ? CONCRETE_SUB_POINT_EIGHT_M3_MULTIPLIER
+      : 1;
+  const quotedPrice = Math.round(qty * rate * smallLoadMultiplier * 100) / 100;
   const basePrice = {
     quotedPrice,
     useQuotedPrice: true,
-    note: `Auto-priced PMG ${concreteType} concrete: ${qty <= CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? '3.5m3 or under' : 'over 3.5m3'} @ £${rate.toFixed(2)}/m3 = £${quotedPrice.toFixed(2)}`,
+    note: smallLoadMultiplier > 1
+      ? `Auto-priced PMG ${concreteType} concrete: ${qty}m3 @ £${rate.toFixed(2)}/m3 x ${smallLoadMultiplier.toFixed(2)} small-load multiplier = £${quotedPrice.toFixed(2)}`
+      : `Auto-priced PMG ${concreteType} concrete: ${qty <= CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? '3.5m3 or under' : 'over 3.5m3'} @ £${rate.toFixed(2)}/m3 = £${quotedPrice.toFixed(2)}`,
   };
   return concreteDeliveryPrice(body, qty, concreteType, basePrice, { env });
 }

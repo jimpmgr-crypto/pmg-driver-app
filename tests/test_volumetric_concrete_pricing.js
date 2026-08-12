@@ -24,6 +24,10 @@ assert(worker.includes('const CONCRETE_RATES = {'), 'worker must define concrete
 assert(worker.includes('recycled: { over3: 135, under3: 155 }'), 'worker must use Jim confirmed recycled concrete rates');
 assert(worker.includes('quarried: { over3: 145, under3: 165 }'), 'worker must use Jim confirmed quarried concrete rates');
 assert(worker.includes('const CONCRETE_SMALL_LOAD_THRESHOLD_M3 = 3.5;'), 'worker must use Jim confirmed 3.5m3 small-load threshold');
+assert(worker.includes('const CONCRETE_SUB_HALF_M3_MULTIPLIER = 1.75;'), 'worker fallback must charge below 0.5m3 at 1.75 times the normal actual-quantity price');
+assert(worker.includes('const CONCRETE_SUB_POINT_EIGHT_M3_MULTIPLIER = 1.25;'), 'worker fallback must charge 0.5m3 to below 0.8m3 at 1.25 times the normal actual-quantity price');
+assert(worker.includes('qty < 0.5') && worker.includes('qty < 0.8'), 'worker fallback must preserve the exact 0.5m3 and 0.8m3 boundaries');
+assert(worker.includes('qty * rate * smallLoadMultiplier'), 'worker fallback must apply the multiplier to actual quantity rather than impose a fixed minimum');
 assert(worker.includes('useQuotedPrice: true'), 'worker auto-priced concrete rows must write quoted price');
 assert(worker.includes("return '';"), 'worker must not default untyped concrete to recycled');
 assert(worker.includes("error: 'concrete_type_required'"), 'worker must reject untyped existing concrete completion');
