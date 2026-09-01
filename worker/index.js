@@ -1,5 +1,6 @@
 const API_KEY = 'pmg2026driver';
 const WORKER_BUILD_ID = '20260812-small-load-pricing-worker-v16';
+const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
 const DEFAULT_TMS = 'd80fd468-e802-492d-b73c-e09ab51bee88';
@@ -376,6 +377,15 @@ function isVolumetricConcreteVehicle(value) {
 function normaliseDriverAddedUpsertPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
   const cleaned = { ...payload };
+  // Haultech's diary and invoice screens are separate consumers. Persist the
+  // same authoritative figure in both price fields and make the quoted-price
+  // switch explicit so a priced app row cannot later invoice as zero.
+  const invoicePrice = Number(cleaned.quotedPrice ?? cleaned.totalPrice ?? cleaned.price ?? 0);
+  if (Number.isFinite(invoicePrice)) {
+    cleaned.quotedPrice = invoicePrice;
+    cleaned.totalPrice = invoicePrice;
+    cleaned.useQuotedPrice = invoicePrice !== 0;
+  }
   const addedBy = cleanText(
     cleaned.addedBy || cleaned.sourceDriverName || cleaned.driverName || extractAddedByFromText([cleaned.accountNotes, cleaned.trafficNotes, cleaned.specialInstructions].filter(Boolean).join(' | ')),
     120
@@ -701,6 +711,28 @@ function driverMovementIdFromJob(job) {
     .join(' | ');
   const match = notes.match(/driver movement\s*:\s*([^|\r\n]+)/i);
   return cleanText(match?.[1], 180);
+}
+
+function invoicePriceState(job) {
+  const quotedPrice = Number(job?.quotedPrice ?? 0);
+  const totalPrice = Number(job?.totalPrice ?? quotedPrice);
+  const useQuotedPrice = job?.useQuotedPrice === true;
+  const matching = Number.isFinite(quotedPrice) && Number.isFinite(totalPrice)
+    && Math.abs(quotedPrice - totalPrice) < 0.005;
+  return { quotedPrice, totalPrice, useQuotedPrice, ready: matching && useQuotedPrice };
+}
+
+function driverAddedInvoicePriceMatches(job, payload) {
+  const expected = Number(payload?.quotedPrice ?? payload?.totalPrice ?? 0);
+  const actual = invoicePriceState(job);
+  if (!Number.isFinite(expected)) return false;
+  if (expected === 0) {
+    // Zero is an intentional office-review state. It must be held by the
+    // completion gate below, but an older idempotent row must not be duplicated
+    // merely because Haultech stored a different quoted-price switch value.
+    return actual.quotedPrice === 0 && actual.totalPrice === 0;
+  }
+  return actual.ready && Math.abs(actual.quotedPrice - expected) < 0.005;
 }
 
 function cleanDriverNote(value) {
@@ -2550,6 +2582,87 @@ async function fetchHaultechJobsByDate(env, date) {
   return { ok: true, jobs };
 }
 
+function driverAddedLoadAssignment(job) {
+  return {
+    driverId: cleanText(job?.deliveryDriverId, 80),
+    vehicleId: cleanText(job?.deliveryVehicleId, 80),
+    loadGuid: cleanText(job?.deliveryLoadId, 80),
+    loadNumber: Number(job?.deliveryLoadNumber || job?.loadId || 0) || 0,
+  };
+}
+
+function matchingDriverLoadsFromJobs(jobs, driverId, vehicleId, excludedJobGuid = '') {
+  const loads = new Map();
+  for (const job of safeArray(jobs)) {
+    const jobGuid = cleanText(job?.id || job?._id, 80);
+    if (excludedJobGuid && jobGuid === excludedJobGuid) continue;
+    const assignment = driverAddedLoadAssignment(job);
+    if (
+      assignment.driverId !== driverId
+      || assignment.vehicleId !== vehicleId
+      || !assignment.loadGuid
+    ) continue;
+    if (!loads.has(assignment.loadGuid)) loads.set(assignment.loadGuid, assignment);
+  }
+  return [...loads.values()];
+}
+
+async function attachDriverAddedJobToExistingLoad(env, date, job, dayJobs, payload) {
+  const jobGuid = cleanText(job?.id || job?._id, 80);
+  const driverId = cleanText(payload?.deliveryDriverId, 80);
+  const vehicleId = cleanText(payload?.deliveryVehicleId, 80);
+  if (!jobGuid || !driverId || !vehicleId) {
+    // Keep legacy/unknown registrations visible in Haultech for office review.
+    // A load must never be guessed when the driver or vehicle mapping is absent.
+    return { ok: true, attached: false, pending: true, reason: 'driver_load_assignment_fields_missing' };
+  }
+
+  const current = driverAddedLoadAssignment(job);
+  if (current.loadGuid) {
+    if (current.driverId !== driverId || current.vehicleId !== vehicleId) {
+      return { ok: false, error: 'driver_job_already_on_different_load' };
+    }
+    return { ok: true, attached: true, alreadyAttached: true, ...current };
+  }
+
+  const candidates = matchingDriverLoadsFromJobs(dayJobs, driverId, vehicleId, jobGuid);
+  if (!candidates.length) {
+    // The existing bounded load-reconciliation job will create/attach a load.
+    // Keep the phone row idempotent and visible instead of guessing a load.
+    return { ok: true, attached: false, pending: true, reason: 'matching_driver_load_not_found' };
+  }
+  if (candidates.length !== 1) {
+    return { ok: false, error: 'matching_driver_load_ambiguous' };
+  }
+
+  const target = candidates[0];
+  const attachResp = await htFetch(
+    env,
+    queryPath(`/api/Load/AttachJobs/${encodeURIComponent(target.loadGuid)}`, { isDelivery: 'true' }),
+    { method: 'POST', body: JSON.stringify([jobGuid]) }
+  );
+  const attachText = await attachResp.text();
+  if (!attachResp.ok) {
+    return { ok: false, error: `driver_load_attach_failed:${attachText || attachResp.status}` };
+  }
+
+  const readback = await fetchHaultechJobsByDate(env, date);
+  const persisted = readback.ok ? findHaultechJobById(readback.jobs, jobGuid) : null;
+  const assignment = driverAddedLoadAssignment(persisted);
+  if (
+    !persisted
+    || assignment.loadGuid !== target.loadGuid
+    || assignment.driverId !== driverId
+    || assignment.vehicleId !== vehicleId
+  ) {
+    return {
+      ok: false,
+      error: `driver_load_readback_failed${readback.ok ? '' : ':' + readback.error}`,
+    };
+  }
+  return { ok: true, attached: true, alreadyAttached: false, ...assignment };
+}
+
 async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes = '', quantity = null, consigneeName = '', originalReference = '', paymentStatus = '', concreteType = '' } = {}) {
   const note = cleanText(driverNotes, 1200);
   const numericQuantity = Number(quantity);
@@ -2700,6 +2813,7 @@ export default {
         ok: true,
         service: 'pmg-driver-sync',
         workerBuildId: WORKER_BUILD_ID,
+        runtimePatchId: WORKER_RUNTIME_PATCH_ID,
         driverApiContract: DRIVER_API_CONTRACT,
       }), 200, { 'Cache-Control': 'no-store' });
     }
@@ -2954,12 +3068,37 @@ export default {
         ? existing.find(job => driverAddSignatureFromJob(job) === requestedSignature)
         : null);
       if (exactExisting) {
+        if (!driverAddedInvoicePriceMatches(exactExisting, built.payload)) {
+          return corsResponse(JSON.stringify({
+            error: 'haultech_driver_price_readback_failed',
+            message: 'Existing driver row does not match the app invoice-price fields; office review required',
+            jobId: haultechJobIds(exactExisting)[0] || '',
+          }), 502);
+        }
+        const loadAssignment = await attachDriverAddedJobToExistingLoad(
+          env,
+          built.date,
+          exactExisting,
+          existing,
+          built.payload
+        );
+        if (!loadAssignment.ok) {
+          return corsResponse(JSON.stringify({
+            error: loadAssignment.error || 'driver_load_attach_failed',
+            message: 'Existing driver row was found but its Haultech load assignment could not be proved',
+            jobId: haultechJobIds(exactExisting)[0] || '',
+          }), 502);
+        }
         return corsResponse(JSON.stringify({
           ok: true,
           alreadyPresent: true,
           exact: true,
           ref: built.ref,
           jobId: haultechJobIds(exactExisting)[0] || '',
+          loadAttached: !!loadAssignment.attached,
+          loadPending: !!loadAssignment.pending,
+          deliveryLoadId: loadAssignment.loadGuid || '',
+          deliveryLoadNumber: loadAssignment.loadNumber || 0,
           message: 'Exact driver row already exists in Haultech',
         }));
       }
@@ -2983,6 +3122,37 @@ export default {
         }), 502);
       }
       const upsertPayload = safeJsonParse(upsertText, {}) || {};
+      const readback = await fetchHaultechJobsByDate(env, built.date);
+      const returnedIds = [upsertPayload.id, upsertPayload.jobId, upsertPayload.jobNumber]
+        .filter(Boolean).map(String);
+      const persisted = readback.ok
+        ? safeArray(readback.jobs).find(job => (
+          (built.movementId && driverMovementIdFromJob(job) === built.movementId)
+          || haultechJobIds(job).some(id => returnedIds.includes(String(id)))
+        ))
+        : null;
+      if (!persisted || !driverAddedInvoicePriceMatches(persisted, built.payload)) {
+        return corsResponse(JSON.stringify({
+          error: 'haultech_driver_price_readback_failed',
+          message: 'Driver row was submitted but its Haultech invoice-price fields could not be proved; office review required',
+          jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
+          readbackError: readback.ok ? '' : readback.error,
+        }), 502);
+      }
+      const loadAssignment = await attachDriverAddedJobToExistingLoad(
+        env,
+        built.date,
+        persisted,
+        readback.jobs,
+        built.payload
+      );
+      if (!loadAssignment.ok) {
+        return corsResponse(JSON.stringify({
+          error: loadAssignment.error || 'driver_load_attach_failed',
+          message: 'Driver row was saved but its Haultech load assignment could not be proved; retry queued',
+          jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
+        }), 502);
+      }
       return corsResponse(JSON.stringify({
         ok: true,
         alreadyPresent: false,
@@ -2992,6 +3162,10 @@ export default {
         a1Fallback: !!built.useA1Fallback,
         a1PaymentStatus: built.a1PaymentStatus || '',
         jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
+        loadAttached: !!loadAssignment.attached,
+        loadPending: !!loadAssignment.pending,
+        deliveryLoadId: loadAssignment.loadGuid || '',
+        deliveryLoadNumber: loadAssignment.loadNumber || 0,
         haultech: upsertPayload,
       }));
     }

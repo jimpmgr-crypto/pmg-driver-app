@@ -67,6 +67,36 @@ const sandbox = {
     if (String(url).includes('/api/Customer/GetCustomerPaginated')) {
       return new Response(JSON.stringify(sandbox.__haultechCustomers || []), { status: 200 });
     }
+    if (String(url).includes('/api/Load/AttachJobs/')) {
+      const loadGuid = decodeURIComponent(String(url).match(/\/api\/Load\/AttachJobs\/([^?]+)/)?.[1] || '');
+      const jobGuids = options.body ? JSON.parse(options.body) : [];
+      const source = (sandbox.__haultechJobs || []).find(job =>
+        String(job.deliveryLoadId || '') === loadGuid
+      );
+      if (!source) return new Response(JSON.stringify({ error: 'mock_load_not_found' }), { status: 404 });
+      for (const job of sandbox.__haultechJobs || []) {
+        if (!jobGuids.map(String).includes(String(job.id || job._id))) continue;
+        job.deliveryLoadId = loadGuid;
+        job.deliveryLoadNumber = source.deliveryLoadNumber;
+        job.deliveryDriverId = source.deliveryDriverId;
+        job.deliveryVehicleId = source.deliveryVehicleId;
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (String(url).includes('/api/Job/UpsertJob')) {
+      const payload = options.body ? JSON.parse(options.body) : {};
+      const index = (sandbox.__haultechJobs || []).findIndex(job =>
+        String(job.id || job.jobId) === String(payload.id || payload.jobId)
+      );
+      const persisted = {
+        ...payload,
+        id: payload.id || `00000000-0000-4000-8000-${String(sandbox.__nextJobNumber).padStart(12, '0')}`,
+        jobId: payload.jobId || sandbox.__nextJobNumber++,
+      };
+      if (index >= 0) sandbox.__haultechJobs[index] = persisted;
+      else sandbox.__haultechJobs.push(persisted);
+      return new Response(JSON.stringify({ jobId: persisted.jobId, id: persisted.id }), { status: 200 });
+    }
     return new Response(JSON.stringify({ jobId: 'JOB-ADMIN-1' }), { status: 200 });
   },
   __fetches: [],
@@ -75,6 +105,7 @@ const sandbox = {
   __calculatorReply: null,
   __geoapifyResults: null,
   __serviceBindingCalls: 0,
+  __nextJobNumber: 12000,
 };
 
 vm.runInNewContext(
@@ -165,6 +196,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
   assert.match(health.workerBuildId, /^20260812-small-load-pricing-worker-v16$/);
+  assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {
@@ -206,9 +238,22 @@ async function completeJobFixture(job, quantity, extras = {}) {
 
   resp = await upsertRequest({ 'X-PMG-Admin-Key': 'admin-key' }, { customerReference: 'ADMIN-OK' });
   assert.strictEqual(resp.status, 200);
-  assert.deepStrictEqual(await resp.json(), { jobId: 'JOB-ADMIN-1' });
+  const adminUpsertResult = await resp.json();
+  assert(adminUpsertResult.jobId, 'mocked admin upsert should return a job id');
   assert.strictEqual(sandbox.__fetches.length, 1, 'admin key should reach mocked Haultech once');
   assert(sandbox.__fetches[0].url.endsWith('/api/Job/UpsertJob?formId='));
+
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/mpod/consignment-paul-proof', {
+    method: 'POST',
+    body: new Uint8Array([137, 80, 78, 71]),
+    headers: { 'Content-Type': 'image/png' },
+  });
+  assert.strictEqual(resp.status, 200);
+  const proofUpload = sandbox.__fetches.find(call => call.url.includes('/api/Job/MakeImageMpod'));
+  assert(proofUpload, 'photo/signature proof must be forwarded to Haultech MakeImageMpod');
+  assert(proofUpload.url.includes('trackerId=consignment-paul-proof'));
+  assert.strictEqual(proofUpload.options.headers['Content-Type'], 'image/png');
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -232,7 +277,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const driverAdd = await resp.json();
   assert.strictEqual(driverAdd.ok, true);
   assert.strictEqual(driverAdd.alreadyPresent, false);
-  assert.strictEqual(sandbox.__fetches.length, 2, 'driver add should check existing jobs then upsert');
+  assert.strictEqual(sandbox.__fetches.length, 3, 'driver add should check existing jobs, upsert, then prove the invoice-price readback');
   assert(sandbox.__fetches[0].url.includes('/api/Display/GetJobsByDatePaginated'));
   assert(sandbox.__fetches[1].url.endsWith('/api/Job/UpsertJob?formId='));
   const driverPayload = JSON.parse(sandbox.__fetches[1].options.body);
@@ -246,6 +291,83 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert(driverPayload.accountNotes.includes('Driver note: 6 ton tipped'), 'driver add should preserve notes in account notes');
   assert.strictEqual(driverPayload.trafficNotes, '6 ton tipped', 'traffic notes should contain the plain driver note only');
   assert(!driverPayload.trafficNotes.includes('Driver app source:'), 'traffic notes must not include source/audit jargon');
+
+  const paulDriverId = '2b5eab8a-0602-47b8-b242-28ef37eb6c2d';
+  const paulVehicleId = '112689c0-e2f4-4e32-9bfb-8e4fa24bb422';
+  const paulLoadGuid = '8f4eea03-c593-4f03-a096-4143e45ff903';
+  sandbox.__fetches.length = 0;
+  sandbox.__haultechJobs = [{
+    jobId: 10440,
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    customerReference: 'Office load for Paul',
+    deliveryDriverId: paulDriverId,
+    deliveryVehicleId: paulVehicleId,
+    deliveryLoadId: paulLoadGuid,
+    deliveryLoadNumber: 2169,
+    consignments: [{ goodsDescription: 'Concrete', quantity: 4 }],
+  }];
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'paul-phone-movement-load-attach',
+      date: '2026-08-27',
+      customer: 'Customer One',
+      driver: 'Paul Locket',
+      vehicle: 'LL21HJJ',
+      material: 'Concrete',
+      quantity: 4,
+      unit: 'm3',
+      from: 'PMG Yard',
+      to: 'Customer site',
+      reference: 'PAUL PHONE TEST',
+      notes: 'Ring site contact 07123 456789 before arrival',
+    }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const paulAdd = await resp.json();
+  assert.strictEqual(paulAdd.loadAttached, true, 'Paul phone row should be attached to his unique matching load');
+  assert.strictEqual(paulAdd.deliveryLoadId, paulLoadGuid);
+  assert.strictEqual(paulAdd.deliveryLoadNumber, 2169);
+  const paulAttachCall = sandbox.__fetches.find(call => call.url.includes(`/api/Load/AttachJobs/${paulLoadGuid}`));
+  assert(paulAttachCall, 'Paul phone row must call Haultech AttachJobs');
+  const paulPersisted = sandbox.__haultechJobs.find(job =>
+    String(job.accountNotes || '').includes('Driver movement: paul-phone-movement-load-attach')
+  );
+  assert.strictEqual(paulPersisted.deliveryDriverId, paulDriverId);
+  assert.strictEqual(paulPersisted.deliveryVehicleId, paulVehicleId);
+  assert.strictEqual(paulPersisted.deliveryLoadId, paulLoadGuid);
+  assert.strictEqual(paulPersisted.trafficNotes, 'Ring site contact 07123 456789 before arrival', 'typed phone/contact information must reach Haultech unchanged');
+
+  sandbox.__fetches.length = 0;
+  paulPersisted.deliveryLoadId = '';
+  paulPersisted.deliveryLoadNumber = 0;
+  paulPersisted.deliveryDriverId = '';
+  paulPersisted.deliveryVehicleId = '';
+  resp = await workerRequest('/ht/driver-add', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'paul-phone-movement-load-attach',
+      date: '2026-08-27',
+      customer: 'Customer One',
+      driver: 'Paul Locket',
+      vehicle: 'LL21HJJ',
+      material: 'Concrete',
+      quantity: 4,
+      unit: 'm3',
+      from: 'PMG Yard',
+      to: 'Customer site',
+      reference: 'PAUL PHONE TEST',
+      notes: 'Ring site contact 07123 456789 before arrival',
+    }),
+  });
+  assert.strictEqual(resp.status, 200);
+  const paulRetry = await resp.json();
+  assert.strictEqual(paulRetry.alreadyPresent, true, 'retry should reuse the existing movement');
+  assert.strictEqual(paulRetry.loadAttached, true, 'retry should repair a missing Paul load assignment');
+  assert.strictEqual(paulPersisted.deliveryDriverId, paulDriverId);
+  assert.strictEqual(paulPersisted.deliveryVehicleId, paulVehicleId);
+  assert.strictEqual(paulPersisted.deliveryLoadId, paulLoadGuid);
+  sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
   sandbox.__haultechJobs = [{
@@ -276,7 +398,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const referenceCollisionAdd = await resp.json();
   assert.strictEqual(referenceCollisionAdd.alreadyPresent, false, 'same reference with different movement signature must be created');
   assert.strictEqual(referenceCollisionAdd.referenceCollision, true, 'reference collision should remain visible in the response');
-  assert.strictEqual(sandbox.__fetches.length, 2, 'reference collision must still upsert the distinct movement');
+  assert.strictEqual(sandbox.__fetches.length, 3, 'reference collision must still upsert and verify the distinct movement');
   sandbox.__haultechJobs = [];
 
   const identicalSimonBody = {
@@ -317,7 +439,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   const secondIdenticalMovement = await resp.json();
   assert.strictEqual(secondIdenticalMovement.alreadyPresent, false, 'a second genuine identical load with a distinct movement id must be created');
-  assert.strictEqual(sandbox.__fetches.length, 2, 'distinct movement id must reach Haultech UpsertJob');
+  assert.strictEqual(sandbox.__fetches.length, 3, 'distinct movement id must reach Haultech UpsertJob and readback');
   const secondSimonPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert(secondSimonPayload.accountNotes.includes('Driver movement: driver-simon-load-2'));
   sandbox.__haultechJobs = [];
@@ -328,6 +450,9 @@ async function completeJobFixture(job, quantity, extras = {}) {
     id: '8fa30d53-5770-43a6-8e20-d4f618034c7d',
     customerReference: 'Wyre Drives - Cedar Close Garstang',
     deliveryStatus: 'Scheduled',
+    quotedPrice: 125,
+    totalPrice: 125,
+    useQuotedPrice: true,
     consignments: [{ consignmentId: 8708, jobId: '8fa30d53-5770-43a6-8e20-d4f618034c7d' }],
   }];
   resp = await workerRequest('/ht/complete/8708', {

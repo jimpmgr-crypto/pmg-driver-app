@@ -21,6 +21,7 @@ DRIVERS = ("john", "andrew", "neil", "ian", "richard", "paul")
 STATE = Path("/Users/bill/.openclaw/workspace/OPENCORE/state/pmg-driver-app-runtime-health")
 PROJECT_INDEX = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/index.html")
 LOCAL_APP_VERSION = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/app-version.json")
+REQUIRED_RUNTIME_PATCH_ID = "20260827-driver-load-attachment-v1"
 
 
 def expected_worker_build(live_version: dict[str, Any], local_version: dict[str, Any]) -> tuple[str, str]:
@@ -88,6 +89,8 @@ def check() -> dict[str, Any]:
             errors.append("frontend/worker build mismatch")
         if expected_contract and worker_health.get("driverApiContract") != expected_contract:
             errors.append("frontend/worker API contract mismatch")
+        if worker_health.get("runtimePatchId") != REQUIRED_RUNTIME_PATCH_ID:
+            errors.append("driver load-attachment runtime patch missing")
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 404) and not expected_worker:
             warnings.append("legacy live build has no worker compatibility endpoint")
@@ -130,6 +133,7 @@ def check() -> dict[str, Any]:
         "status": "red" if errors else ("amber" if warnings else "green"),
         "buildId": version.get("buildId", ""),
         "workerBuildId": worker_health.get("workerBuildId", ""),
+        "runtimePatchId": worker_health.get("runtimePatchId", ""),
         "expectedWorkerBuildId": expected_worker,
         "expectedWorkerSource": expected_worker_source,
         "driverApiContract": worker_health.get("driverApiContract", ""),

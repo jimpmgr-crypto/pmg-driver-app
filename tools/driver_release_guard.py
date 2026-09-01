@@ -86,6 +86,7 @@ def validate_source() -> dict:
     require(f"pmg-driver-live-v{build_id}" in service_worker, "service-worker/app-version build mismatch")
     require(worker_build and f"const WORKER_BUILD_ID = '{worker_build}'" in worker, "worker build mismatch")
     require(contract and f"const DRIVER_API_CONTRACT = '{contract}'" in worker, "worker API contract mismatch")
+    require("const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1'" in worker, "driver load-attachment runtime patch missing")
     require("photoEvidenceRequired: true" in index, "walkaround photos are not marked required")
     require("missing.push(`${slot.label} photo`)" in index, "missing walkaround photo gate")
     require("navigator.mediaDevices.getUserMedia" in index, "inline walkaround camera is missing")
