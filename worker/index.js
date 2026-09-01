@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260812-small-load-pricing-worker-v16';
+const WORKER_BUILD_ID = '20260901-stale-completed-filter-worker-v18';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -2582,6 +2582,57 @@ async function fetchHaultechJobsByDate(env, date) {
   return { ok: true, jobs };
 }
 
+const COMPLETED_DRIVER_STATUSES = new Set(['signed', 'completed', 'complete', 'delivered']);
+const ACTIVE_DRIVER_STATUSES = new Set(['departed', 'in progress', 'intransit', 'in transit', 'collected']);
+const COMPLETED_DIARY_STATUSES = new Set(['completed', 'complete', 'delivered', 'received', 'invoiced']);
+const EMPTY_COLLECTION_STATUSES = new Set(['', 'none', 'not required', 'not_required', 'n/a']);
+
+function normalisedStatus(value) {
+  return cleanText(value, 80).toLowerCase();
+}
+
+function haultechIsoDate(value) {
+  const text = cleanText(value, 40);
+  const date = text.slice(0, 10);
+  return isValidIsoDate(date) ? date : '';
+}
+
+function deliveryLegIsComplete(job) {
+  const consignment = firstConsignment(job);
+  const driverStatus = normalisedStatus(consignment?.deliveryDriverStatus);
+  // Haultech can label the diary row Received while the driver's actual leg is
+  // still Departed. The driver's active state wins, matching the phone logic.
+  if (ACTIVE_DRIVER_STATUSES.has(driverStatus)) return false;
+  if (consignment?.deliverySigned || COMPLETED_DRIVER_STATUSES.has(driverStatus)) return true;
+  return COMPLETED_DIARY_STATUSES.has(normalisedStatus(job?.deliveryStatus || job?.status));
+}
+
+function hasRealCollectionLegForDate(job, date) {
+  if (haultechIsoDate(job?.collectionDate) !== date) return false;
+  const consignment = firstConsignment(job);
+  const collectionStatus = normalisedStatus(job?.collectionStatus);
+  const driverStatus = normalisedStatus(consignment?.collectionDriverStatus);
+  if (!EMPTY_COLLECTION_STATUSES.has(collectionStatus)) return true;
+  if (consignment?.collectionSigned || ACTIVE_DRIVER_STATUSES.has(driverStatus) || COMPLETED_DRIVER_STATUSES.has(driverStatus)) return true;
+  return Boolean(
+    cleanText(job?.collectionDriverId, 80)
+    || cleanText(job?.collectionVehicleId, 80)
+    || cleanText(job?.collectionLoadId, 80)
+    || Number(job?.collectionLoadNumber || 0)
+  );
+}
+
+function isHistoricalCompletedJobForDate(job, date) {
+  const deliveryDate = haultechIsoDate(job?.deliveryDate);
+  if (!deliveryDate || deliveryDate === date) return false;
+  if (!deliveryLegIsComplete(job)) return false;
+  return !hasRealCollectionLegForDate(job, date);
+}
+
+function visibleHaultechJobsForDate(jobs, date) {
+  return safeArray(jobs).filter(job => !isHistoricalCompletedJobForDate(job, date));
+}
+
 function driverAddedLoadAssignment(job) {
   return {
     driverId: cleanText(job?.deliveryDriverId, 80),
@@ -2896,7 +2947,12 @@ export default {
       }
       if (raw) return corsResponse(JSON.stringify(payload), resp.status);
       const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || []);
-      const merged = await mergeJobStatusOverrides(env, date, jobs);
+      // Haultech occasionally rewrites collectionDate to today on old completed
+      // deliveries while leaving the collection leg empty. Those rows are not
+      // today's work and must never be sent to any driver route. Raw reads stay
+      // untouched for office proof and completion verification.
+      const visibleJobs = visibleHaultechJobsForDate(jobs, date);
+      const merged = await mergeJobStatusOverrides(env, date, visibleJobs);
       if (Array.isArray(payload)) return corsResponse(JSON.stringify(merged), resp.status);
       if (Array.isArray(payload.items)) return corsResponse(JSON.stringify({ ...payload, items: merged }), resp.status);
       if (Array.isArray(payload.data)) return corsResponse(JSON.stringify({ ...payload, data: merged }), resp.status);

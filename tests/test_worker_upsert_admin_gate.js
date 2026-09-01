@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260812-small-load-pricing-worker-v16$/);
+  assert.match(health.workerBuildId, /^20260901-stale-completed-filter-worker-v18$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
   const addressEnv = env();
@@ -1049,6 +1049,63 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   const rawJobs = await resp.json();
   assert.strictEqual(rawJobs.items[0].deliveryStatus, 'Completed', 'raw Haultech reads must not be masked for verification');
+  sandbox.__haultechJobs = [];
+
+  const staleCompleted = {
+    jobId: 10520,
+    id: 'stale-completed-10520',
+    deliveryDate: '2026-08-20T00:00:00',
+    collectionDate: '2026-09-01T00:00:00',
+    deliveryStatus: 'Completed',
+    collectionStatus: 'None',
+    deliveryDriverId: 'paul-driver',
+    consignments: [{ deliveryDriverStatus: 'Completed', collectionDriverStatus: 'None' }],
+  };
+  const sameDayCompleted = {
+    jobId: 10601,
+    id: 'same-day-completed-10601',
+    deliveryDate: '2026-09-01T00:00:00',
+    collectionDate: '2026-09-01T00:00:00',
+    deliveryStatus: 'Completed',
+    collectionStatus: 'None',
+    consignments: [{ deliveryDriverStatus: 'Completed' }],
+  };
+  const realTodayCollection = {
+    jobId: 10521,
+    id: 'real-collection-10521',
+    deliveryDate: '2026-08-20T00:00:00',
+    collectionDate: '2026-09-01T00:00:00',
+    deliveryStatus: 'Completed',
+    collectionStatus: 'Scheduled',
+    collectionDriverId: 'richard-driver',
+    consignments: [{ deliveryDriverStatus: 'Completed', collectionDriverStatus: 'Scheduled' }],
+  };
+  const receivedButStillDeparted = {
+    jobId: 10522,
+    id: 'received-departed-10522',
+    deliveryDate: '2026-08-20T00:00:00',
+    collectionDate: '2026-09-01T00:00:00',
+    deliveryStatus: 'Received',
+    collectionStatus: 'None',
+    consignments: [{ deliveryDriverStatus: 'Departed', collectionDriverStatus: 'None' }],
+  };
+  sandbox.__haultechJobs = [staleCompleted, sameDayCompleted, realTodayCollection, receivedButStillDeparted];
+  resp = await workerRequest('/ht/jobs?date=2026-09-01', {}, overrideEnv);
+  assert.strictEqual(resp.status, 200);
+  const filteredJobs = await resp.json();
+  assert.deepStrictEqual(
+    Array.from(filteredJobs.items, job => job.jobId),
+    [10601, 10521, 10522],
+    'shared driver feed must hide only historical completed rows with an empty false-today collection leg'
+  );
+  resp = await workerRequest('/ht/jobs?date=2026-09-01&raw=true', {}, overrideEnv);
+  assert.strictEqual(resp.status, 200);
+  const unfilteredProofJobs = await resp.json();
+  assert.deepStrictEqual(
+    Array.from(unfilteredProofJobs.items, job => job.jobId),
+    [10520, 10601, 10521, 10522],
+    'raw office verification must retain every Haultech row'
+  );
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
