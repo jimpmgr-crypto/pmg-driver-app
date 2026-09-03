@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260901-stale-completed-filter-worker-v18$/);
+  assert.match(health.workerBuildId, /^20260903-haultech-customer-sync-worker-v19$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
   const addressEnv = env();
@@ -1642,6 +1642,10 @@ async function completeJobFixture(job, quantity, extras = {}) {
     { id: '529827d7-2caf-414e-8ced-101832aafdd7', companyName: 'Garstang Ground Services Ltd', customerCode: 'GGSLTD', active: true },
     { id: 'f3504eff-30f2-48f8-a10b-87ffc9923cea', companyName: 'P. Baker Groundworks', customerCode: 'PB Groundworks', active: true },
     { id: 'a1d6a399-4dda-4205-9383-f459669c381c', companyName: 'Resource Recycling Solutions', customerCode: 'Duncan Clitheroe', active: true },
+    { id: 'duplicate-uppercase', companyName: 'STEVE WRIGHT', customerCode: 'STEVE WRIGHT', active: true },
+    { id: 'preferred-title-case', companyName: 'Steve Wright', customerCode: 'Steve', active: true },
+    { id: 'duplicate-code-is-name', companyName: 'Stephen Rogerson Fencing', customerCode: 'Stephen Rogerson Fencing', active: true },
+    { id: 'preferred-business-code', companyName: 'Stephen Rogerson Fencing', customerCode: 'SRFENCE', active: true },
   ];
   const aliasedCustomers = await sandbox.fetchLiveHaultechCustomers(env());
   const aliasesByName = Object.fromEntries(aliasedCustomers.map(customer => [customer.name, customer.aliases]));
@@ -1649,6 +1653,10 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert(aliasesByName['P. Baker Groundworks'].includes('PB Groundworks'));
   assert(aliasesByName['Resource Recycling Solutions'].includes('RRS'));
   assert(aliasesByName['Resource Recycling Solutions'].includes('Duncan'));
+  assert.strictEqual(aliasedCustomers.filter(customer => customer.name.toLowerCase() === 'steve wright').length, 1);
+  assert.strictEqual(aliasedCustomers.find(customer => customer.name.toLowerCase() === 'steve wright').id, 'preferred-title-case');
+  assert.strictEqual(aliasedCustomers.filter(customer => customer.name.toLowerCase() === 'stephen rogerson fencing').length, 1);
+  assert.strictEqual(aliasedCustomers.find(customer => customer.name.toLowerCase() === 'stephen rogerson fencing').id, 'preferred-business-code');
 
   console.log('worker admin gate regression checks passed');
 })().catch(err => {

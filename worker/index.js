@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260901-stale-completed-filter-worker-v18';
+const WORKER_BUILD_ID = '20260903-haultech-customer-sync-worker-v19';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -1952,8 +1952,7 @@ async function fetchLiveHaultechCustomers(env) {
     continuationToken = page.continuationToken;
   } while (continuationToken);
 
-  const seen = new Set();
-  const out = [];
+  const candidates = [];
   const hasAndreBusinessAccount = customers.some(customer => cleanText(customer?.id, 80) === ANDRE_BUSINESS_CUSTOMER_ID);
   for (const customer of customers) {
     if (customer?.active === false) continue;
@@ -1978,10 +1977,7 @@ async function fetchLiveHaultechCustomers(env) {
     } else if (id === RESOURCE_RECYCLING_CUSTOMER_ID || name.toLowerCase() === 'resource recycling solutions') {
       aliases = RESOURCE_RECYCLING_ALIASES.slice();
     }
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
+    candidates.push({
       id,
       name,
       code,
@@ -1990,6 +1986,35 @@ async function fetchLiveHaultechCustomers(env) {
       active: true,
     });
   }
+
+  // HaulTech currently contains a small number of active duplicate display
+  // names. Pick the same row deterministically on every refresh so Yard and
+  // Driver apps never alternate between customer IDs.
+  const customerPreferenceKey = (customer) => {
+    const name = cleanText(customer?.name, 200);
+    const code = cleanText(customer?.code, 120);
+    const codeIsName = !code || code.toLowerCase() === name.toLowerCase();
+    const allCapsName = name === name.toUpperCase() && /[A-Z]/.test(name);
+    return [codeIsName ? 1 : 0, allCapsName ? 1 : 0, code.length, customer.id || ''];
+  };
+  const comparePreference = (left, right) => {
+    const a = customerPreferenceKey(left);
+    const b = customerPreferenceKey(right);
+    for (let index = 0; index < a.length; index += 1) {
+      if (a[index] < b[index]) return -1;
+      if (a[index] > b[index]) return 1;
+    }
+    return 0;
+  };
+  const preferredByName = new Map();
+  for (const customer of candidates) {
+    const key = customer.name.toLowerCase();
+    const existing = preferredByName.get(key);
+    if (!existing || comparePreference(customer, existing) < 0) {
+      preferredByName.set(key, customer);
+    }
+  }
+  const out = Array.from(preferredByName.values());
   out.sort((a, b) => a.name.localeCompare(b.name));
   return out;
 }

@@ -1,9 +1,9 @@
 {
-  "buildId": "20260810-android-movement-persistence-prestart-fleet-torque-source-v75",
-  "updatedAt": "2026-08-12T20:40:00+01:00",
+  "buildId": "20260903-haultech-customer-sync-v76",
+  "updatedAt": "2026-09-03T12:15:00+01:00",
   "baselineCommit": "4b8fee9",
-  "expectedWorkerBuildId": "20260901-stale-completed-filter-worker-v18",
+  "expectedWorkerBuildId": "20260903-haultech-customer-sync-worker-v19",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "The shared worker now removes historical completed deliveries that Haultech incorrectly returns under today's date with an empty collection leg. Genuine same-day completed jobs and real current collection work remain visible, raw office verification stays unchanged, and the existing load-attachment, pricing, proof, ordering, completion and walkaround protections remain in place. Lane split remains explicit: Fleet Live supplies Gary and Richard torque state, while Tony's plant app remains plant and tools only. Lineage marker retained: prestart-fleet-torque-source."
+  "notes": "The Driver and Yard customer feed now refreshes from live HaulTech every 30 minutes, applies deterministic duplicate-name selection, and ships a complete current offline fallback. Existing job, ticket, pricing, proof, completion and walkaround behaviour is unchanged."
 }
