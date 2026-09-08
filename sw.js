@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20260903-haultech-customer-sync-v76';
+const CACHE_NAME = 'pmg-driver-live-v20260908-drainage-triple-socket-junctions-v77';
 const APP_SHELL = [
   '/',
   '/index.html',

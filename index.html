@@ -1339,6 +1339,8 @@ const MATERIAL_PRICING = {
   "Tip Skip": { type: "fixed", rate: 50, unit: "weeks" },
   "Drainage pipe 6m": { type: "flat", rate: 28.55, unit: "each" },
   "Drainage collar": { type: "flat", rate: 4.1, unit: "each" },
+  "4 inch triple socket T junction": { type: "flat", rate: 20.57, unit: "each" },
+  "4 inch triple socket Y junction": { type: "flat", rate: 20.57, unit: "each" },
   "Drainage s/s 15": { type: "flat", rate: 9.2, unit: "each" },
   "Drainage s/s 30": { type: "flat", rate: 9.2, unit: "each" },
   "Drainage s/s 45": { type: "flat", rate: 8.85, unit: "each" },
@@ -1476,6 +1478,8 @@ const MATERIALS = [
   {"group": "SUNDRY","label": "Tip Skip (per week)","value": "Tip Skip"},
   {"group": "DRAINAGE","label": "Drainage pipe 6m","value": "Drainage pipe 6m"},
   {"group": "DRAINAGE","label": "Drainage collar","value": "Drainage collar"},
+  {"group": "DRAINAGE","label": "4 inch (110mm) triple socket T junction - 87.5 deg","value": "4 inch triple socket T junction"},
+  {"group": "DRAINAGE","label": "4 inch (110mm) triple socket Y junction - 45 deg","value": "4 inch triple socket Y junction"},
   {"group": "DRAINAGE","label": "Drainage s/s 15","value": "Drainage s/s 15"},
   {"group": "DRAINAGE","label": "Drainage s/s 30","value": "Drainage s/s 30"},
   {"group": "DRAINAGE","label": "Drainage s/s 45","value": "Drainage s/s 45"},
@@ -1651,7 +1655,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260903-haultech-customer-sync-v76';
+const APP_BUILD_ID = '20260908-drainage-triple-socket-junctions-v77';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
