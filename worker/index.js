@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260903-haultech-customer-sync-worker-v19';
+const WORKER_BUILD_ID = '20260909-black-moss-customer-aliases-worker-v20';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -1976,6 +1976,10 @@ async function fetchLiveHaultechCustomers(env) {
       aliases = P_BAKER_ALIASES.slice();
     } else if (id === RESOURCE_RECYCLING_CUSTOMER_ID || name.toLowerCase() === 'resource recycling solutions') {
       aliases = RESOURCE_RECYCLING_ALIASES.slice();
+    }
+    if (id === 'f5dca49e-cb8d-4d29-a65b-1f2879b87784') {
+      // Keep the source account identity; match the canonical Python sync aliases.
+      aliases = ['FI Agricultural', 'F I Agricultural'];
     }
     candidates.push({
       id,

@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260903-haultech-customer-sync-worker-v19$/);
+  assert.match(health.workerBuildId, /^20260909-black-moss-customer-aliases-worker-v20$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
   const addressEnv = env();
@@ -1639,6 +1639,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(mileageRecord.history[0].createdBy, 'Gary');
 
   sandbox.__haultechCustomers = [
+    { id: '922cb4b1-d81b-4a1e-9410-fc34a00e1167', companyName: 'Advanced Driveway Solutions', customerCode: 'Advanced Driveway Solutions', active: true },
+    { id: 'f5dca49e-cb8d-4d29-a65b-1f2879b87784', companyName: 'Black Moss Farm', customerCode: 'FI Agricultural', active: true },
     { id: '529827d7-2caf-414e-8ced-101832aafdd7', companyName: 'Garstang Ground Services Ltd', customerCode: 'GGSLTD', active: true },
     { id: 'f3504eff-30f2-48f8-a10b-87ffc9923cea', companyName: 'P. Baker Groundworks', customerCode: 'PB Groundworks', active: true },
     { id: 'a1d6a399-4dda-4205-9383-f459669c381c', companyName: 'Resource Recycling Solutions', customerCode: 'Duncan Clitheroe', active: true },
@@ -1649,6 +1651,19 @@ async function completeJobFixture(job, quantity, extras = {}) {
   ];
   const aliasedCustomers = await sandbox.fetchLiveHaultechCustomers(env());
   const aliasesByName = Object.fromEntries(aliasedCustomers.map(customer => [customer.name, customer.aliases]));
+  const blackMossId = 'f5dca49e-cb8d-4d29-a65b-1f2879b87784';
+  assert.strictEqual(aliasedCustomers.filter(customer => customer.id === blackMossId).length, 1);
+  assert.strictEqual(aliasedCustomers.find(customer => customer.id === blackMossId).name, 'Black Moss Farm');
+  assert.strictEqual(aliasedCustomers.find(customer => customer.id === blackMossId).code, 'FI Agricultural');
+  for (const alias of ['Black Moss Farm', 'FI Agricultural', 'F I Agricultural', ' f i agricultural ']) {
+    const match = sandbox.findCustomerMatch(aliasedCustomers, alias);
+    assert.strictEqual(match.customer.id, blackMossId);
+    assert.strictEqual(match.score, 1);
+  }
+  assert.strictEqual(sandbox.findCustomerMatch(aliasedCustomers, 'Advanced Driveway Solutions').customer.id, '922cb4b1-d81b-4a1e-9410-fc34a00e1167');
+  assert.notStrictEqual(sandbox.findCustomerMatch(aliasedCustomers, 'F I Agricultural Services').score, 1);
+  const refreshedCustomers = await sandbox.fetchLiveHaultechCustomers(env());
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(refreshedCustomers)), JSON.parse(JSON.stringify(aliasedCustomers)));
   assert(aliasesByName['Garstang Ground Services Ltd'].includes('Garstang Grab'));
   assert(aliasesByName['P. Baker Groundworks'].includes('PB Groundworks'));
   assert(aliasesByName['Resource Recycling Solutions'].includes('RRS'));
