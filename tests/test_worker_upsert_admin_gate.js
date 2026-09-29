@@ -195,8 +195,32 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260909-black-moss-customer-aliases-worker-v20$/);
+  assert.match(health.workerBuildId, /^20260924-lego-blocks-worker-v21$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
+
+  // Synthetic endpoint fixture only: a stale m3 unit must not turn blocks into concrete.
+  for (const material of ['Lego block - Full', 'Lego block - Two-thirds', 'Lego block - One-third']) {
+    sandbox.__fetches.length = 0;
+    const blockResponse = await workerRequest('/ht/driver-add', {
+      method: 'POST',
+      body: JSON.stringify({ id: 'lego-fixture-' + material, date: '2026-09-24',
+        customer: 'Customer One', material, quantity: 2, unit: 'm3',
+        driver: 'John Bowman', vehicle: 'LL21HJJ', reference: 'Block fixture',
+        notes: 'Concrete blocks; each count', from: 'Yard', to: 'Fixture site', concreteType: 'quarried' }),
+    });
+    assert.strictEqual(blockResponse.status, 200);
+    const blockCall = sandbox.__fetches.find(call => call.url.includes('/api/Job/UpsertJob'));
+    assert(blockCall);
+    const blockPayload = JSON.parse(blockCall.options.body);
+    assert.strictEqual(blockPayload.consignments[0].goodsDescription, material);
+    assert.strictEqual(blockPayload.quantity, 2);
+    assert.strictEqual(blockPayload.consignments[0].quantity, 2);
+    assert(blockPayload.accountNotes.includes('2each'));
+    assert.strictEqual(blockPayload.useQuotedPrice, false);
+    assert.strictEqual(blockPayload.quotedPrice, 0);
+    assert(!sandbox.__fetches.some(call => call.url.includes('/api/quote')));
+  }
+  sandbox.__haultechJobs = [];
 
   const addressEnv = env();
   resp = await workerRequest('/address/autocomplete', {

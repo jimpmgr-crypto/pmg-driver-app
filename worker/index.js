@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260909-black-moss-customer-aliases-worker-v20';
+const WORKER_BUILD_ID = '20260924-lego-blocks-worker-v21';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -554,8 +554,13 @@ function concreteQuantityFromText(...values) {
   return Number.isFinite(qty) && qty > 0 ? qty : 0;
 }
 
+function isLegoBlockMaterial(material) {
+  return /^lego block - (?:full|two-thirds|one-third)$/i.test(String(material || '').trim());
+}
+
 function driverAddedQuantityAndUnit(body, material = '') {
   const rawQuantity = Number(body.quantity || body.weight || 0) || 0;
+  if (isLegoBlockMaterial(material || body.material || body.goodsDescription)) return { quantity: rawQuantity, unit: 'each' };
   const rawUnit = cleanText(body.unit, 20) || 't';
   if (rawQuantity > 0) return { quantity: rawQuantity, unit: rawUnit };
   const inferredQuantity = concreteQuantityFromText(body.notes, body.driverNotes, body.accountNotes, body.trafficNotes, material, body.goodsDescription);

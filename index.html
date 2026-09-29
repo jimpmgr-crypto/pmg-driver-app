@@ -1370,7 +1370,7 @@ const MATERIAL_PRICING = {
   "Yard gulley": { type: "flat", rate: 34.75, unit: "each" },
   "Yard gulley grate B125": { type: "flat", rate: 51.65, unit: "each" },
   "Geotextile black": { type: "flat", rate: 125, unit: "each" },
-  "Non woven white": { type: "flat", rate: 195, unit: "each" },
+  "Non woven white": { type: "flat", rate: 225, unit: "each" },
   "1200 gauge visqueen": { type: "flat", rate: 32, unit: "each" },
   "500 gauge visqueen": { type: "flat", rate: 28, unit: "each" },
   "8 inch edgings": { type: "flat", rate: 5.8, unit: "each" },
@@ -1394,6 +1394,9 @@ const MATERIAL_PRICING = {
   "25mm end cap": { type: "flat", rate: 6.75, unit: "each" },
   "Concrete": { type: "flat", rate: 0, unit: "each" },
   "Road Plate": { type: "flat", rate: 0, unit: "each" },
+  "Lego block - Full": { type: "flat", rate: 120, unit: "each" },
+  "Lego block - Two-thirds": { type: "flat", rate: 100, unit: "each" },
+  "Lego block - One-third": { type: "flat", rate: 80, unit: "each" },
 };
 // END GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
 
@@ -1533,6 +1536,9 @@ const MATERIALS = [
   {"group": "WATER","label": "25mm end cap","value": "25mm end cap"},
   {"group": "CONCRETE","label": "Concrete","value": "Concrete"},
   {"group": "OTHER","label": "Road Plate","value": "Road Plate"},
+  {"group": "CONCRETE BLOCKS","label": "Lego block - Full","value": "Lego block - Full"},
+  {"group": "CONCRETE BLOCKS","label": "Lego block - Two-thirds","value": "Lego block - Two-thirds"},
+  {"group": "CONCRETE BLOCKS","label": "Lego block - One-third","value": "Lego block - One-third"},
   {group: '__other__', label: 'Not on list / Other', value: '__other__'},
 ];
 // END GENERATED PMG_YARD_PRICES:MATERIALS
@@ -1655,7 +1661,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260909-black-moss-customer-aliases-v78';
+const APP_BUILD_ID = '20260929-white-membrane-v80';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -6202,9 +6208,14 @@ function isVolumetricConcreteVehicle(vehicle) {
   return VOLUMETRIC_CONCRETE_VEHICLES.has(reg) || reg.includes('LL21') || reg.includes('FLF');
 }
 
+function isLegoBlockMaterial(material) {
+  return /^lego block - (?:full|two-thirds|one-third)$/i.test(String(material || '').trim());
+}
+
 function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
   const selectedVehicle = vehicle ?? $('f-vehicle')?.value ?? '';
   const selectedMaterial = material ?? $('f-material')?.value ?? '';
+  if (isLegoBlockMaterial(selectedMaterial)) return false;
   const selectedUnit = String(unit ?? $('f-unit')?.value ?? '').toLowerCase();
   const selectedNotes = notes ?? $('f-notes')?.value ?? '';
   const text = `${selectedMaterial} ${selectedNotes}`;
@@ -6216,7 +6227,10 @@ function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
 function updateConcreteTypeFields() {
   const show = isConcreteEntryCandidate();
   $('concrete-type-fields')?.classList.toggle('hidden', !show);
-  if (isVolumetricConcreteVehicle($('f-vehicle')?.value)) {
+  if (isLegoBlockMaterial($('f-material')?.value)) {
+    $('f-unit').value = 'each';
+    if ($('f-concrete-type')) $('f-concrete-type').value = '';
+  } else if (isVolumetricConcreteVehicle($('f-vehicle')?.value)) {
     $('f-unit').value = 'm3';
     if (!$('f-material').value.trim()) $('f-material').value = 'Concrete';
   } else if ($('f-concrete-type')) {
