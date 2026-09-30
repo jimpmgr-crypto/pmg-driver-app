@@ -1,5 +1,5 @@
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260924-lego-blocks-worker-v21';
+const WORKER_BUILD_ID = '20260930-holcim-aggregate-units-v22';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -561,6 +561,8 @@ function isLegoBlockMaterial(material) {
 function driverAddedQuantityAndUnit(body, material = '') {
   const rawQuantity = Number(body.quantity || body.weight || 0) || 0;
   if (isLegoBlockMaterial(material || body.material || body.goodsDescription)) return { quantity: rawQuantity, unit: 'each' };
+  // Never infer wet-concrete volume or pricing for a selected dry aggregate.
+  if (/^(?:40mm Quarried MOT|20mm Quarried MOT|Type 3 MOT|Quarried (?:6mm|10mm|20mm) Clean Stone|Quarried Concrete Aggregate \(4\/20\))$/i.test(String(material || body.material || body.goodsDescription || '').trim())) return { quantity: rawQuantity, unit: 't' };
   const rawUnit = cleanText(body.unit, 20) || 't';
   if (rawQuantity > 0) return { quantity: rawQuantity, unit: rawUnit };
   const inferredQuantity = concreteQuantityFromText(body.notes, body.driverNotes, body.accountNotes, body.trafficNotes, material, body.goodsDescription);

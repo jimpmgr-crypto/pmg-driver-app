@@ -1276,12 +1276,12 @@ const MATERIAL_PRICING = {
   "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
   "Recycled 20mm Clean Washed": { type: 'tiered', threshold: 10, under10: 26.5, over10: 23.5, unit: "tonnes" },
   "Recycled 10mm Clean Washed": { type: 'tiered', threshold: 10, under10: 28.5, over10: 26.5, unit: "tonnes" },
-  "40mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 29.5, over10: 27.5, unit: "tonnes" },
-  "20mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 31.5, over10: 29.5, unit: "tonnes" },
+  "40mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 31, over10: 29, unit: "tonnes" },
+  "20mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 33.5, over10: 31.5, unit: "tonnes" },
   "40mm Scalpings Blue": { type: 'tiered', threshold: 10, under10: 26, over10: 26, unit: "tonnes" },
-  "Type 3 MOT": { type: "flat", rate: 33, unit: "tonnes" },
-  "Quarried 20mm Clean Stone": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
-  "Quarried 6mm Clean Stone": { type: 'tiered', threshold: 10, under10: 37.5, over10: 35.5, unit: "tonnes" },
+  "Type 3 MOT": { type: 'tiered', threshold: 10, under10: 35, over10: 33, unit: "tonnes" },
+  "Quarried 20mm Clean Stone": { type: 'tiered', threshold: 10, under10: 44, over10: 41.5, unit: "tonnes" },
+  "Quarried 6mm Clean Stone": { type: 'tiered', threshold: 10, under10: 41.5, over10: 38.5, unit: "tonnes" },
   "Grade 1 Topsoil": { type: 'banded', strictAboveThreshold: 10, bands: [{"min":15,"rate":15},{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
   "Blended Topsoil/Compost": { type: 'tiered', threshold: 10, under10: 32, over10: 30, unit: "tonnes" },
   "Fill": { type: "flat", rate: 5, unit: "tonnes" },
@@ -1397,6 +1397,8 @@ const MATERIAL_PRICING = {
   "Lego block - Full": { type: "flat", rate: 120, unit: "each" },
   "Lego block - Two-thirds": { type: "flat", rate: 100, unit: "each" },
   "Lego block - One-third": { type: "flat", rate: 80, unit: "each" },
+  "Quarried 10mm Clean Stone": { type: 'tiered', threshold: 10, under10: 44, over10: 41.5, unit: "tonnes" },
+  "Quarried Concrete Aggregate (4/20)": { type: 'tiered', threshold: 10, under10: 40.5, over10: 38, unit: "tonnes" },
 };
 // END GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
 
@@ -1539,6 +1541,8 @@ const MATERIALS = [
   {"group": "CONCRETE BLOCKS","label": "Lego block - Full","value": "Lego block - Full"},
   {"group": "CONCRETE BLOCKS","label": "Lego block - Two-thirds","value": "Lego block - Two-thirds"},
   {"group": "CONCRETE BLOCKS","label": "Lego block - One-third","value": "Lego block - One-third"},
+  {"group": "QUARRIED WASHED STONE","label": "Quarried 10mm Clean Stone","value": "Quarried 10mm Clean Stone"},
+  {"group": "QUARRIED WASHED STONE","label": "Quarried Concrete Aggregate (4/20)","value": "Quarried Concrete Aggregate (4/20)"},
   {group: '__other__', label: 'Not on list / Other', value: '__other__'},
 ];
 // END GENERATED PMG_YARD_PRICES:MATERIALS
@@ -1661,7 +1665,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20260929-white-membrane-v80';
+const APP_BUILD_ID = '20260930-holcim-prices-v81';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -6216,6 +6220,8 @@ function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
   const selectedVehicle = vehicle ?? $('f-vehicle')?.value ?? '';
   const selectedMaterial = material ?? $('f-material')?.value ?? '';
   if (isLegoBlockMaterial(selectedMaterial)) return false;
+  // These dry aggregates retain tonne pricing even on a volumetric wagon.
+  if (/^(?:40mm Quarried MOT|20mm Quarried MOT|Type 3 MOT|Quarried (?:6mm|10mm|20mm) Clean Stone|Quarried Concrete Aggregate \(4\/20\))$/i.test(String(selectedMaterial).trim())) return false;
   const selectedUnit = String(unit ?? $('f-unit')?.value ?? '').toLowerCase();
   const selectedNotes = notes ?? $('f-notes')?.value ?? '';
   const text = `${selectedMaterial} ${selectedNotes}`;
@@ -6229,6 +6235,9 @@ function updateConcreteTypeFields() {
   $('concrete-type-fields')?.classList.toggle('hidden', !show);
   if (isLegoBlockMaterial($('f-material')?.value)) {
     $('f-unit').value = 'each';
+    if ($('f-concrete-type')) $('f-concrete-type').value = '';
+  } else if (/^(?:40mm Quarried MOT|20mm Quarried MOT|Type 3 MOT|Quarried (?:6mm|10mm|20mm) Clean Stone|Quarried Concrete Aggregate \(4\/20\))$/i.test(String($('f-material')?.value || '').trim())) {
+    $('f-unit').value = 't';
     if ($('f-concrete-type')) $('f-concrete-type').value = '';
   } else if (isVolumetricConcreteVehicle($('f-vehicle')?.value)) {
     $('f-unit').value = 'm3';

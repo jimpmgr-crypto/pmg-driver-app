@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260924-lego-blocks-worker-v21$/);
+  assert.match(health.workerBuildId, /^20260930-holcim-aggregate-units-v22$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
   // Synthetic endpoint fixture only: a stale m3 unit must not turn blocks into concrete.
