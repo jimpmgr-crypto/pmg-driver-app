@@ -1,5 +1,19 @@
+// BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
+const COLLECTED_CONCRETE_RATES = {"Collected concrete - Quarried": 130, "Collected concrete - Recycled": 120};
+const COLLECTED_CONCRETE_HALF_RATES = {"Collected concrete - Quarried": 90, "Collected concrete - Recycled": 80};
+const COLLECTED_CONCRETE_MIN_M3 = 0.5;
+function collectedConcreteQuote(material, quantity, unit) {
+  const rate = COLLECTED_CONCRETE_RATES[String(material || '').trim()];
+  if (rate === undefined) return null;
+  const q = Number(quantity);
+  if (!['m3', 'm³'].includes(String(unit || '').toLowerCase()) || !Number.isFinite(q) || q < COLLECTED_CONCRETE_MIN_M3) return {error:'Collected concrete minimum is 0.5 m³; enter quantity in m³.'};
+  const half = COLLECTED_CONCRETE_HALF_RATES[String(material).trim()];
+  const amount = q < 1 ? half + (q - 0.5) * 2 * (rate - half) : q * rate;
+  return {amount:Math.round((amount + Number.EPSILON) * 100) / 100, rate, source:material.toLowerCase().endsWith('quarried') ? 'quarried' : 'recycled', quantity:q};
+}
+// END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20260930-holcim-aggregate-units-v22';
+const WORKER_BUILD_ID = '20261002-collected-concrete-v24';
 const WORKER_RUNTIME_PATCH_ID = '20260827-driver-load-attachment-v1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -571,6 +585,8 @@ function driverAddedQuantityAndUnit(body, material = '') {
 }
 
 async function driverAddedConcreteAutoPrice(body, quantity, env = null) {
+  const collected = collectedConcreteQuote(body.material || body.goodsDescription, quantity, body.unit);
+  if (collected) return collected.error ? {quotedPrice:0,useQuotedPrice:false,note:''} : {quotedPrice:collected.amount,useQuotedPrice:true,note:''};
   const material = cleanText(body.material || body.goodsDescription, 240).toLowerCase();
   const quantityInfo = driverAddedQuantityAndUnit(body, material);
   const unit = cleanText(quantityInfo.unit, 20).toLowerCase();
@@ -594,12 +610,8 @@ async function driverAddedConcreteAutoPrice(body, quantity, env = null) {
     body.to,
     body.deliveryAddress?.formattedAddress
   )) {
-    const quotedPrice = Math.round(qty * 40 * 100) / 100;
-    return {
-      quotedPrice,
-      useQuotedPrice: true,
-      note: `Auto-priced internal PM Groundworks concrete saving: ${qty}m3 @ £40.00/m3 = £${quotedPrice.toFixed(2)}`,
-    };
+    // Whole-job final volume is not proved at driver intake. Completion resolves it.
+    return { quotedPrice: 0, useQuotedPrice: false, note: '' };
   }
   const concreteType = inferConcreteType(body);
   if (!concreteType || !CONCRETE_RATES[concreteType]) {
@@ -619,7 +631,7 @@ async function driverAddedConcreteAutoPrice(body, quantity, env = null) {
       ? `Auto-priced PMG ${concreteType} concrete: ${qty}m3 @ £${rate.toFixed(2)}/m3 x ${smallLoadMultiplier.toFixed(2)} small-load multiplier = £${quotedPrice.toFixed(2)}`
       : `Auto-priced PMG ${concreteType} concrete: ${qty <= CONCRETE_SMALL_LOAD_THRESHOLD_M3 ? '3.5m3 or under' : 'over 3.5m3'} @ £${rate.toFixed(2)}/m3 = £${quotedPrice.toFixed(2)}`,
   };
-  return concreteDeliveryPrice(body, qty, concreteType, basePrice, { env });
+  return concreteDeliveryPrice(body, qty, concreteType, basePrice, { requirePostcode: true, env });
 }
 
 async function driverAddedQuotedPrice(body, driverName, quantity, unit, ref = '', env = null) {
@@ -773,6 +785,9 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const quantityInfo = driverAddedQuantityAndUnit(body, material);
   const weight = quantityInfo.quantity;
   const unit = quantityInfo.unit;
+  const collected = collectedConcreteQuote(material, weight, unit);
+  if (collected?.error) return {error:'collected_concrete_minimum_or_unit',message:collected.error,status:400};
+  if (collected && body.concreteType && body.concreteType !== collected.source) return {error:'collected_concrete_source_conflict',status:400};
   const from = cleanText(body.from || body.collectionAddressLine1, 240);
   const to = cleanText(body.to || body.deliveryAddressLine1, 240);
   const collectionAddress = normaliseStructuredAddress(body, 'collection', from);
@@ -824,7 +839,7 @@ async function buildDriverAddedHaultechPayload(env, body) {
   if (a1PaymentStatus) accountParts.push(`${exactA1Customer ? 'A1' : 'Customer'} payment: ${a1PaymentStatus}`);
   if (a1PaymentStatus) trafficParts.push(a1PaymentStatus);
   if (notes) trafficParts.push(notes);
-  if (pricing.note) accountParts.push(pricing.note);
+  // Automatic calculation provenance stays private, never in customer notes.
   if (body.wtn || body.wasteTransferNote) accountParts.push('Waste transfer note saved in PMG driver app');
 
   const payload = normaliseDriverAddedUpsertPayload({
@@ -2381,16 +2396,10 @@ function jobCustomerName(job) {
 }
 
 function jobHasExistingPrice(job) {
-  const consignment = firstConsignment(job);
-  return [
-    job?.quotedPrice,
-    job?.totalPrice,
-    job?.price,
-    job?.consignmentPrice,
-    consignment?.quotedPrice,
-    consignment?.totalPrice,
-    consignment?.price,
-  ].some(value => Number.isFinite(Number(value)) && Number(value) !== 0);
+  const consignments=job?.consignments||[];
+  if(consignments.some(c=>Array.isArray(c.consignmentPrice)&&c.consignmentPrice.length))return true;
+  const values=[job?.quotedPrice,job?.totalPrice,job?.price,job?.consignmentPrice,...consignments.flatMap(c=>[c.quotedPrice,c.totalPrice,c.price])];
+  return values.some(value=>value!==undefined && value!==null && value!=='' && (!Number.isFinite(Number(value)) || Number(value)!==0));
 }
 
 function normalisedCompletionMaterial(job) {
@@ -2427,15 +2436,7 @@ function applyDriverConcreteTypeToHaultechJob(job, concreteType) {
 }
 
 function completionPricingReview(job, reason, detail) {
-  const note = `OFFICE PRICE REVIEW REQUIRED: ${cleanText(detail || reason, 300)}`;
-  const existingNotes = job?.accountNotes || job?.accountnotes || '';
-  const accountNotes = mergePlainNoteText(existingNotes, note);
-  return {
-    job: accountNotes === cleanText(existingNotes, 4000) ? job : { ...job, accountNotes },
-    changed: accountNotes !== cleanText(existingNotes, 4000),
-    reviewRequired: true,
-    reason,
-  };
+  return {job,changed:false,reviewRequired:true,reason,privateDetail:cleanText(detail||reason,300)};
 }
 
 function clearCompletionPricingReview(value) {
@@ -2498,10 +2499,318 @@ function applyResolvedDeliveryPostcode(job, pricing) {
   return { ...job, [field]: consignments };
 }
 
+// BEGIN GENERATED AGREED COMPLETION PRICING
+const AGREED_COMPLETION_POLICY = {"version": "2026-10-02-r4", "effective_from": "2026-10-02", "authority": "Jim voice 2 October 2026: Right, set all this up, please", "yard": {"postcode": "FY6 9DJ", "longitude": -2.94882, "latitude": 53.885484}, "road_bands_max_seconds": [1500, 2700], "mixed_spoil_away": {"rates": [220, 240, 260], "full_load_tonnes": 20, "vehicle": "eight_wheeler", "locality_override_rate": 220, "locality_names": ["Lytham", "St Annes"], "part_load_full_price": true}, "6f2_delivered": {"rates": [240, 250, 260], "full_load_tonnes": 20, "vehicle": "eight_wheeler", "delivery_inclusive": true}, "part_mixed_delivery": {"rates": [60, 75, 90], "once_per_load": true}, "grabbed_in": {"mapping_status": "confirmed_service", "material_id": null, "vat_classification": "retain_existing_job_tax_classification", "bands": [{"max_tonnes": 3, "rate": 10, "minimum": 0}, {"max_tonnes": 8, "rate": 7.5, "minimum": 30}, {"max_tonnes": null, "rate": 5, "minimum": 60}], "basis": "whole_load", "service_id": "grab_unload_truck_to_job", "operational_meaning": "Neil uses the grab lorry to lift delivered material out of the truck and into the job", "component": "handling_charge", "not_yard_tipping": true, "not_material_or_delivery_price": true, "authority": "Jim clarification in this chat, 2 October 2026"}, "internal_concrete_saving": {"boundary_m3": 8, "below_rate": 60, "at_or_above_rate": 30, "basis": "whole_job_per_mix", "customer_sell_price": false, "grouping": "Combine all wagons/tickets for the same job and same verified mix type; different mixes calculated separately.", "superseded_rate": 40, "sole_site_day_rule": "Jim2October2026: ifonlyconcreteentryforsite/day,treataswholepour;missinggradealoneisnotpriceblocker;explicitmulti-mix andduplicateevidencestillreview", "grouping_rule": "Completedpour/job,notwhole-site/day. Sameplotdeliveriesconfirmedonepourcombine;distinctkerbjobstaysseparate. Soleentryforsitedayiswholepour;actualqtysupersedesestimate."}, "protected_agreements": [{"customer": "Stainforth Construction", "site": "Thornton/Norcross Lane", "material": "6f2_delivered", "full_load_tonnes": 20, "rate": 235, "delivery_inclusive": true, "customer_id": "d04875d3-883b-48cd-97c7-02e210da0cd4", "exact_site_labels": ["norcross", "norcross lane", "m s norcross lane thornton cleveleys"], "evidence": "Jim 1/2 October; exact live account verified 2 October; current Thornton Norcross site only"}, {"customer": "Craig Anderson / Anderson & Sons Contracting", "site": "Blackpool Cricket Club", "material": "6f2_delivered", "full_load_tonnes": 20, "rate": 250, "delivery_inclusive": true, "customer_id": "37091c3c-5dfd-4010-b873-4a8699e0b908", "exact_site_labels": ["blackpool cricket club"], "evidence": "Jim 1 October Craig Anderson Blackpool Cricket Club agreement; live account verified 2 October"}], "other_negotiated_agreements": "Must be resolved before generic pricing, including Wyre, Lisca Farm and Joe Adamson. Exact IDs/site evidence required; names here are evidence labels, not fuzzy match aliases.", "supersedes": ["20/40 minute bands", "mixed spoil 260/275 general prices", "grabbed-in ten-tonne breakpoint", "internal concrete saving 40/m3"], "activation": "release_candidate", "split_concrete": {"charging_origin": "PMG yard, FY6 9DJ", "authority_exact": "Split concrete jobs get charged as if everything was coming from the yard.", "internal_saving_basis": "Combine all wagons/tickets for the same job and same verified mix type; different mixes calculated separately.", "final_grouping_source": "Jim confirmed in implementation chat: one completed pour on that date, same mix, all wagons; missing identity or conflicts hold", "authority_same_mix": "Jim: if two wagons are on the same job, overall cubes, not each specific wagon, unless different mix type."}, "september_reconciliation": {"enabled": true, "authority_id": "jim-september-2026-20261002", "source_thread": "01a0fc9c-d12a-7e63-9352-80d8d33adf2b", "scope": "September 2026 uninvoiced supported jobs; retain paid cash zeros and negotiated agreements"}, "automatic_office_run": {"enabled": true, "authority_id": "jim-agreed-pricing-forward-20261002", "consumer": "scripts/haultech-driver-load-auto.py -> scripts/haultech-agreed-pricing-auto.py", "schedule": "existing19:20,20:20,21:20 Monday-Saturday; prior completed dates only", "first_eligible_run": "2026-10-03T19:20:00+01:00", "scope": "evidence-supported completed prior-day jobs; multiple concrete records require reviewed group; protected customer agreements and incomplete item lists held", "node": "/usr/local/bin/node", "preflight": "reports/codex-preflight/20261002-153525-haultech-agreed-office-pricing-20261002.md"}, "clay_away": {"rates": [270, 290, 310], "full_load_tonnes": 20, "vehicle": "eight_wheeler", "part_load_full_price": true}, "rubble_away": {"rates": [180, 200, 220], "full_load_tonnes": 20, "vehicle": "eight_wheeler", "part_load_full_price": true}, "paid_records": {"action": "preserve_unchanged", "basis": "Jim 2 October2026: if it says paid, just leave it alone; payment method irrelevant"}, "combined_delivery_away": {"basis": "material plus one delivery plus separate waste-removal charge", "waste_material_and_loads_required": true, "authority": "Jim 2 October2026 clarification"}, "load_quantity_evidence": {"explicit_one_eight_wheeler_tonnes": 20, "basis": "Jim 2 October2026: one 8-wheeler means20tonnes; do not infer actual completion from vehicle alone"}, "clarification_r5": {"authority": "Jim in this chat 2 October2026", "part_loads": "full per-load price, reconcile afterwards", "clay": "270 plus same20 increments/bands as mixed spoil", "rubble": "180 plus same20 increments/bands as mixed spoil", "hardcore_alias": "not yet confirmed as rubble", "yard_items": "water pump hire and concrete Lego blocks are Yard transactions; use evidenced Yard rates and actual unit/size"}, "site_agreement_review": [{"customerId": "b6edf99f-aeb1-46f7-8560-1623b8f4036f", "site_text": "singleton avenue", "postcode": "FY83JU", "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/wyre-whole-job/reconciliation.json", "action": "preserve_for_review", "latest_user_basis": "Jim confirms whole-job agreed total2630 in voice2October2026", "confirmed_total": 2630, "allocation_status": "GBP440 already on two records;GBP2190 balance unallocated; check21September later visit inclusion"}], "material_aliases": {"mot": "40mm Quarried MOT", "type 1 mot": "40mm Quarried MOT", "type 1": "40mm Quarried MOT", "20 to dust": "20mm Quarried MOT", "quarried 20 to dust mot": "20mm Quarried MOT"}, "away_aliases": {"hardcore": "rubble_away", "hardcore grab away": "rubble_away", "hardcore away": "rubble_away", "rubbish": "mixed_spoil_away", "rubbish grab away": "mixed_spoil_away"}, "job_clarifications": {"10914": {"material": "40mm Quarried MOT", "basis": "Jim confirms Type2 typo; Type1 40mm quarried"}, "11073": {"load_tonnes": [4.5, 4.5], "basis": "Jim confirms9tonnes over2trips as4.5each"}, "10704": {"route_locality": "Elswick, Lancashire"}, "10873": {"route_locality": "Elswick, Lancashire"}, "10882": {"route_locality": "St Michaels on Wyre, Lancashire"}, "10854": {"customerId": "2dfea998-fbf3-4500-8023-f168a85f15c7", "reference": "Patrick Hanley personal", "personal_job": true, "exclude_business_account": "Fylde Drives and Patios", "route_locality": "Morecambe", "route_evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/patrick-personal/route-rule.json", "authority": "Jim 2 October 2026"}}, "town_route_fallbacks": [{"match": "elswick", "query": "Elswick, Lancashire", "authority": "Jim use Elswick locality if no further detail", "longitude": -2.8784448, "latitude": 53.8391393, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r6/localities.json", "matchedAddress": "Elswick, Fylde, Lancashire, ENG, United Kingdom"}, {"match": "catterall farm", "query": "St Michaels on Wyre, Lancashire", "authority": "Jim use St Michaels locality", "longitude": -2.8228455, "latitude": 53.8614943, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r6/localities.json", "matchedAddress": "St Michaels Village Hall, Blackpool Road, St Michael's on Wyre, PR3 0UP, United Kingdom"}], "hardcore_pmg_site_preserve": {"jobs": [11036, 11042, 11043], "basis": "Jim: hardcore is rubble but Glasdon work is PMG job; preserve values/account and do not bill externally"}, "manual_customer_review": [{"name": "ASHPHALT PAVING SERVICES LTD", "owner": "Richard", "basis": "Jim assigns pricing to Richard; no outbound message", "customerId": "f490a636-2b42-4767-9907-6af71fc64378"}], "reviewed_route_points": {"7 catterall gates lane garstang": {"longitude": -2.7654154, "latitude": 53.8820022, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "7 Catterall Gates Lane, Catterall, PR3 1YH, United Kingdom"}, "6 willowcroft drive hambleton": {"longitude": -2.9609863, "latitude": 53.8744113, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "6 Willowcroft Drive, Hambleton, FY6 9EJ, United Kingdom"}, "princess avenue poulton": {"longitude": -2.9898718, "latitude": 53.844329, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "Princess Avenue, Poulton-le-Fylde, FY6 8HG, United Kingdom"}, "133 west drive thornton": {"longitude": -3.0150572, "latitude": 53.8839179, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "133 West Drive, Thornton, FY5 2RX, United Kingdom"}, "9 pine grove garstang": {"longitude": -2.7723262, "latitude": 53.9081844, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "9 Pine Grove, Cabus, PR3 1JQ, United Kingdom, Garstang"}, "carr lane pilling": {"longitude": -2.9132294, "latitude": 53.9223939, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "Carr Lane, Pilling, PR3 6HH, United Kingdom"}, "17 gleneagles drive fulwood pr2 7es": {"longitude": -2.7342268, "latitude": 53.791939, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "17 Gleneagles Drive, Woodplumpton, PR2 7ES, United Kingdom"}, "50 singleton avenue lytham": {"longitude": -3.008407, "latitude": 53.7579724, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "50 Singleton Avenue, Lytham St Annes, FY8 3JT, United Kingdom"}, "division lane blackpool": {"longitude": -3.0047176, "latitude": 53.7744318, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "Division Lane, Fylde, FY4 5EA, United Kingdom"}, "12 fairfield avenue normoss blackpool": {"longitude": -3.0097955, "latitude": 53.8276741, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "12 Fairfield Avenue, Hardhorn, FY3 7SE, United Kingdom, Normoss"}, "15 newton close freckleton": {"longitude": -2.8612149, "latitude": 53.7545643, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "15 Newton Close, Freckleton, PR4 1PH, United Kingdom"}, "101 lytham road freckleton": {"longitude": -2.8727743, "latitude": 53.7528558, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "101 Lytham Road, Freckleton, PR4 1AB, United Kingdom"}, "56 cartmell road lytham": {"longitude": -3.0199075, "latitude": 53.7440777, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/reviewed-routes.json", "matchedAddress": "56 Cartmell Road, Lytham St Annes, FY8 1DF, United Kingdom"}, "130 lancaster road cabus": {"longitude": -2.7760715, "latitude": 53.911518, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "130 Lancaster Road, Cabus, PR3 1JD, United Kingdom"}, "120 beaufort blackpool": {"longitude": -3.0488034, "latitude": 53.8522557, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/routes.json", "matchedAddress": "120 Beaufort Avenue, Bispham, FY2 9JE, United Kingdom"}, "18 sussex road blackpool": {"longitude": -3.0315603, "latitude": 53.8244174, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/routes.json", "matchedAddress": "18 Sussex Road, Blackpool, FY3 8HW, United Kingdom"}, "mill lane goosnargh": {"longitude": -2.6729931, "latitude": 53.8451002, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/routes.json", "matchedAddress": "Mill Lane, Goosnargh, PR3 2FL, United Kingdom"}, "163 mains lane poulton": {"longitude": -2.9691769, "latitude": 53.8552039, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/more-routes.json", "matchedAddress": "Mains Lane, Fylde, Little Singleton, FY6 7LB, United Kingdom"}, "73 longhouse lane poulton": {"longitude": -2.9904409, "latitude": 53.8311544, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/more-routes.json", "matchedAddress": "Longhouse Lane, Hardhorn, FY6 8DE, United Kingdom"}, "clay gap lane": {"longitude": -2.934258, "latitude": 53.8848548, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "Clay Gap Lane, Hambleton, PR3 6SU, United Kingdom"}, "25 briar grove ingol": {"longitude": -2.7381149, "latitude": 53.7784293, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "25 Briar Grove, Ingol, Preston, PR2 3UR, United Kingdom"}, "20 briar grove ingol": {"longitude": -2.7381149, "latitude": 53.7784293, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "20 Briar Grove, Ingol, Preston, PR2 3UR, United Kingdom"}, "46 ribbleton avenue preston": {"longitude": -2.6738971, "latitude": 53.7693927, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "46 Ribbleton Avenue, Preston, PR2 6YS, United Kingdom"}, "newton close freckleton": {"longitude": -2.8612149, "latitude": 53.7545643, "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/address-candidates.json", "matchedAddress": "Newton Close, Freckleton, PR4 1PH, United Kingdom"}, "28 hermon avenue thornton": {"longitude": -3.030673, "latitude": 53.870715, "evidence": "https://www.rightmove.co.uk/house-prices/fy5-3bl.html ; https://docs.planning.org.uk/20250908/3/_BLCKP_DCAPR_68902/osvrkppwt1rljoff.pdf", "matchedAddress": "28 Hermon Avenue, FY5 3BL"}, "neds lane stalmine": {"longitude": -2.950051, "latitude": 53.891478, "evidence": "HaulTech10852 exact Neds Lane Stalmine FY60JL; same road references10702/10877", "matchedAddress": "Neds Lane, Stalmine, FY60JL"}, "neds lane": {"longitude": -2.950051, "latitude": 53.891478, "evidence": "HaulTech10852 exact Neds Lane Stalmine FY60JL; same road references10702/10877", "matchedAddress": "Neds Lane, Stalmine, FY60JL"}}, "road_boundary_margin_seconds": 0, "road_boundary_basis": "Apply original inclusive25/45minute tariff to unrounded road route; exact reviewed routes do not need arbitrary2minute hold. Multiple conflicting locality identities still held.", "edgings_default": {"material": "6 inch edgings", "size_mm": 150, "unless_size_stated": true, "authority": "Jim2October2026"}, "internal_concrete_transport": {"eight_wheeler_value": 100, "authority": "Jim1October2026 confirmed internal8wheeler100;2October10811/10813 confirmsoneproductionandtransport movement", "source": "/Users/bill/Documents/Codex/2026-10-01/new-realtime-voice-chat/evidence/user-authority.md", "principle": "Concrete transported by8wheeler ishaulage;donotcountasadditionalproducedconcrete"}, "confirmed_production_transport_pairs": [{"production_job": 10813, "transport_job": 10811, "produced_m3": 8, "saving": 240, "haulage": 100, "date": "2026-09-15", "source": "Jim voice2October2026"}], "confirmed_internal_pours": [{"date": "2026-09-25", "site": "Bispham plots42-45", "jobs": [11012, 11013], "total_m3": 19.25, "saving": 577.5, "authority": "Jim2Octoberconfirmsbothsamepour", "source": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/concrete-one-by-one/bispham-pour/reviewed-plan.json"}, {"date": "2026-09-30", "site": "Bispham", "purpose": "kerbs", "jobs": [11089], "total_m3": 3, "saving": 180, "authority": "Jimvoice2October2026"}, {"date": "2026-09-30", "site": "Bisphamplots45-47", "purpose": "plot pour", "jobs": [11090], "total_m3": 17.41, "saving": 522.3, "authority": "Jimvoice2October2026"}], "confirmed_booking_actual_links": [{"booking_job": 10892, "actual_job": 10893, "planned_m3": 12, "actual_m3": 8.54, "authority": "Jim voice2October2026", "principle": "Price actual supplied quantity; booking estimate is not extra production", "source": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/concrete-one-by-one/carnforth-21sep/reviewed-plan.json"}], "intentional_zero_jobs": [{"job": 10784, "customer": "Steve Dale", "date": "2026-09-14", "reason": "Jim confirmsbothloadsdelivered;retainGBP0 underarrangementfortippingatStevesyard", "source": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/steve-dale-zero/reviewed-plan.json", "clarification": "User voice tail: we did this for tipping at his yard"}], "manual_job_holds": {"10726": {"reason": "Jim2October:leavealone;notconfirmed", "payment_status": "unconfirmed", "action": "preserve unchanged", "source": "current voice conversation"}, "11099": {"reason": "Beach Sand rate requires discussion with Richard; Jim instructed leave unchanged", "owner": "Richard", "status": "Unresolved", "authority": "Jim voice 2 October 2026"}}, "insufficient_information_rule": {"status": "Unresolved", "reason_required": true, "preserve_existing_values": true, "scope": "Missing or conflicting evidence preventing defensible pricing; use approved locality assumptions for minor address differences. Do not repeatedly ask about zero-quantity bookings without new evidence. Paid and intentional zero records remain preserved.", "authority": "Jim voice instruction 2026-10-02", "output": "office review register; no automatic replacement of original operational notes"}, "eight_wheeler_registrations": ["PN25AMU", "YJ13GRF", "EY15BOV"], "a1_customer_id": "2dfea998-fbf3-4500-8023-f168a85f15c7", "manual_agreement_customer_ids": ["2cbbb83b-ab82-40b4-89cb-04125d69b4a7", "066bd8e9-e35a-46e1-a1e5-b46eda26fcbf", "650fea1c-aa1d-47f5-891e-77300886eef4"]};
+const AGREED_CATALOGUE = {"materials": [{"group": "TIPPING", "name": "Mixed Spoil Tip", "label": "Mixed Spoil Tip", "type": "flat", "rate": 10, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Grab Away", "label": "Grab Away", "type": "flat", "rate": 0, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Spoil Grab Away", "label": "Spoil Grab Away", "type": "flat", "rate": 0, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Clay Tip", "label": "Clay Tip", "type": "flat", "rate": 15, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Topsoil Tip", "label": "Topsoil Tip", "type": "banded", "bands": [{"min": 15, "rate": 15}, {"min": 10, "rate": 19}, {"min": 0, "rate": 20}], "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Clean Concrete/Brick", "label": "Clean Concrete/Brick (Free)", "type": "flat", "rate": 0, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Rubble Tip", "label": "Rubble Tip (Free)", "type": "flat", "rate": 0, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Rubble Grab Away", "label": "Rubble Grab Away", "type": "flat", "rate": 0, "unit": "tonnes", "tonnage": true}, {"group": "TIPPING", "name": "Tree Stump Disposal", "label": "Tree Stump Disposal", "type": "job", "rate": 40, "unit": "each", "tonnage": true}, {"group": "RECYCLED AGGREGATES", "name": "6F2 Crushed Concrete", "label": "6F2 Crushed Concrete", "type": "tiered", "over10": 10, "under10": 11.5, "unit": "tonnes", "tonnage": true}, {"group": "RECYCLED AGGREGATES", "name": "40mm Recycled MOT", "label": "40mm Recycled MOT", "type": "tiered", "over10": 18, "under10": 20, "unit": "tonnes", "tonnage": true, "note": "Yard sell rate confirmed by Jim 22/07/2026 and boundary corrected 08/08/2026: 10.0t or less GBP20/t; over 10.0t GBP18/t (10.1t is the first discounted value at 0.1t entry precision)."}, {"group": "RECYCLED AGGREGATES", "name": "Large Clean Crush", "label": "Large Clean Crush", "type": "tiered", "over10": 17.5, "under10": 19.5, "unit": "tonnes", "tonnage": true}, {"group": "RECYCLED AGGREGATES", "name": "Road Plainings", "label": "Road Plainings", "type": "tiered", "over10": 16, "under10": 18, "unit": "tonnes", "tonnage": true, "note": "Road planings sold out of PMG Yard: over 10.0t GBP16/t; 10.0t or less GBP18/t. Rate confirmed by Jim 15/07/2026; boundary corrected 08/08/2026."}, {"group": "RECYCLED AGGREGATES", "name": "20-5mm Concrete Agg", "label": "20-5mm Concrete Agg", "type": "flat", "rate": 37.5, "unit": "tonnes", "tonnage": true}, {"group": "WASHED RECYCLED", "name": "Recycled 20mm Clean Washed", "label": "Recycled 20mm Clean Washed", "type": "tiered", "over10": 23.5, "under10": 26.5, "unit": "tonnes", "tonnage": true}, {"group": "WASHED RECYCLED", "name": "Recycled 10mm Clean Washed", "label": "Recycled 10mm Clean Washed", "type": "tiered", "over10": 26.5, "under10": 28.5, "unit": "tonnes", "tonnage": true}, {"group": "QUARRIED AGGREGATES", "name": "40mm Quarried MOT", "label": "40mm Quarried MOT", "type": "tiered", "over10": 29, "under10": 31, "unit": "tonnes", "tonnage": true, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "Type 1 Sub-Base", "supplier_product_code": "EN3243502", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "QUARRIED AGGREGATES", "name": "20mm Quarried MOT", "label": "20mm Quarried MOT", "type": "tiered", "over10": 31.5, "under10": 33.5, "unit": "tonnes", "tonnage": true, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "20mm Down Aggregate", "supplier_product_code": "4173502", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "QUARRIED AGGREGATES", "name": "40mm Scalpings Blue", "label": "40mm Scalpings Blue", "type": "tiered", "over10": 27.5, "under10": 27.5, "unit": "tonnes", "tonnage": true, "note": "Jim approved 02/10/2026: GBP27.50/t ex VAT, yard collection both tiers; GBP9.50/t material plus GBP11/t inward haulage gives GBP20.50/t landed cost and 25.45% gross margin. Customer delivery extra."}, {"group": "QUARRIED AGGREGATES", "name": "Type 3 MOT", "label": "Type 3 MOT", "type": "tiered", "unit": "tonnes", "tonnage": true, "over10": 33, "under10": 35, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "Type 3 Sub-Base", "supplier_product_code": "EN3243702", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "QUARRIED WASHED STONE", "name": "Quarried 20mm Clean Stone", "label": "Quarried 20mm Clean Stone", "type": "tiered", "over10": 41.5, "under10": 44, "unit": "tonnes", "tonnage": true, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "10/20 Pipe Bedding Limestone", "supplier_product_code": "EN4290702", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "QUARRIED WASHED STONE", "name": "Quarried 6mm Clean Stone", "label": "Quarried 6mm Clean Stone", "type": "tiered", "over10": 38.5, "under10": 41.5, "unit": "tonnes", "tonnage": true, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "6mm Single Size Aggregate", "supplier_product_code": "4233702", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": "6mm clean: 20% larger, 25% smaller", "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "SOILS", "name": "Grade 1 Topsoil", "label": "Grade 1 Topsoil", "type": "banded", "bands": [{"min": 15, "rate": 15}, {"min": 10, "rate": 20}, {"min": 0, "rate": 22}], "unit": "tonnes", "tonnage": true}, {"group": "SOILS", "name": "Blended Topsoil/Compost", "label": "Blended Topsoil/Compost", "type": "tiered", "over10": 30, "under10": 32, "unit": "tonnes", "tonnage": true}, {"group": "SOILS", "name": "Fill", "label": "Fill (soil & stone mix)", "type": "flat", "rate": 5, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Recycled Grit Sand", "label": "Recycled Grit Sand", "type": "tiered", "over10": 29, "under10": 31, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Quarried Grit Sand", "label": "Quarried Grit Sand", "type": "tiered", "over10": 35.5, "under10": 37.5, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Building Sand loose", "label": "Building Sand loose", "type": "flat", "rate": 37, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Building Sand tonne bag", "label": "Building Sand tonne bag", "type": "bag", "rate": 54, "unit": "bags", "tonnage": false}, {"group": "SANDS", "name": "Ballast", "label": "Ballast", "type": "tiered", "over10": 39.5, "under10": 39.5, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Fill Sand", "label": "Fill Sand", "type": "tiered", "over10": 14.5, "under10": 15, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Grano Dust", "label": "Grano Dust", "type": "tiered", "over10": 35.5, "under10": 37.5, "unit": "tonnes", "tonnage": true}, {"group": "SANDS", "name": "Blended Sand", "label": "Blended Sand", "type": "flat", "rate": 37.5, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "Black Ice", "label": "Black Ice", "type": "tiered", "over10": 127, "under10": 132, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "Purple Slate", "label": "Purple Slate", "type": "tiered", "over10": 77, "under10": 80, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "20mm Blue Slate", "label": "20mm Blue Slate", "type": "tiered", "over10": 69, "under10": 71, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "Golden Gravel", "label": "Golden Gravel", "type": "tiered", "over10": 76, "under10": 76, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "40mm Blue Slate", "label": "40mm Blue Slate", "type": "tiered", "over10": 68, "under10": 77, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "Cotswold Buff", "label": "Cotswold Buff", "type": "tiered", "over10": 69, "under10": 71, "unit": "tonnes", "tonnage": true}, {"group": "DECORATIVE", "name": "Cobbles", "label": "Cobbles", "type": "flat", "rate": 75, "unit": "tonnes", "tonnage": true}, {"group": "BAGS & SMALL ITEMS", "name": "Post Mix/Post Crete", "label": "Post Mix/Post Crete", "type": "bag", "rate": 5.75, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Plastic Cement Bags", "label": "Plastic Cement Bags", "type": "bag", "rate": 7.05, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Paper Cement Bags", "label": "Paper Cement Bags", "type": "bag", "rate": 6.65, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Cold Lay Tar Bags", "label": "Cold Lay Tar Bags", "type": "bag", "rate": 9.75, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Kiln Dried Sand", "label": "Kiln Dried Sand", "type": "bag", "rate": 5.36, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Tonne Bags (empty)", "label": "Tonne Bags (empty)", "type": "bag", "rate": 4.5, "unit": "bags", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Path Edges 150mm", "label": "Path Edges 150mm", "type": "job", "rate": 4.5, "unit": "each", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Bullnose Kerb", "label": "Bullnose Kerb", "type": "job", "rate": 8.05, "unit": "each", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Bullnose Kerb External Radius", "label": "Bullnose Kerb External Radius", "type": "job", "rate": 12.45, "unit": "each", "tonnage": false}, {"group": "BAGS & SMALL ITEMS", "name": "Steel Shovel", "label": "Steel Shovel", "type": "job", "rate": 20.25, "unit": "each", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Forst ST6 6 inch Chipper", "label": "Forst ST6 6 inch Chipper", "type": "day", "rate": 125, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Forst ST6 6 inch Chipper (weekly)", "label": "Forst ST6 6 inch Chipper (weekly)", "type": "week", "rate": 500, "unit": "weeks", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Micro Digger", "label": "Micro Digger", "type": "day", "rate": 50, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "1.5t Digger", "label": "1.5t Digger", "type": "day", "rate": 60, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "3t Digger", "label": "3t Digger", "type": "day", "rate": 65, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "5t Digger", "label": "5t Digger", "type": "day", "rate": 75, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Telehandler", "label": "Telehandler", "type": "day", "rate": 80, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Scissor Lift", "label": "Scissor Lift", "type": "day", "rate": 60, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "1t High Tip Dumper", "label": "1t High Tip Dumper", "type": "day", "rate": 50, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "3t Dumper", "label": "3t Dumper", "type": "day", "rate": 60, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "800 Roller", "label": "800 Roller", "type": "day", "rate": 50, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "1200 Roller", "label": "1200 Roller", "type": "day", "rate": 60, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Wacker (small)", "label": "Wacker (small)", "type": "day", "rate": 30, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Wacker (medium)", "label": "Wacker (medium)", "type": "day", "rate": 35, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Wacker (forward/reverse)", "label": "Wacker (forward/reverse)", "type": "day", "rate": 45, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Hilti Breaker", "label": "Hilti Breaker", "type": "day", "rate": 25, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Bosch Hand Breaker", "label": "Bosch Hand Breaker", "type": "day", "rate": 40, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Stihl Saw", "label": "Stihl Saw", "type": "day", "rate": 20, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Ifor Tipper", "label": "Ifor Tipper", "type": "day", "rate": 45, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Ifor Plant Trailer", "label": "Ifor Plant Trailer", "type": "day", "rate": 45, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Ifor Box", "label": "Ifor Box", "type": "day", "rate": 50, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Borer", "label": "Borer", "type": "day", "rate": 45, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Pecker", "label": "Pecker", "type": "day", "rate": 70, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Truss Jib", "label": "Truss Jib", "type": "day", "rate": 65, "unit": "days", "tonnage": false}, {"group": "PLANT HIRE (per day)", "name": "Muck Barrow", "label": "Muck Barrow", "type": "day", "rate": 50, "unit": "days", "tonnage": false}, {"group": "SUNDRY", "name": "110V Transformer", "label": "110V Transformer", "type": "day", "rate": 7, "unit": "days", "tonnage": false}, {"group": "SUNDRY", "name": "Tip Skip", "label": "Tip Skip (per week)", "type": "fixed", "rate": 50, "unit": "weeks", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage pipe 6m", "label": "Drainage pipe 6m", "type": "flat", "rate": 28.55, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage collar", "label": "Drainage collar", "type": "flat", "rate": 4.1, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "4 inch triple socket T junction", "label": "4 inch (110mm) triple socket T junction - 87.5 deg", "type": "flat", "rate": 20.57, "unit": "each", "tonnage": false, "provenance": {"supplier": "Huws Gray / Civils & Lintels", "manufacturer": "Polypipe", "product_code": "UG423", "invoice": "IN583664", "invoice_date": "2026-06-16", "invoice_quantity": 40, "invoice_line_net": "658.14", "unit_cost_net_exact": "16.4535", "markup_percent": 25, "sell_net_unrounded": "20.566875", "rounding": "ROUND_HALF_UP to 2 decimal places per each", "authorised_by": "Jim, Telegram, 2026-09-08", "evidence": "reports/110mm-junction-prices-20260908/EVIDENCE.md"}}, {"group": "DRAINAGE", "name": "4 inch triple socket Y junction", "label": "4 inch (110mm) triple socket Y junction - 45 deg", "type": "flat", "rate": 20.57, "unit": "each", "tonnage": false, "provenance": {"supplier": "Huws Gray / Civils & Lintels", "manufacturer": "Polypipe", "product_code": "UG405", "invoice": "IN583664", "invoice_date": "2026-06-16", "invoice_quantity": 40, "invoice_line_net": "658.14", "unit_cost_net_exact": "16.4535", "markup_percent": 25, "sell_net_unrounded": "20.566875", "rounding": "ROUND_HALF_UP to 2 decimal places per each", "authorised_by": "Jim, Telegram, 2026-09-08", "evidence": "reports/110mm-junction-prices-20260908/EVIDENCE.md"}}, {"group": "DRAINAGE", "name": "Drainage s/s 15", "label": "Drainage s/s 15", "type": "flat", "rate": 9.2, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage s/s 30", "label": "Drainage s/s 30", "type": "flat", "rate": 9.2, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage s/s 45", "label": "Drainage s/s 45", "type": "flat", "rate": 8.85, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage d/s 15", "label": "Drainage d/s 15", "type": "flat", "rate": 11.05, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage d/s 30", "label": "Drainage d/s 30", "type": "flat", "rate": 10.6, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage d/s 45", "label": "Drainage d/s 45", "type": "flat", "rate": 11.15, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage d/s short 90", "label": "Drainage d/s short 90", "type": "flat", "rate": 11.1, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage s/s rest bend", "label": "Drainage s/s rest bend", "type": "flat", "rate": 14.5, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Drainage trap", "label": "Drainage trap", "type": "flat", "rate": 14.7, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Concrete square top gulley", "label": "Concrete square top gulley", "type": "flat", "rate": 47.5, "unit": "each", "tonnage": false, "active": false}, {"group": "DRAINAGE", "name": "Bottle gulley", "label": "Bottle gulley", "type": "flat", "rate": 30.75, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Gulley squaring off kit", "label": "Gulley squaring off kit", "type": "flat", "rate": 6.3, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Slip collar", "label": "Slip collar", "type": "flat", "rate": 5.2, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "300 manhole base 3 inlet", "label": "300 manhole base 3 inlet", "type": "flat", "rate": 26.05, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "300 manhole base 5 inlet", "label": "300 manhole base 5 inlet", "type": "flat", "rate": 42.5, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "300 riser", "label": "300 riser", "type": "flat", "rate": 20.9, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "300 lid", "label": "300 plastic lid / round cover & frame", "type": "flat", "rate": 47.2, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "300 square lid", "label": "300 plastic square lid / square cover & frame", "type": "flat", "rate": 43.8, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "450 manhole base", "label": "450 plastic manhole base", "type": "flat", "rate": 26.36, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "450 riser", "label": "450 riser", "type": "flat", "rate": 31.4, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "450 seal", "label": "450 seal", "type": "flat", "rate": 3.8, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "450 lid", "label": "450 lid", "type": "flat", "rate": 50.85, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Recessed lid", "label": "Recessed lid 675x900mm 75mm deep", "type": "flat", "rate": 65, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "4 inch clay to plastic band seal", "label": "4 inch clay to plastic band seal", "type": "flat", "rate": 8, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "6 inch clay to plastic band seal", "label": "6 inch clay to plastic band seal", "type": "flat", "rate": 16, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "80mm land drainage roll 100m", "label": "80mm land drainage roll 100m", "type": "flat", "rate": 104.82, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "100mm land drainage roll 100m", "label": "100mm land drainage roll 100m", "type": "flat", "rate": 157.43, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Yard gulley", "label": "Yard gulley 300x600mm", "type": "flat", "rate": 34.75, "unit": "each", "tonnage": false}, {"group": "DRAINAGE", "name": "Yard gulley grate B125", "label": "Metal B125 yard gulley grate", "type": "flat", "rate": 51.65, "unit": "each", "tonnage": false}, {"group": "MEMBRANES", "name": "Geotextile black", "label": "Geotextile black", "type": "flat", "rate": 125, "unit": "each", "tonnage": false}, {"group": "MEMBRANES", "name": "Non woven white", "label": "Non woven white", "type": "flat", "rate": 225, "unit": "each", "tonnage": false, "provenance": {"authorised_by": "Jim, this conversation 29 September 2026", "source_date": "2026-09-29", "basis": "Ronnie white membrane buy GBP180; Jim approved 20% gross margin, 180 / 0.80 = GBP225 selling. Existing catalogue VAT/unit convention retained. Black stays GBP125.", "evidence": "/Users/bill/Documents/Codex/2026-09-29/new-realtime-voice-chat/membrane-update/scope.md"}}, {"group": "MEMBRANES", "name": "1200 gauge visqueen", "label": "1200 gauge visqueen", "type": "flat", "rate": 32, "unit": "each", "tonnage": false}, {"group": "MEMBRANES", "name": "500 gauge visqueen", "label": "500 gauge visqueen", "type": "flat", "rate": 28, "unit": "each", "tonnage": false}, {"group": "HARD LANDSCAPING", "name": "8 inch edgings", "label": "8 inch edgings", "type": "flat", "rate": 5.8, "unit": "each", "tonnage": false}, {"group": "HARD LANDSCAPING", "name": "6 inch edgings", "label": "6 inch edgings", "type": "flat", "rate": 4.5, "unit": "each", "tonnage": false}, {"group": "HARD LANDSCAPING", "name": "6 inch bullnose kerb", "label": "6 inch bullnose kerb", "type": "flat", "rate": 8.05, "unit": "each", "tonnage": false}, {"group": "HARD LANDSCAPING", "name": "ACO", "label": "B125 ACO channel", "type": "flat", "rate": 29.05, "unit": "each", "tonnage": false}, {"group": "HARD LANDSCAPING", "name": "A15 ACO", "label": "A15 ACO channel", "type": "flat", "rate": 12.5, "unit": "each", "tonnage": false}, {"group": "FUEL", "name": "Petrol", "label": "Petrol", "type": "flat", "rate": 2, "unit": "litres", "tonnage": false, "note": "Yard materials list rate confirmed by Jim 30/07/2026: GBP2.00 per litre."}, {"group": "FUEL", "name": "Diesel", "label": "Diesel", "type": "flat", "rate": 2, "unit": "litres", "tonnage": false, "note": "Yard and truck materials list rate confirmed by Jim 22/07/2026: GBP2.00 per litre."}, {"group": "MISC", "name": "Duct tape", "label": "Duct tape", "type": "flat", "rate": 5.2, "unit": "each", "tonnage": false}, {"group": "MISC", "name": "Gloves (per pair)", "label": "Gloves (per pair)", "type": "flat", "rate": 2.2, "unit": "each", "tonnage": false}, {"group": "MISC", "name": "Goggles", "label": "Goggles", "type": "flat", "rate": 4.75, "unit": "each", "tonnage": false}, {"group": "MISC", "name": "4 damp", "label": "4 damp", "type": "flat", "rate": 0, "unit": "each", "tonnage": false, "active": false}, {"group": "MISC", "name": "9 damp", "label": "9 damp", "type": "flat", "rate": 0, "unit": "each", "tonnage": false, "active": false}, {"group": "MISC", "name": "225 ties", "label": "225 ties", "type": "flat", "rate": 3.8, "unit": "each", "tonnage": false}, {"group": "MISC", "name": "Linemarker", "label": "Linemarker", "type": "flat", "rate": 3.8, "unit": "each", "tonnage": false}, {"group": "MISC", "name": "Warning tape", "label": "Warning tape", "type": "flat", "rate": 12.5, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm pipe 100m", "label": "25mm MDPE water pipe 100m", "type": "flat", "rate": 98.8, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm pipe 50m", "label": "25mm MDPE water pipe 50m", "type": "flat", "rate": 49.4, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm pipe 25m", "label": "25mm MDPE water pipe 25m", "type": "flat", "rate": 24.7, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm straight connector", "label": "25mm straight connector", "type": "flat", "rate": 5.27, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm insert", "label": "25mm insert", "type": "flat", "rate": 0.48, "unit": "each", "tonnage": false}, {"group": "WATER", "name": "25mm end cap", "label": "25mm end cap", "type": "flat", "rate": 6.75, "unit": "each", "tonnage": false}, {"group": "CONCRETE", "name": "Concrete", "label": "Concrete", "type": "flat", "rate": 0, "unit": "each", "tonnage": false}, {"group": "OTHER", "name": "Road Plate", "label": "Road Plate", "type": "flat", "rate": 0, "unit": "each", "tonnage": false}, {"group": "CONCRETE BLOCKS", "name": "Lego block - Full", "label": "Lego block - Full", "type": "flat", "rate": 120, "unit": "each", "tonnage": false, "provenance": {"authorised_by": "Jim, Telegram message 14000", "source_date": "2026-09-24", "basis": "Explicit selling rate per block; existing ex-VAT catalogue convention retained. No dimensions, weight, buy cost or delivery charge supplied.", "evidence": "OPENCORE/state/tom-job-packets/evidence/TJP-20260924-210657-add-lego-block-sizes-and-prices-to-yard-and-wago-55d4495bbbe2458f96451fa62f587cf3/decision.md"}}, {"group": "CONCRETE BLOCKS", "name": "Lego block - Two-thirds", "label": "Lego block - Two-thirds", "type": "flat", "rate": 100, "unit": "each", "tonnage": false, "provenance": {"authorised_by": "Jim, Telegram message 14000", "source_date": "2026-09-24", "basis": "Explicit selling rate per block; existing ex-VAT catalogue convention retained. No dimensions, weight, buy cost or delivery charge supplied.", "evidence": "OPENCORE/state/tom-job-packets/evidence/TJP-20260924-210657-add-lego-block-sizes-and-prices-to-yard-and-wago-55d4495bbbe2458f96451fa62f587cf3/decision.md"}}, {"group": "CONCRETE BLOCKS", "name": "Lego block - One-third", "label": "Lego block - One-third", "type": "flat", "rate": 80, "unit": "each", "tonnage": false, "provenance": {"authorised_by": "Jim, Telegram message 14000", "source_date": "2026-09-24", "basis": "Explicit selling rate per block; existing ex-VAT catalogue convention retained. No dimensions, weight, buy cost or delivery charge supplied.", "evidence": "OPENCORE/state/tom-job-packets/evidence/TJP-20260924-210657-add-lego-block-sizes-and-prices-to-yard-and-wago-55d4495bbbe2458f96451fa62f587cf3/decision.md"}}, {"group": "QUARRIED WASHED STONE", "name": "Quarried 10mm Clean Stone", "label": "Quarried 10mm Clean Stone", "unit": "tonnes", "tonnage": true, "type": "tiered", "over10": 41.5, "under10": 44, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "4/10 Conc SS Limestone", "supplier_product_code": "EN4231402", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "QUARRIED WASHED STONE", "name": "Quarried Concrete Aggregate (4/20)", "label": "Quarried Concrete Aggregate (4/20)", "unit": "tonnes", "tonnage": true, "type": "tiered", "over10": 38, "under10": 40.5, "provenance": {"basis": "Proposed 5 October 2026 Holcim increase + approved 40%-fuel collection reset, 20t collection loads, 25%/30% minimum margin, upward 50p rounding. Type 3 larger price retained at existing GBP33 above GBP32.50 calculated floor. Prices applied now by Jim request; supplier uplift starts 5 October.", "supplier_product": "4/20 Conc. Graded Limestone", "supplier_product_code": "EN4173102", "evidence": "/Users/bill/Documents/Codex/2026-09-30/new-realtime-voice-chat/yard-margin-fix/all-holcim-review.json", "status": "approved_current", "margin_exception": null, "authorised_by": "Jim voice 30 September: update all prices in Yard app, driver apps and connected surfaces; 6mm-only margin exception confirmed"}}, {"group": "PLANT HIRE", "name": "Water pump", "label": "Water pump \u2014 per day", "type": "flat", "rate": 15, "unit": "days", "tonnage": false, "provenance": {"authorised_by": "Jim, current Codex chat", "source_date": "2026-10-02", "basis": "Pump is GBP15 per day; explicit one-day September hire authorised. Existing ex-VAT catalogue convention.", "evidence": "/Users/bill/Documents/pricing work/haultech-rules-september-2026/clarification-r5/authority.md"}}], "customer_overrides": {"Grant Parker": {"Grade 1 Topsoil": {"over10": 15, "under10": 17.5, "thresholdOverTonnes": 15, "note": "Temporary soil-out rule confirmed Jim 30/06/2026: anything over 15t is \u00a315/t; 15t or less keeps the existing agreed \u00a317.50/t."}}, "Garstang Ground Services Ltd": {"Grade 1 Topsoil": {"over10": 15, "under10": 22, "thresholdOverTonnes": 15, "note": "Temporary soil-out rule confirmed Jim 30/06/2026: anything over 15t is \u00a315/t; 15t or less uses normal price. Spoken shorthand: Gas and Ground Services."}}}, "tier_threshold_tonnes": 10};
+
+// Pure evaluator. Facts must come from the server-side reviewed evidence adapter,
+// never from caller-supplied driver fields. No writes, notes, tax or aliases inferred.
+function evaluateAgreedPrice(policy, facts, catalogue) {
+  const hold = reason => ({status:'review', reason, policyVersion:policy.version});
+  const positive = n => typeof n === 'number' && Number.isFinite(n) && n > 0;
+  const money = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  const price = (amount, basis, extra={}) => ({status:'priced', amount:money(amount), basis, policyVersion:policy.version, ...extra});
+  if (!facts || facts.evidenceVerified !== true) return hold('evidence_required');
+  if (facts.paid === true) return hold('paid_record_preserved');
+  const retrospective = facts.reconciliationAuthority === policy.september_reconciliation?.authority_id && policy.september_reconciliation?.enabled === true && facts.jobDate >= '2026-09-01' && facts.jobDate <= '2026-09-30';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(facts.jobDate || '') || facts.jobDate < policy.effective_from && !retrospective) return hold('outside_forward_scope');
+  const legacyInternal = facts.kind === 'internal_concrete' && facts.legacyInternal40Verified === true && policy.internal_concrete_saving.superseded_rate === 40 && positive(facts.quantity) && facts.existingPrices?.every(v => v === money(facts.quantity*40));
+  if (facts.existingPrices?.some(v => typeof v !== 'number' || !Number.isFinite(v) || v !== 0) && !legacyInternal) return hold('existing_or_invalid_price');
+  if (!Array.isArray(facts.existingPrices) || facts.existingPrices.length === 0) return hold('price_state_required');
+  if (facts.invoiceHistoryClear !== true || facts.exportStateClear !== true) return hold('invoice_or_export_hold');
+  if (!positive(facts.quantity)) return hold('positive_final_quantity_required');
+  if (!facts.customerId || !facts.siteId || !facts.loadId) return hold('exact_identity_required');
+  if (facts.grabUnloading) {
+    const baseFacts={...facts};delete baseFacts.grabUnloading;
+    const base=evaluateAgreedPrice(policy,baseFacts,catalogue);
+    if(base.status!=='priced')return base;
+    const handlingFacts={...baseFacts,...facts.grabUnloading,kind:'grabbed_in',handlingOnlyConfirmed:true};delete handlingFacts.agreement;
+    const handling=evaluateAgreedPrice(policy,handlingFacts,catalogue);
+    if(handling.status!=='priced')return handling;
+    return price(base.amount+handling.amount,'material_delivery_and_grab_unloading',{base,handling});
+  }
+  if (facts.kind === 'internal_concrete') {
+    if (facts.internalCustomerVerified !== true || facts.unit !== 'm3') return hold('internal_identity_or_unit_required');
+    const g = facts.wholeJob;
+    if (!g || !g.id || !g.evidence || g.final !== true || !Array.isArray(g.tickets) || !g.tickets.length) return hold('final_whole_job_required');
+    if (facts.ticketComponents) {
+      const parts=facts.ticketComponents;
+      if (!Array.isArray(parts) || !parts.length || parts.some(t=>!t.id || !t.mixType || !positive(t.quantity)) || new Set(parts.map(t=>t.id)).size!==parts.length || Math.abs(parts.reduce((n,t)=>n+t.quantity,0)-facts.quantity)>0.000001) return hold('invalid_mix_components');
+      const calculated=parts.map(t=>evaluateAgreedPrice(policy,{...facts,ticketComponents:undefined,ticketId:t.id,mixType:t.mixType,quantity:t.quantity,existingPrices:[0,0],legacyInternal40Verified:false},catalogue));
+      if(calculated.some(r=>r.status!=='priced'))return hold('mix_component_group_mismatch');
+      return price(calculated.reduce((n,r)=>n+r.amount,0),'internal_concrete_saving',{components:calculated,wholeJobId:g.id,customerSellPrice:false});
+    }
+    if (g.tickets.some(t => !t.id || !positive(t.quantity)) || new Set(g.tickets.map(t=>t.id)).size !== g.tickets.length) return hold('invalid_or_duplicate_group_tickets');
+    const mine = g.tickets.find(t=>t.id === facts.ticketId);
+    if (!mine || mine.quantity !== facts.quantity) return hold('ticket_group_mismatch');
+    const jobTotal = g.tickets.reduce((n,t)=>n+t.quantity,0);
+    if (!positive(g.totalM3) || Math.abs(jobTotal-g.totalM3)>0.000001) return hold('whole_job_total_mismatch');
+    if (!facts.mixType || g.tickets.some(t=>!t.mixType) || mine.mixType!==facts.mixType) return hold('verified_mix_group_required');
+    const mixTickets = g.tickets.filter(t=>t.mixType===facts.mixType);
+    const total = mixTickets.reduce((n,t)=>n+t.quantity,0);
+    const r = policy.internal_concrete_saving;
+    const rate = total < r.boundary_m3 ? r.below_rate : r.at_or_above_rate;
+    // Allocate rounded whole-job total deterministically; last ticket receives penny remainder.
+    const sorted = [...mixTickets].sort((a,b)=>a.id.localeCompare(b.id));
+    const last = sorted[sorted.length-1].id;
+    const amount = facts.ticketId === last ? money(total*rate)-sorted.slice(0,-1).reduce((n,t)=>n+money(t.quantity*rate),0) : money(facts.quantity*rate);
+    return price(amount,'internal_concrete_saving',{rate,mixGroupTotal:money(total*rate),mixGroupM3:total,mixType:facts.mixType,wholeJobId:g.id,customerSellPrice:false});
+  }
+  if (facts.agreementsChecked !== true) return hold('negotiated_agreements_unresolved');
+  if (facts.agreement) {
+    const a=facts.agreement;
+    if (!a.evidence || a.customerId!==facts.customerId || a.siteId!==facts.siteId || a.kind!==facts.kind || a.quantity!==facts.quantity || a.unit!==facts.unit || !positive(a.amount) || a.validOn!==facts.jobDate) return hold('agreement_scope_mismatch');
+    return price(a.amount,'negotiated_agreement',{deliveryInclusive:a.deliveryInclusive === true});
+  }
+  if (facts.kind === 'grabbed_in') {
+    const r=policy.grabbed_in;
+    if(facts.handlingOnlyConfirmed!==true) return hold('handling_component_not_complete_job_price');
+    if (r.mapping_status!=='confirmed_service' || facts.serviceId!==r.service_id || facts.grabUnloadConfirmed!==true || facts.movement!=='truck_to_job' || facts.unit!=='t') return hold('grab_unloading_evidence_required');
+    if (facts.handlingAlreadyCharged!==false || facts.handlingIncludedInAgreedPrice!==false) return hold('handling_charge_duplicate_or_inclusion_review');
+    const b=r.bands.find(b=>b.max_tonnes===null || facts.quantity<=b.max_tonnes);
+    return price(Math.max(facts.quantity*b.rate,b.minimum),'grab_unloading_service',{rate:b.rate,component:'handling_charge',vatClassification:r.vat_classification});
+  }
+  const away = ['mixed_spoil_away','clay_away','rubble_away'].includes(facts.kind);
+  const full = away || facts.kind==='6f2_delivered';
+  if (full) {
+    const rule=policy[facts.kind];
+    if (!rule) return hold('unsupported_material');
+    const validLoad = away && rule.part_load_full_price === true
+      ? facts.quantity<=rule.full_load_tonnes && (facts.singleLoadConfirmed===true || facts.quantity===rule.full_load_tonnes && facts.fullLoadConfirmed===true)
+      : facts.quantity===rule.full_load_tonnes && facts.fullLoadConfirmed===true;
+    if (facts.unit!=='t' || !validLoad || facts.vehicle!==rule.vehicle || facts.singleMaterialConfirmed!==true) return hold('full_20t_eight_wheeler_required');
+    if (facts.kind==='mixed_spoil_away' && facts.localityOverride) {
+      if (!facts.localityEvidence || !rule.locality_names.includes(facts.localityOverride)) return hold('locality_scope_required');
+      return price(rule.locality_override_rate,facts.kind,{deliveryInclusive:true});
+    }
+  } else if (facts.kind!=='part_mixed_delivery') return hold('unsupported_material');
+  const route=facts.route;
+  if (!route || !positive(route.seconds) || route.originPostcode!==policy.yard.postcode || route.siteId!==facts.siteId || route.method!=='osrm_driving' || !route.evidence || route.accessReviewed!==true || route.boundaryReviewRequired===true) return hold('road_route_review_required');
+  const band=policy.road_bands_max_seconds.findIndex(max=>route.seconds<=max);
+  const index=band===-1?2:band;
+  if (full) return price(policy[facts.kind].rates[index],facts.kind,{deliveryInclusive:true,roadSeconds:route.seconds});
+  if (facts.completeLoadItems!==true || !Array.isArray(facts.items) || !facts.items.length || new Set(facts.items.map(i=>i.id)).size!==facts.items.length) return hold('complete_unique_load_items_required');
+  if (facts.deliveryAlreadyCharged!==false) return hold('delivery_state_required');
+  let subtotal=0;
+  const lines=[];
+  for(const item of facts.items) {
+    if (!item.id || !positive(item.quantity) || item.deliveryInclusive!==false) return hold('item_quantity_or_inclusive_rate_review');
+    const m=catalogue.materials.find(m=>m.name===item.material && m.active!==false);
+    if(!m || item.unit!==m.unit) return hold('catalogue_item_or_unit_required');
+    const override=catalogue.customer_overrides?.[facts.catalogueCustomerName]?.[m.name];
+    if (override || !(['flat','fixed','tiered'].includes(m.type) || m.type==='job' && ['bags','each'].includes(m.unit) || m.type==='bag' && m.unit==='bags')) return hold('catalogue_special_rate_review');
+    const rate=m.type==='tiered' ? (item.quantity>catalogue.tier_threshold_tonnes?m.over10:m.under10):m.rate;
+    if(!positive(rate)) return hold('rate_required');
+    const amount=money(item.quantity*rate); subtotal+=amount; lines.push({id:item.id,material:m.name,quantity:item.quantity,unit:item.unit,rate,amount});
+  }
+  const delivery=policy.part_mixed_delivery.rates[index];
+  return price(subtotal+delivery,'part_mixed_delivery',{lines,delivery,deliveryCount:1,roadSeconds:route.seconds});
+}
+
+
+function agreedJobSnapshot(job, quantity) {
+  const stable=value=>{if(Array.isArray(value))return value.map(stable);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).filter(k=>!['_etag','_ts','quotedPrice','totalPrice','price','consignmentPrice','useQuotedPrice'].includes(k)).sort().map(k=>[k,stable(value[k])]));return value;};
+  return JSON.stringify(stable({id:job.id,customerId:jobCustomerId(job),goods:jobGoodsDescription(job),reference:jobCustomerReference(job),quantity:Number(quantity),date:job.deliveryDate||job.collectionDate,consignments:job.consignments,deliveryLoadId:job.deliveryLoadId,collectionLoadId:job.collectionLoadId,deliveryVehicleId:job.deliveryVehicleId,collectionVehicleId:job.collectionVehicleId}));
+}
+async function deriveAgreedEvidence(job, quantity, env) {
+  const c=firstConsignment(job), qty=Number(quantity), customerId=jobCustomerId(job);
+  const goods=normalisedCompletionMaterial(job).replace(/[.]+$/,'').trim();
+  const date=String(job.deliveryDate||job.collectionDate||'').slice(0,10);
+  if (!job.id || !customerId || !Number.isFinite(qty) || qty<=0 || date<AGREED_COMPLETION_POLICY.effective_from) return null;
+  if(!Array.isArray(job.consignments) || job.consignments.length!==1) return null;
+  if(isDeliveredConcreteJob(job) || customerId===PM_GROUNDWORKS_CUSTOMER_ID) return null;
+  const crush=['6f2','6f2 crush','6f2 crushed concrete','crush','recycled 6f2','recycled crush'].includes(goods);
+  const spoil=['mixed spoil away','spoil mix grabbed away','spoil grab away','mixed spoil grab away'].includes(goods);
+  const part=AGREED_CATALOGUE.materials.find(m=>normalisedLookupText(m.name)===goods && m.active!==false && !['TIPPING','CONCRETE','OTHER'].includes(m.group));
+  if(!crush && !spoil && !part) return null;
+  const side=spoil?'collection':'delivery';
+  const address=[1,2,3,4,5].map(i=>cleanText(c[`${side}AddressLine${i}`],240)).filter(Boolean);
+  const siteText=normalisedLookupText(address.join(' '));
+  let postcode=normaliseUkPostcode(c[`${side}Postcode`]);
+  if(!postcode) {
+    const resolved=await resolveDeliveryPostcodeFromAddress(env,{line1:c[`${side}AddressLine1`]||'',line2:c[`${side}AddressLine2`]||'',line3:c[`${side}AddressLine3`]||'',line4:c[`${side}AddressLine4`]||'',formattedAddress:address.join(', ')});
+    if(resolved.ok)postcode=resolved.postcode;
+  }
+  if(!siteText && !postcode) return null;
+  const vehicleId=job.deliveryVehicleId||job.collectionVehicleId;
+  const reg=Object.keys(DRIVER_APP_VEHICLE_IDS_BY_REG).find(k=>DRIVER_APP_VEHICLE_IDS_BY_REG[k]===vehicleId);
+  // EY15BOV is the established grab truck; vehicle type is reviewed in policy.
+  const eight=AGREED_COMPLETION_POLICY.eight_wheeler_registrations.includes(reg);
+  const kind=spoil?'mixed_spoil_away':crush&&qty===20&&eight?'6f2_delivered':'part_mixed_delivery';
+  if(spoil && (qty!==20 || !eight)) return null;
+  const facts={jobDate:date,customerId,siteId:JSON.stringify({address,postcode}),loadId:job.deliveryLoadId||job.collectionLoadId||job.id,quantity:qty,unit:'t',kind,agreementsChecked:true,vehicle:eight?'eight_wheeler':reg||'unknown',fullLoadConfirmed:qty===20&&eight,singleMaterialConfirmed:true};
+  const protectedRule=AGREED_COMPLETION_POLICY.protected_agreements.find(a=>a.customer_id===customerId);
+  if(protectedRule) {
+    if(kind!==protectedRule.material || !protectedRule.exact_site_labels.includes(siteText)) return null;
+    facts.agreement={customerId,siteId:facts.siteId,kind,quantity:qty,unit:'t',amount:protectedRule.rate,validOn:date,deliveryInclusive:true,evidence:protectedRule.evidence};
+  } else if(AGREED_COMPLETION_POLICY.manual_agreement_customer_ids.includes(customerId)) return null;
+  // Do not guess identity behind the miscellaneous A1 account.
+  if(customerId===AGREED_COMPLETION_POLICY.a1_customer_id) return null;
+  if(spoil) {
+    const locality=address.map(a=>normalisedLookupText(a)).find(a=>['lytham','st annes','lytham st annes'].includes(a));
+    if(!locality && /lytham|st annes|saint annes/.test(siteText))return null;
+    if(locality){facts.localityOverride=locality==='lytham'?'Lytham':'St Annes';facts.localityEvidence='Exact structured locality in live HaulTech address';}
+  }
+  if(!facts.agreement && !facts.localityOverride) {
+    if(!postcode) return null;
+    const response=await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`,{signal:AbortSignal.timeout(9000)});
+    if(!response.ok) return null;const p=(await response.json()).result;
+    if(!p || !Number.isFinite(p.longitude)||!Number.isFinite(p.latitude)) return null;
+    facts.route={siteId:facts.siteId,destination:{longitude:p.longitude,latitude:p.latitude},evidence:`postcodes.io:${postcode}; fresh OSRM route`,accessReviewed:true,boundaryReviewRequired:false};
+  }
+  if(kind==='part_mixed_delivery') {
+    if(!part || !reg) return null;
+    facts.completeLoadItems=true;facts.deliveryAlreadyCharged=false;
+    facts.items=[{id:String(c.id||c.consignmentId||job.id),material:part.name,quantity:qty,unit:part.unit,deliveryInclusive:false}];
+    // Plain material record must be the only job on this load: otherwise delivery could be charged twice.
+    const jobs=await fetchHaultechJobsByDate(env,date);
+    if(!jobs.ok || jobs.jobs.length>=200) return null;
+    const load=job.deliveryLoadId||job.collectionLoadId;
+    if(!load || jobs.jobs.filter(j=>(j.deliveryLoadId===load||j.collectionLoadId===load)&&j.active!==false&&!j.cancelled).length!==1) return null;
+  }
+  return {policyVersion:AGREED_COMPLETION_POLICY.version,reviewed:true,source:'live HaulTech exact structured fields + approved canonical policy',snapshot:agreedJobSnapshot(job,qty),facts};
+}
+async function persistAgreedOutcome(env,job,result,status) {
+  const receipt={schema:'pmg.agreed-pricing-result.v2',jobId:job.id,jobNumber:job.jobId,customerId:jobCustomerId(job),date:job.deliveryDate||job.collectionDate,quantity:jobQuantity(job),observedAt:new Date().toISOString(),policyVersion:AGREED_COMPLETION_POLICY.version,status,result};
+  await env.PMG_DATA.put(`agreed-pricing-result:${job.id}`,JSON.stringify(receipt));
+  await env.PMG_DATA.put(`agreed-pricing-day:${String(receipt.date||'').slice(0,10)}:${job.id}`,JSON.stringify(receipt));
+  return receipt;
+}
+async function verifiedAgreedReprice(env,job,date) {
+  if(jobHasExistingPrice(job)) return {status:'preserved_existing_price',jobId:job.id};
+  const manualText=[job.accountNotes,job.trafficNotes,jobGoodsDescription(job)].filter(Boolean).join(' ').replace(/not paid/gi,'');
+  if(/\bpaid\b|ring for amount|manual price|agreed price|free of charge|no charge/i.test(manualText))return {status:'manual_price_review',jobId:job.id};
+  if(!['completed','received','delivered'].includes(normalisedStatus(job.deliveryStatus))) return {status:'awaiting_actual_completion',jobId:job.id};
+  if(!job.id || !Array.isArray(job.consignments) || job.consignments.some(c=>c.invoicedCount!==0||c.invoiceExportCount!==0)) return {status:'invoice_or_export_hold',jobId:job.id};
+  const historyResponse=await htFetch(env,`/api/Invoice/GetOldInvoices?jobId=${encodeURIComponent(job.id)}`);
+  if(!historyResponse.ok) return {status:'invoice_history_unavailable',jobId:job.id};
+  const history=await historyResponse.json();if(!Array.isArray(history)||history.length)return {status:'invoice_history_hold',jobId:job.id};
+  const price=await completionAutoPrice(job,jobQuantity(job),env);
+  if(!price.quotedPrice || price.reviewRequired || !price.changed) {
+    return persistAgreedOutcome(env,job,{reason:price.reason||'unsupported'},'review_required');
+  }
+  // Fresh read and full snapshot comparison before mutation.
+  const current=await fetchHaultechJobsByDate(env,date);
+  if(!current.ok || current.jobs.length>=200) return {status:'coverage_incomplete'};
+  const fresh=current.jobs.find(j=>j.id===job.id);
+  if(!fresh || JSON.stringify(fresh)!==JSON.stringify(job)) return persistAgreedOutcome(env,job,{reason:'concurrent_change'},'review_required');
+  await persistAgreedOutcome(env,job,{amount:price.quotedPrice,beforeSnapshot:agreedJobSnapshot(job,jobQuantity(job))},'write_pending');
+  let response={ok:false};
+  try {response=await htFetch(env,'/api/Job/UpsertJob?formId=',{method:'POST',body:JSON.stringify(price.job)});} catch {}
+  // Never blindly retry. Reconcile a response or failure with live state.
+  const readback=await fetchHaultechJobsByDate(env,date);
+  const after=readback.ok?readback.jobs.find(j=>j.id===job.id):null;
+  const same=after && Number(after.quotedPrice)===price.quotedPrice && Number(after.totalPrice)===price.quotedPrice && after.useQuotedPrice===true && agreedJobSnapshot(after,jobQuantity(after))===agreedJobSnapshot(job,jobQuantity(job)) && after.trafficNotes===job.trafficNotes && after.deliveryStatus===job.deliveryStatus;
+  if(!same) return persistAgreedOutcome(env,job,{amount:price.quotedPrice,httpOk:response.ok,reason:'write_readback_not_proved'},'unknown_do_not_retry');
+  return persistAgreedOutcome(env,after,{amount:price.quotedPrice,basis:price.basis,beforePrice:0},'verified');
+}
+async function runAgreedPricingSweep(env,event={}) {
+  const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(event.scheduledTime||Date.now()));
+  const lookup=await fetchHaultechJobsByDate(env,date);
+  if(!lookup.ok || lookup.jobs.length>=200) return {status:'coverage_incomplete',date};
+  const results=[];
+  for(const job of lookup.jobs) {
+    if(job.active===false || job.cancelled) continue;
+    const previous=await env.PMG_DATA.get(`agreed-pricing-result:${job.id}`,{type:'json'});
+    if(['unknown_do_not_retry','write_pending'].includes(previous?.status)) {results.push({jobId:job.id,status:'unknown_do_not_retry'});continue;}
+    if(jobHasExistingPrice(job))continue;
+    try {results.push(await verifiedAgreedReprice(env,job,date));}
+    catch {results.push({jobId:job.id,status:'review_required',reason:'pricing_source_unavailable'});}
+  }
+  const report={schema:'pmg.agreed-pricing-sweep.v1',observedAt:new Date().toISOString(),date,policyVersion:AGREED_COMPLETION_POLICY.version,results};
+  await env.PMG_DATA.put('agreed-pricing-latest-run',JSON.stringify(report));return report;
+}
+
+async function agreedDailyResults(env,date) {
+  const results=[];let cursor;let complete=false;
+  for(let page=0;page<10;page++) {
+    const listing=await env.PMG_DATA.list({prefix:`agreed-pricing-day:${date}:`,limit:100,cursor});
+    for(const key of listing.keys||[]) {const value=await env.PMG_DATA.get(key.name,{type:'json'});if(value)results.push(value);}
+    if(listing.list_complete){complete=true;break;}cursor=listing.cursor;if(!cursor)break;
+  }
+  const latest=await env.PMG_DATA.get('agreed-pricing-latest-run',{type:'json'});
+  return {schema:'pmg.agreed-pricing-daily.v1',date,policyVersion:AGREED_COMPLETION_POLICY.version,observedAt:results.map(r=>r.observedAt).sort().pop()||latest?.observedAt||new Date().toISOString(),coverage:complete?'complete':'partial',results,latestRun:latest?.date===date?latest:null};
+}
+
+// Server-owned reviewed evidence only. Driver request JSON cannot supply this context.
+// Evidence upload/activation remains office-controlled; no route accepts writes here.
+async function agreedCompletionAutoPrice(job, quantity, env) {
+  const unchanged = reason => ({job,changed:false,reviewRequired:true,reason});
+  if (jobHasExistingPrice(job)) return unchanged('existing_price');
+  const id=cleanText(job?.id,120);
+  if (!id || !env?.PMG_DATA) return unchanged('reviewed_pricing_evidence_required');
+  let evidence;
+  try { evidence=await env.PMG_DATA.get(`agreed-pricing-evidence:${id}`,{type:'json'}); }
+  catch { return unchanged('pricing_evidence_unavailable'); }
+  if (!evidence) evidence=await deriveAgreedEvidence(job,quantity,env);
+  if (!evidence) return unchanged('source_fields_or_grouping_required');
+  const consignment=firstConsignment(job);
+  if (evidence?.facts?.jobDate !== String(job.deliveryDate||job.collectionDate||'').slice(0,10)) return unchanged('job_date_evidence_mismatch');
+  const currentSnapshot=agreedJobSnapshot(job,quantity);
+  // Snapshot equality deliberately holds after address, material, quantity, load or grouping changes.
+  if(evidence.policyVersion!==AGREED_COMPLETION_POLICY.version || evidence.snapshot!==currentSnapshot || evidence.reviewed!==true || !evidence.source || !evidence.facts || evidence.facts.customerId!==jobCustomerId(job)) return unchanged('stale_or_unreviewed_pricing_evidence');
+  if(!Array.isArray(job.consignments) || !job.consignments.length || job.consignments.some(c=>c.invoicedCount!==0 || c.invoiceExportCount!==0)) return unchanged('invoice_or_export_state_unknown');
+  let history;
+  try { const response=await htFetch(env,`/api/Invoice/GetOldInvoices?jobId=${encodeURIComponent(id)}`); if(!response.ok) return unchanged('invoice_history_unavailable');history=await response.json(); }
+  catch {return unchanged('invoice_history_unavailable');}
+  if(!Array.isArray(history) || history.length) return unchanged('invoice_history_hold');
+  const facts={...evidence.facts,evidenceVerified:true,quantity:Number(quantity),existingPrices:[Number(job.quotedPrice||0),Number(job.totalPrice||0)],invoiceHistoryClear:true,exportStateClear:true};
+  if(facts.kind==='internal_concrete') {
+    const group=facts.wholeJob;
+    if(!group || !Array.isArray(group.tickets) || !Array.isArray(group.snapshots)) return unchanged('whole_job_live_snapshots_required');
+    for(const ticket of group.tickets) {
+      if(ticket.id===id) continue;
+      const snapshot=group.snapshots.find(s=>s.id===ticket.id);
+      if(!snapshot || !snapshot.date || !snapshot.json) return unchanged('whole_job_live_snapshots_required');
+      const lookup=await fetchHaultechJobsByDate(env,snapshot.date);
+      if(!lookup.ok) return unchanged('whole_job_lookup_failed');
+      const member=lookup.jobs.find(j=>j.id===ticket.id);
+      if(!member || JSON.stringify(member)!==snapshot.json || jobCustomerId(member)!==jobCustomerId(job) || jobQuantity(member)!==ticket.quantity) return unchanged('whole_job_member_changed');
+      if(!Array.isArray(member.consignments) || member.consignments.some(c=>c.invoicedCount!==0 || c.invoiceExportCount!==0)) return unchanged('whole_job_member_invoice_hold');
+      if(jobHasExistingPrice(member)) {
+        const expected=evaluateAgreedPrice(AGREED_COMPLETION_POLICY,{...facts,ticketId:ticket.id,quantity:ticket.quantity,mixType:ticket.mixType,existingPrices:[0],invoiceHistoryClear:true,exportStateClear:true,evidenceVerified:true},AGREED_CATALOGUE);
+        if(expected.status!=='priced' || Number(member.quotedPrice)!==expected.amount || Number(member.totalPrice)!==expected.amount || member.useQuotedPrice!==true)return unchanged('whole_job_existing_price_conflict');
+      }
+    }
+  }
+  if(facts.kind==='internal_concrete' && (jobCustomerId(job)!==PM_GROUNDWORKS_CUSTOMER_ID || !isDeliveredConcreteJob(job))) return unchanged('internal_customer_or_material_mismatch');
+  // No rounded calculator time; use raw seconds from the same OSRM routing method.
+  if(facts.route) {
+    const r=facts.route;
+    if(!r.destination || !Number.isFinite(r.destination.longitude) || !Number.isFinite(r.destination.latitude)) return unchanged('route_destination_required');
+    try {
+      const y=AGREED_COMPLETION_POLICY.yard;
+      const response=await fetch(`https://router.project-osrm.org/route/v1/driving/${y.longitude},${y.latitude};${r.destination.longitude},${r.destination.latitude}?overview=false&alternatives=false&steps=false`, {signal:AbortSignal.timeout(9000)});
+      if(!response.ok) return unchanged('road_route_unavailable');
+      const body=await response.json();const route=body.routes?.[0];
+      if(body.code!=='Ok' || !route || !Number.isFinite(route.duration) || route.duration<=0) return unchanged('road_route_unavailable');
+      facts.route={...r,seconds:route.duration,originPostcode:y.postcode,method:'osrm_driving'};
+      // Reviewed band must match the freshly fetched route. A crossing cannot silently reprice.
+      const band=route.duration<=1500?0:route.duration<=2700?1:2;
+      if(r.reviewedBand!==undefined && r.reviewedBand!==band) return unchanged('road_band_changed_since_review');
+    } catch {return unchanged('road_route_unavailable');}
+  }
+  const result=evaluateAgreedPrice(AGREED_COMPLETION_POLICY,facts,AGREED_CATALOGUE);
+  if(result.status!=='priced') return unchanged(result.reason);
+  // Private audit context is kept in Worker KV; never written to customer/account/traffic notes.
+  try {await env.PMG_DATA.put(`agreed-pricing-result:${id}`,JSON.stringify({schema:'pmg.agreed-pricing-result.v1',jobId:id,observedAt:new Date().toISOString(),result,source:evidence.source,status:'calculated_not_write_verified'}));}
+  catch {return unchanged('private_audit_write_failed');}
+  return {job:{...job,quotedPrice:result.amount,totalPrice:result.amount,useQuotedPrice:true},changed:true,quotedPrice:result.amount,basis:result.basis,pricingEvidence:result};
+}
+
+// END GENERATED AGREED COMPLETION PRICING
+
 async function completionAutoPrice(job, quantity, env = null) {
   const qty = Number(quantity);
   if (!Number.isFinite(qty) || qty <= 0 || jobHasExistingPrice(job)) {
     return { job, changed: false, reason: jobHasExistingPrice(job) ? 'existing_price' : 'bad_quantity' };
+  }
+
+  if (COLLECTED_CONCRETE_RATES[firstConsignment(job)?.goodsDescription] !== undefined) {
+    return {job,changed:false,reviewRequired:true,reason:'collected_concrete_intake_price_or_office_review'};
+  }
+  if (jobCustomerId(job) === PM_GROUNDWORKS_CUSTOMER_ID || !isDeliveredConcreteJob(job) && jobCustomerId(job) !== WYRE_BUILDING_SUPPLIES_CUSTOMER_ID) {
+    return agreedCompletionAutoPrice(job, qty, env);
   }
 
   if (isDeliveredConcreteJob(job)) {
@@ -2511,14 +2820,7 @@ async function completionAutoPrice(job, quantity, env = null) {
     }
     const body = completionPricingBody(job);
     let pricing;
-    if (jobCustomerId(job) === PM_GROUNDWORKS_CUSTOMER_ID) {
-      const quotedPrice = Math.round(qty * 40 * 100) / 100;
-      pricing = {
-        quotedPrice,
-        useQuotedPrice: true,
-        note: `Auto-priced at completion: internal PM Groundworks concrete saving ${qty}m3 @ £40.00/m3 = £${quotedPrice.toFixed(2)}`,
-      };
-    } else {
+    {
       const concreteType = inferConcreteType(body);
       if (!concreteType) {
         return completionPricingReview(job, 'concrete_type_missing', 'concrete type is not proven as quarried or recycled');
@@ -2534,7 +2836,7 @@ async function completionAutoPrice(job, quantity, env = null) {
     if (!pricing.useQuotedPrice || !Number.isFinite(Number(pricing.quotedPrice)) || Number(pricing.quotedPrice) <= 0) {
       return completionPricingReview(job, 'concrete_review_required', pricing.note || 'concrete calculator did not return a safe price');
     }
-    const accountNotes = mergePlainNoteText(clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''), pricing.note);
+    const accountNotes = clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''); 
     const postcodeUpdatedJob = applyResolvedDeliveryPostcode(job, pricing);
     return {
       job: { ...postcodeUpdatedJob, quotedPrice: pricing.quotedPrice, totalPrice: pricing.quotedPrice, useQuotedPrice: true, accountNotes },
@@ -2562,7 +2864,7 @@ async function completionAutoPrice(job, quantity, env = null) {
       quotedPrice,
       totalPrice: quotedPrice,
       useQuotedPrice: true,
-      accountNotes: mergePlainNoteText(clearCompletionPricingReview(job?.accountNotes || job?.accountnotes || ''), note),
+      accountNotes: job?.accountNotes || job?.accountnotes || '',
     },
     changed: true,
     quotedPrice,
@@ -2824,6 +3126,7 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
 
   if (!changed) return { ok: true, notes: mergedNotes, paymentStatus: paymentUpdate.paymentStatus, unchanged: true };
 
+  if(pricingUpdate.quotedPrice) await persistAgreedOutcome(env,updatedJob,{amount:pricingUpdate.quotedPrice},'write_pending');
   const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {
     method: 'POST',
     body: JSON.stringify(updatedJob),
@@ -2831,6 +3134,13 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   const upsertText = await upsertResp.text();
   if (!upsertResp.ok) {
     return { ok: false, error: `driver_update_failed: ${upsertText || upsertResp.status}` };
+  }
+  if(pricingUpdate.quotedPrice) {
+    const date=String(updatedJob.deliveryDate||updatedJob.collectionDate||'').slice(0,10);
+    const check=await fetchHaultechJobsByDate(env,date);
+    const saved=check.ok?check.jobs.find(j=>j.id===updatedJob.id):null;
+    const verified=saved && Number(saved.quotedPrice)===pricingUpdate.quotedPrice && Number(saved.totalPrice)===pricingUpdate.quotedPrice && saved.useQuotedPrice===true;
+    await persistAgreedOutcome(env,saved||updatedJob,{amount:pricingUpdate.quotedPrice,basis:pricingUpdate.basis},verified?'verified':'unknown_do_not_retry');
   }
   return {
     ok: true,
@@ -3038,6 +3348,28 @@ export default {
         return corsResponse(JSON.stringify(result), status);
       }
       return corsResponse(JSON.stringify(result));
+    }
+
+    if (path === '/ht/agreed-pricing' && request.method === 'POST') {
+      if (!hasAdminKey(request, env)) return corsResponse(JSON.stringify({error:'admin_key_required'}),403);
+      return corsResponse(JSON.stringify(await runAgreedPricingSweep(env)));
+    }
+    if (path === '/ht/agreed-pricing/results' && request.method === 'GET') {
+      if (!hasAdminKey(request, env)) return corsResponse(JSON.stringify({error:'admin_key_required'}),403);
+      const date=maybeIsoDate(url.searchParams.get('date')) || new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      return corsResponse(JSON.stringify(await agreedDailyResults(env,date)));
+    }
+    const evidenceMatch=path.match(/^\/ht\/pricing-evidence\/([^/]+)$/);
+    if(evidenceMatch && request.method==='POST') {
+      if(!hasAdminKey(request,env)) return corsResponse(JSON.stringify({error:'admin_key_required'}),403);
+      const body=safeJsonParse(await request.text(),{}),date=maybeIsoDate(body.date);
+      if(!date || !body.source || !body.facts) return corsResponse(JSON.stringify({error:'source_date_facts_required'}),422);
+      const lookup=await fetchHaultechJobsByDate(env,date);if(!lookup.ok || lookup.jobs.length>=200)return corsResponse(JSON.stringify({error:'coverage_incomplete'}),503);
+      const job=lookup.jobs.find(j=>j.id===safePathParam(evidenceMatch[1]));
+      if(!job || jobHasExistingPrice(job))return corsResponse(JSON.stringify({error:'missing_or_already_priced'}),409);
+      if(body.facts.customerId!==jobCustomerId(job)||body.facts.quantity!==jobQuantity(job)||body.facts.jobDate!==date)return corsResponse(JSON.stringify({error:'fact_identity_mismatch'}),422);
+      await env.PMG_DATA.put(`agreed-pricing-evidence:${job.id}`,JSON.stringify({policyVersion:AGREED_COMPLETION_POLICY.version,source:body.source,facts:body.facts,reviewed:true,snapshot:agreedJobSnapshot(job,jobQuantity(job))}));
+      return corsResponse(JSON.stringify({ok:true,status:'evidence_registered_not_priced',jobId:job.id}));
     }
 
     // POST /ht/reprice/{jobId} — safely re-run automatic pricing without changing job status.
@@ -4017,6 +4349,7 @@ export default {
       return;
     }
     ctx.waitUntil(runScheduledHaultechRefresh(env, event));
+    ctx.waitUntil(runAgreedPricingSweep(env, event));
     ctx.waitUntil(refreshHaultechCustomers(env, event));
     ctx.waitUntil(runScheduledPlantPushAlerts(env, event));
   },

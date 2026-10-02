@@ -20,10 +20,10 @@ const inputs = {
   'concrete-type-fields': {classList:{toggle(_name, hide){this.hidden=hide;}}}
 };
 const frontend = vm.createContext({$: id=>inputs[id]});
-vm.runInContext(pricing + "\nconst VOLUMETRIC_CONCRETE_VEHICLES = new Set(['LL21HJJ','PN25FLF']);\n" +
+vm.runInContext(app.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE[\s\S]*?\/\/ END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE/)[0]+"\n"+pricing + "\nconst VOLUMETRIC_CONCRETE_VEHICLES = new Set(['LL21HJJ','PN25FLF']);\n" +
  ['isLegoBlockMaterial','normaliseVehicleReg','isVolumetricConcreteVehicle','isConcreteEntryCandidate','updateConcreteTypeFields','unitForMaterial','tonnageBandMatches','rateForMaterial'].map(n=>fn(app,n)).join('\n'), frontend);
 const backend = vm.createContext({});
-vm.runInContext(['cleanText','isLegoBlockMaterial','concreteQuantityFromText','driverAddedQuantityAndUnit','driverAddedConcreteAutoPrice'].map(n=>fn(worker,n)).join('\n'), backend);
+vm.runInContext(worker.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE[\s\S]*?\/\/ END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE/)[0]+'\n'+['cleanText','isLegoBlockMaterial','concreteQuantityFromText','driverAddedQuantityAndUnit','driverAddedConcreteAutoPrice'].map(n=>fn(worker,n)).join('\n'), backend);
 (async()=>{
  for (const [i,name] of names.entries()) {
   for (const vehicle of ['EY15BOV','LL21HJJ','PN25FLF']) {

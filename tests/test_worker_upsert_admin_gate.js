@@ -195,9 +195,29 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20260930-holcim-aggregate-units-v22$/);
+  assert.match(health.workerBuildId, /^20261002-collected-concrete-v24$/);
   assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
 
+  for (const [path,method] of [['/ht/agreed-pricing','POST'],['/ht/agreed-pricing/results','GET'],['/ht/pricing-evidence/job','POST']]) {
+    const gate=await workerRequest(path,{method});
+    assert.strictEqual(gate.status,403,'new pricing routes require existing admin authority');
+  }
+  const invalidEvidence=await workerRequest('/ht/pricing-evidence/job',{method:'POST',headers:{'X-PMG-Admin-Key':'admin-key'},body:JSON.stringify({date:'2026-10-02'})});
+  assert.strictEqual(invalidEvidence.status,422,'no evidence registration without source and facts');
+
+  for (const [source, expected] of [['Quarried',110],['Recycled',100]]) {
+    sandbox.__fetches.length = 0;
+    sandbox.__haultechJobs = [];
+    const response = await workerRequest('/ht/driver-add', {method:'POST',body:JSON.stringify({date:'2026-10-02',customer:'PM Groundworks',driver:'Neil Antony',vehicle:'EY15BOV',material:'Collected concrete - '+source,unit:'m3',quantity:0.75,reference:'COLLECTED-FIXTURE-'+source,notes:'Customer collection',movementId:'fixture-collected-'+source,concreteType:source.toLowerCase()})});
+    assert.strictEqual(response.status,200);
+    const write=sandbox.__fetches.find(call=>call.url.includes('/api/Job/UpsertJob'));
+    assert(write,'collected concrete reaches the existing write route');
+    assert.strictEqual(JSON.parse(write.options.body).quotedPrice,expected);
+    assert(!sandbox.__fetches.some(call=>call.url.includes('/api/quote')),'collection never uses delivered calculator');
+    const bad=await workerRequest('/ht/driver-add',{method:'POST',body:JSON.stringify({date:'2026-10-02',customer:'PM Groundworks',driver:'Neil Antony',material:'Collected concrete - '+source,unit:'m3',quantity:0.49})});
+    assert.strictEqual(bad.status,400);
+  }
+  sandbox.__haultechJobs = [];
   // Synthetic endpoint fixture only: a stale m3 unit must not turn blocks into concrete.
   for (const material of ['Lego block - Full', 'Lego block - Two-thirds', 'Lego block - One-third']) {
     sandbox.__fetches.length = 0;
@@ -215,7 +235,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
     assert.strictEqual(blockPayload.consignments[0].goodsDescription, material);
     assert.strictEqual(blockPayload.quantity, 2);
     assert.strictEqual(blockPayload.consignments[0].quantity, 2);
-    assert(blockPayload.accountNotes.includes('2each'));
+    assert((blockPayload.accountNotes || '').includes('2each'));
     assert.strictEqual(blockPayload.useQuotedPrice, false);
     assert.strictEqual(blockPayload.quotedPrice, 0);
     assert(!sandbox.__fetches.some(call => call.url.includes('/api/quote')));
@@ -311,8 +331,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(driverPayload.consignments[0].goodsDescription, '6F2 Crushed Concrete');
   assert.strictEqual(driverPayload.quotedPrice, 0);
   assert.strictEqual(driverPayload.useQuotedPrice, false);
-  assert(driverPayload.accountNotes.includes('Driver app source: Richard Whittaker / EY15BOV / 6t / PMG Yard to Pilling Lane'), 'driver add should keep driver/route detail in account notes');
-  assert(driverPayload.accountNotes.includes('Driver note: 6 ton tipped'), 'driver add should preserve notes in account notes');
+  assert((driverPayload.accountNotes || '').includes('Driver app source: Richard Whittaker / EY15BOV / 6t / PMG Yard to Pilling Lane'), 'driver add should keep driver/route detail in account notes');
+  assert((driverPayload.accountNotes || '').includes('Driver note: 6 ton tipped'), 'driver add should preserve notes in account notes');
   assert.strictEqual(driverPayload.trafficNotes, '6 ton tipped', 'traffic notes should contain the plain driver note only');
   assert(!driverPayload.trafficNotes.includes('Driver app source:'), 'traffic notes must not include source/audit jargon');
 
@@ -465,7 +485,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(secondIdenticalMovement.alreadyPresent, false, 'a second genuine identical load with a distinct movement id must be created');
   assert.strictEqual(sandbox.__fetches.length, 3, 'distinct movement id must reach Haultech UpsertJob and readback');
   const secondSimonPayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert(secondSimonPayload.accountNotes.includes('Driver movement: driver-simon-load-2'));
+  assert((secondSimonPayload.accountNotes || '').includes('Driver movement: driver-simon-load-2'));
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
@@ -511,8 +531,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555);
   assert.strictEqual(completionPricing.upsertPayload.totalPrice, 555, 'completion must write quoted and total prices together');
   assert.strictEqual(completionPricing.upsertPayload.useQuotedPrice, true);
-  assert(completionPricing.upsertPayload.accountNotes.includes('Auto-priced quarried concrete to FY6 9DJ'));
-  assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'successful retry must clear its stale office-review marker');
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('Auto-priced quarried concrete to FY6 9DJ'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'), 'successful retry must clear its stale office-review marker');
 
   sandbox.__geoapifyResults = [{
     place_id: 'sower-carr-lane',
@@ -549,7 +569,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }, 0.89);
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'missing postcode must leave external concrete for office review');
   assert.strictEqual(completionPricing.calculatorCalls.length, 0);
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'unpriced completion must leave a durable office-review marker');
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'), 'unpriced completion keeps review out of customer notes');
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'review-marked rows may complete without blocking the driver');
 
   completionPricing = await completeJobFixture({
@@ -573,8 +593,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   sandbox.__geoapifyResults = null;
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 555, 'a full exact address must be resolved and priced when its postcode is blank');
   assert.strictEqual(completionPricing.upsertPayload.consignments[0].deliveryPostcode, 'FY6 9DJ', 'resolved postcode must be persisted to Haultech');
-  assert(completionPricing.upsertPayload.accountNotes.includes('Address-derived postcode FY6 9DJ from exact address match'));
-  assert(!completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'resolved address must clear stale price review');
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('Address-derived postcode FY6 9DJ from exact address match'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'), 'resolved address must clear stale price review');
   assert(sandbox.__fetches.some(call => call.url.includes('api.geoapify.com/v1/geocode/autocomplete')), 'blank postcode must trigger address resolution');
   const addressLookupCall = sandbox.__fetches.find(call => call.url.includes('api.geoapify.com/v1/geocode/autocomplete'));
   assert.strictEqual((new URL(addressLookupCall.url)).searchParams.get('text').match(/Sower Carr Lane/g).length, 1, 'duplicate Haultech address lines must be removed before lookup');
@@ -606,7 +626,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }, 1);
   sandbox.__geoapifyResults = null;
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'non-matching address suggestions must fail closed');
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'));
 
   completionPricing = await completeJobFixture({
     jobId: 9804,
@@ -617,7 +637,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
     quotedPrice: 0,
     consignments: [{ consignmentId: 9804, goodsDescription: 'C35pmg Qu' }],
   }, 4.69);
-  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 187.6, 'internal PMG concrete must use the £40/m3 saving rate');
+  assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'internal saving needs final whole-job evidence; old 40/m3 must not be used');
   assert.strictEqual(completionPricing.calculatorCalls.length, 0);
 
   completionPricing = await completeJobFixture({
@@ -670,7 +690,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
     consignments: [{ consignmentId: 9818, goodsDescription: '10MM S/S Decorative' }],
   }, 27.16);
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'longer unsupported 10MM S/S descriptions must not inherit the clean-stone rate');
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'));
 
   completionPricing = await completeJobFixture({
     jobId: 9806,
@@ -718,7 +738,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
     consignments: [{ consignmentId: 9807, goodsDescription: 'Unknown special stone' }],
   }, 20);
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'unsupported Wyre materials must remain unpriced');
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'));
 
   completionPricing = await completeJobFixture({
     jobId: 9808,
@@ -732,7 +752,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }, 2.61);
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0, 'Wyre concrete must remain manual because its historical rates vary');
   assert.strictEqual(completionPricing.calculatorCalls.length, 0);
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'));
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'));
 
   completionPricing = await completeJobFixture({
     jobId: 9813,
@@ -768,7 +788,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }, 1.2);
   sandbox.__calculatorReply = null;
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0);
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator review responses must be made durable in Haultech');
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator review is returned privately');
 
   completionPricing = await completeJobFixture({
     jobId: 9815,
@@ -807,7 +827,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
     consignments: [{ consignmentId: 9820, goodsDescription: 'ST1 CONCRETE', deliveryPostcode: 'FY6 8AR' }],
   }, 2, { concreteType: 'quarried' });
   assert.strictEqual(completionPricing.resp.status, 200, 'explicit ST concrete source must allow completion');
-  assert(completionPricing.upsertPayload.accountNotes.includes('Driver confirmed QUARRIED concrete source'));
+  assert((completionPricing.upsertPayload.accountNotes || '').includes('Driver confirmed QUARRIED concrete source'));
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob')), 'typed ST concrete may reach QuickCompleteJob');
 
   sandbox.__calculatorReply = { status: 503, body: { error: 'pricing unavailable' } };
@@ -823,7 +843,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }, 1.2);
   sandbox.__calculatorReply = null;
   assert.strictEqual(completionPricing.upsertPayload.quotedPrice, 0);
-  assert(completionPricing.upsertPayload.accountNotes.includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator HTTP failures must be visibly held for review');
+  assert(!(completionPricing.upsertPayload.accountNotes || '').includes('OFFICE PRICE REVIEW REQUIRED'), 'calculator HTTP failures must not add internal customer notes');
 
   sandbox.__fetches.length = 0;
   sandbox.__haultechJobs = [{
@@ -889,7 +909,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert(paymentUpsert, 'payment update should upsert the exact matched Haultech job');
   const paymentPayload = JSON.parse(paymentUpsert.options.body);
   assert.strictEqual(paymentPayload.trafficNotes, 'Paid | 10mm no fines Paid £355 cash', 'free text containing Paid must be preserved');
-  assert(paymentPayload.accountNotes.includes('A1 payment: Paid'));
+  assert((paymentPayload.accountNotes || '').includes('A1 payment: Paid'));
   const storedPaymentRows = JSON.parse(paymentEnv.__store.get('jobs:2026-07-20'));
   assert.strictEqual(storedPaymentRows[0].paymentStatus, 'paid');
   assert.strictEqual(storedPaymentRows[0].a1PaymentStatus, 'paid');
@@ -1154,8 +1174,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const fallbackPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(fallbackPayload.customerId, 'a1');
   assert.strictEqual(fallbackPayload.customerReference, 'UNKNOWN SITE NAME ck-1');
-  assert(fallbackPayload.accountNotes.includes('Driver movement: driver-fallback-1'));
-  assert(fallbackPayload.accountNotes.includes('Typed customer/site: Unknown Site Name'));
+  assert((fallbackPayload.accountNotes || '').includes('Driver movement: driver-fallback-1'));
+  assert((fallbackPayload.accountNotes || '').includes('Typed customer/site: Unknown Site Name'));
   assert.strictEqual(fallbackPayload.trafficNotes, 'fallback test note');
   assert(!fallbackPayload.trafficNotes.includes('Typed customer/site:'), 'traffic notes should not carry customer/reference repair labels');
   assert.strictEqual(fallbackPayload.consignments[0].goodsDescription, '6F2');
@@ -1183,7 +1203,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(a1NamedPayload.customerReference, 'Phil Smith - 1736');
   assert.strictEqual(a1NamedPayload.consignments[0].consignmentReference, 'Phil Smith - 1736');
   assert.strictEqual(a1NamedPayload.consignments[0].goodsDescription, 'C35pmg Qu');
-  assert(a1NamedPayload.accountNotes.includes('Typed customer/site: Phil Smith'));
+  assert((a1NamedPayload.accountNotes || '').includes('Typed customer/site: Phil Smith'));
   assert.strictEqual(a1NamedPayload.trafficNotes, '', 'typed customer/site must go through the reference, not clutter traffic notes');
 
   sandbox.__fetches.length = 0;
@@ -1235,8 +1255,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(a1ReferenceNamePayload.customerId, 'a1');
   assert.strictEqual(a1ReferenceNamePayload.customerReference, 'Phil Smith');
   assert.strictEqual(a1ReferenceNamePayload.consignments[0].consignmentReference, 'Phil Smith');
-  assert(a1ReferenceNamePayload.accountNotes.includes('A1 payment: Paid'));
-  assert(a1ReferenceNamePayload.accountNotes.includes('Driver note: Leave cones by the gate'));
+  assert((a1ReferenceNamePayload.accountNotes || '').includes('A1 payment: Paid'));
+  assert((a1ReferenceNamePayload.accountNotes || '').includes('Driver note: Leave cones by the gate'));
   assert.strictEqual(a1ReferenceNamePayload.trafficNotes, 'Paid | Leave cones by the gate', 'A1 payment and driver note should be plain invoicing-visible traffic notes');
   assert(!a1ReferenceNamePayload.trafficNotes.includes('Driver note:'), 'traffic notes should contain the note text, not the Driver note label');
   assert(!a1ReferenceNamePayload.trafficNotes.includes('A1 payment:'), 'traffic notes should contain Paid/Not paid, not the account-note label');
@@ -1251,7 +1271,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(referenceRepair.reference, 'Phil Smith - 1736');
   assert.strictEqual(referenceRepair.job.customerReference, 'Phil Smith - 1736');
   assert.strictEqual(referenceRepair.job.consignments[0].consignmentReference, 'Phil Smith - 1736');
-  assert(referenceRepair.job.accountNotes.includes('Typed customer/site: Phil Smith'));
+  assert((referenceRepair.job.accountNotes || '').includes('Typed customer/site: Phil Smith'));
   assert.strictEqual(referenceRepair.job.trafficNotes, 'Leave at gate', 'reference repair must preserve existing plain traffic notes without adding labels');
 
   sandbox.__fetches.length = 0;
@@ -1275,7 +1295,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const pricedPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(pricedPayload.quotedPrice, 215);
   assert.strictEqual(pricedPayload.useQuotedPrice, true);
-  assert(pricedPayload.accountNotes.includes('Priced by Richard: £21.50/t = £215.00'));
+  assert(!(pricedPayload.accountNotes || '').includes('Priced by Richard: £21.50/t = £215.00'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1298,7 +1318,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const deniedPricePayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(deniedPricePayload.quotedPrice, 0);
   assert.strictEqual(deniedPricePayload.useQuotedPrice, false);
-  assert(!deniedPricePayload.accountNotes.includes('Priced by Richard'));
+  assert(!(deniedPricePayload.accountNotes || '').includes('Priced by Richard'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1319,11 +1339,11 @@ async function completeJobFixture(job, quantity, extras = {}) {
   });
   assert.strictEqual(resp.status, 200);
   const concretePayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert.strictEqual(concretePayload.quotedPrice, 113.44);
-  assert.strictEqual(concretePayload.useQuotedPrice, true);
+  assert.strictEqual(concretePayload.quotedPrice, 0, "missing routing evidence must not fall back to a copied concrete table");
+  assert.strictEqual(concretePayload.useQuotedPrice, false);
   assert.strictEqual(concretePayload.consignments[0].goodsDescription, 'C35pmg Qu');
-  assert(concretePayload.accountNotes.includes('Driver app source: Ian Slater / PN25FLF / 0.55m3 / Yard to Nottend'));
-  assert(concretePayload.accountNotes.includes('Auto-priced PMG quarried concrete: 0.55m3 @ £165.00/m3 x 1.25 small-load multiplier = £113.44'));
+  assert((concretePayload.accountNotes || '').includes('Driver app source: Ian Slater / PN25FLF / 0.55m3 / Yard to Nottend'));
+  assert(!(concretePayload.accountNotes || '').includes('Auto-priced PMG quarried concrete: 0.55m3 @ £165.00/m3 x 1.25 small-load multiplier = £113.44'));
 
   sandbox.__fetches.length = 0;
   const addressedServiceBindingCallsBefore = sandbox.__serviceBindingCalls;
@@ -1370,7 +1390,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(addressedPayload.consignments[0].deliveryAddressLine1, 'High View');
   assert.strictEqual(addressedPayload.consignments[0].deliveryAddressLine2, 'Sower Carr Lane');
   assert.strictEqual(addressedPayload.consignments[0].deliveryPostcode, 'FY6 9DJ');
-  assert(addressedPayload.accountNotes.includes('Auto-priced quarried concrete to FY6 9DJ'));
+  assert(!(addressedPayload.accountNotes || '').includes('Auto-priced quarried concrete to FY6 9DJ'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1392,9 +1412,9 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   const internalConcretePayloadCall = sandbox.__fetches.find(call => call.url.endsWith('/api/Job/UpsertJob?formId='));
   const internalConcretePayload = JSON.parse(internalConcretePayloadCall.options.body);
-  assert.strictEqual(internalConcretePayload.quotedPrice, 160);
-  assert.strictEqual(internalConcretePayload.useQuotedPrice, true);
-  assert(internalConcretePayload.accountNotes.includes('internal PM Groundworks concrete saving'));
+  assert.strictEqual(internalConcretePayload.quotedPrice, 0);
+  assert.strictEqual(internalConcretePayload.useQuotedPrice, false);
+  assert(!(internalConcretePayload.accountNotes || '').includes('internal PM Groundworks concrete saving')); 
   assert(!sandbox.__fetches.some(call => call.url.includes('/api/quote')), 'PMG own-site concrete must not use external route pricing');
 
   sandbox.__fetches.length = 0;
@@ -1417,10 +1437,10 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const noteQtyPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(noteQtyPayload.quantity, 4);
   assert.strictEqual(noteQtyPayload.consignments[0].quantity, 4);
-  assert.strictEqual(noteQtyPayload.quotedPrice, 580);
-  assert.strictEqual(noteQtyPayload.useQuotedPrice, true);
-  assert(noteQtyPayload.accountNotes.includes('Driver app source: Ian Slater / PN25FLF / 4m3 / Yard to Customer site'));
-  assert(noteQtyPayload.accountNotes.includes('Auto-priced PMG quarried concrete: over 3.5m3 @ £145.00/m3 = £580.00'));
+  assert.strictEqual(noteQtyPayload.quotedPrice, 0, "missing routing evidence must not fall back to a copied concrete table");
+  assert.strictEqual(noteQtyPayload.useQuotedPrice, false);
+  assert((noteQtyPayload.accountNotes || '').includes('Driver app source: Ian Slater / PN25FLF / 4m3 / Yard to Customer site'));
+  assert(!(noteQtyPayload.accountNotes || '').includes('Auto-priced PMG quarried concrete: over 3.5m3 @ £145.00/m3 = £580.00'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1441,8 +1461,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   const mShorthandPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(mShorthandPayload.quantity, 5.8);
-  assert.strictEqual(mShorthandPayload.quotedPrice, 783);
-  assert(mShorthandPayload.accountNotes.includes('Auto-priced PMG recycled concrete: over 3.5m3 @ £135.00/m3 = £783.00'));
+  assert.strictEqual(mShorthandPayload.quotedPrice, 0, "missing routing evidence must not fall back to a copied concrete table");
+  assert(!(mShorthandPayload.accountNotes || '').includes('Auto-priced PMG recycled concrete: over 3.5m3 @ £135.00/m3 = £783.00'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1463,8 +1483,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   });
   assert.strictEqual(resp.status, 200);
   const underThresholdPayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert.strictEqual(underThresholdPayload.quotedPrice, 575.85);
-  assert(underThresholdPayload.accountNotes.includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £575.85'));
+  assert.strictEqual(underThresholdPayload.quotedPrice, 0, "missing routing evidence must not fall back to a copied concrete table");
+  assert(!(underThresholdPayload.accountNotes || '').includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £575.85'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1485,8 +1505,8 @@ async function completeJobFixture(job, quantity, extras = {}) {
   });
   assert.strictEqual(resp.status, 200);
   const exactThresholdPayload = JSON.parse(sandbox.__fetches[1].options.body);
-  assert.strictEqual(exactThresholdPayload.quotedPrice, 577.5);
-  assert(exactThresholdPayload.accountNotes.includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £577.50'));
+  assert.strictEqual(exactThresholdPayload.quotedPrice, 0, "missing routing evidence must not fall back to a copied concrete table");
+  assert(!(exactThresholdPayload.accountNotes || '').includes('Auto-priced PMG quarried concrete: 3.5m3 or under @ £165.00/m3 = £577.50'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1507,9 +1527,9 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   const anyRegConcretePayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(anyRegConcretePayload.quantity, 4);
-  assert.strictEqual(anyRegConcretePayload.quotedPrice, 580);
-  assert.strictEqual(anyRegConcretePayload.useQuotedPrice, true);
-  assert(anyRegConcretePayload.accountNotes.includes('Driver app source: John Bowman / YJ13GRF / 4m3 / Yard to Customer site'));
+  assert.strictEqual(anyRegConcretePayload.quotedPrice, 0);
+  assert.strictEqual(anyRegConcretePayload.useQuotedPrice, false);
+  assert((anyRegConcretePayload.accountNotes || '').includes('Driver app source: John Bowman / YJ13GRF / 4m3 / Yard to Customer site'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1532,7 +1552,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(untypedConcretePayload.quantity, 2);
   assert.strictEqual(untypedConcretePayload.quotedPrice, 0);
   assert.strictEqual(untypedConcretePayload.useQuotedPrice, false);
-  assert(!untypedConcretePayload.accountNotes.includes('Auto-priced PMG recycled concrete'));
+  assert(!(untypedConcretePayload.accountNotes || '').includes('Auto-priced PMG recycled concrete'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1555,7 +1575,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const internalEightPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(internalEightPayload.quotedPrice, 100);
   assert.strictEqual(internalEightPayload.useQuotedPrice, true);
-  assert(internalEightPayload.accountNotes.includes('Auto-priced internal PM Groundworks eight-wheeler: £100.00'));
+  assert(!(internalEightPayload.accountNotes || '').includes('Auto-priced internal PM Groundworks eight-wheeler: £100.00'));
 
   sandbox.__fetches.length = 0;
   resp = await workerRequest('/ht/driver-add', {
@@ -1578,7 +1598,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const internalArticPayload = JSON.parse(sandbox.__fetches[1].options.body);
   assert.strictEqual(internalArticPayload.quotedPrice, 150);
   assert.strictEqual(internalArticPayload.useQuotedPrice, true);
-  assert(internalArticPayload.accountNotes.includes('Auto-priced internal PM Groundworks artic: £150.00'));
+  assert(!(internalArticPayload.accountNotes || '').includes('Auto-priced internal PM Groundworks artic: £150.00'));
 
   for (const denied of [
     { path: '/haultech-auth', method: 'PUT', body: JSON.stringify({ token: 'public-overwrite' }) },

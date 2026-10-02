@@ -17,9 +17,9 @@ const items = [
 ];
 const inputs={'f-vehicle':{value:'LL21HJJ'},'f-material':{value:''},'f-unit':{value:'m3'},'f-notes':{value:'C35 8m3 concrete'},'f-concrete-type':{value:'quarried'},'concrete-type-fields':{classList:{toggle(k,hidden){this.hidden=hidden;}}}};
 const front=vm.createContext({$:id=>inputs[id]});
-vm.runInContext(app.match(/const MATERIAL_PRICING = \{[\s\S]*?\n\};/)[0]+"\nconst VOLUMETRIC_CONCRETE_VEHICLES = new Set(['LL21HJJ','PN25FLF']);\n"+['normaliseVehicleReg','isVolumetricConcreteVehicle','isLegoBlockMaterial','isConcreteEntryCandidate','updateConcreteTypeFields','unitForMaterial','tonnageBandMatches','rateForMaterial'].map(n=>fn(app,n)).join('\n'),front);
+vm.runInContext(app.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE[\s\S]*?\/\/ END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE/)[0]+'\n'+app.match(/const MATERIAL_PRICING = \{[\s\S]*?\n\};/)[0]+"\nconst VOLUMETRIC_CONCRETE_VEHICLES = new Set(['LL21HJJ','PN25FLF']);\n"+['normaliseVehicleReg','isVolumetricConcreteVehicle','isLegoBlockMaterial','isConcreteEntryCandidate','updateConcreteTypeFields','unitForMaterial','tonnageBandMatches','rateForMaterial'].map(n=>fn(app,n)).join('\n'),front);
 const back=vm.createContext({});
-vm.runInContext(['cleanText','isLegoBlockMaterial','driverAddedQuantityAndUnit','driverAddedConcreteAutoPrice'].map(n=>fn(worker,n)).join('\n'),back);
+vm.runInContext(worker.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE[\s\S]*?\/\/ END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE/)[0]+'\n'+['cleanText','isLegoBlockMaterial','driverAddedQuantityAndUnit','driverAddedConcreteAutoPrice'].map(n=>fn(worker,n)).join('\n'),back);
 (async()=>{
  for(const [name,large,small] of items){
   for(const q of [0.5,10,10.1,20])assert.equal(front.rateForMaterial(name,q),q>10?large:small);

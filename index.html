@@ -1242,6 +1242,20 @@
 <div id="toast"></div>
 
 <script>
+// BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
+const COLLECTED_CONCRETE_RATES = {"Collected concrete - Quarried": 130, "Collected concrete - Recycled": 120};
+const COLLECTED_CONCRETE_HALF_RATES = {"Collected concrete - Quarried": 90, "Collected concrete - Recycled": 80};
+const COLLECTED_CONCRETE_MIN_M3 = 0.5;
+function collectedConcreteQuote(material, quantity, unit) {
+  const rate = COLLECTED_CONCRETE_RATES[String(material || '').trim()];
+  if (rate === undefined) return null;
+  const q = Number(quantity);
+  if (!['m3', 'm³'].includes(String(unit || '').toLowerCase()) || !Number.isFinite(q) || q < COLLECTED_CONCRETE_MIN_M3) return {error:'Collected concrete minimum is 0.5 m³; enter quantity in m³.'};
+  const half = COLLECTED_CONCRETE_HALF_RATES[String(material).trim()];
+  const amount = q < 1 ? half + (q - 0.5) * 2 * (rate - half) : q * rate;
+  return {amount:Math.round((amount + Number.EPSILON) * 100) / 100, rate, source:material.toLowerCase().endsWith('quarried') ? 'quarried' : 'recycled', quantity:q};
+}
+// END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 // ══════════════════════════════════════════════════════════════════════════════
 // CONFIG & CONSTANTS
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1399,6 +1413,9 @@ const MATERIAL_PRICING = {
   "Lego block - One-third": { type: "flat", rate: 80, unit: "each" },
   "Quarried 10mm Clean Stone": { type: 'tiered', threshold: 10, under10: 44, over10: 41.5, unit: "tonnes" },
   "Quarried Concrete Aggregate (4/20)": { type: 'tiered', threshold: 10, under10: 40.5, over10: 38, unit: "tonnes" },
+  "Water pump": { type: "flat", rate: 15, unit: "days" },
+  "Collected concrete - Quarried": { type: "flat", rate: 130, unit: "m3" },
+  "Collected concrete - Recycled": { type: "flat", rate: 120, unit: "m3" },
 };
 // END GENERATED PMG_YARD_PRICES:MATERIAL_PRICING
 
@@ -1543,6 +1560,9 @@ const MATERIALS = [
   {"group": "CONCRETE BLOCKS","label": "Lego block - One-third","value": "Lego block - One-third"},
   {"group": "QUARRIED WASHED STONE","label": "Quarried 10mm Clean Stone","value": "Quarried 10mm Clean Stone"},
   {"group": "QUARRIED WASHED STONE","label": "Quarried Concrete Aggregate (4/20)","value": "Quarried Concrete Aggregate (4/20)"},
+  {"group": "PLANT HIRE","label": "Water pump \u2014 per day","value": "Water pump"},
+  {"group": "COLLECTED CONCRETE","label": "Collected concrete - Quarried","value": "Collected concrete - Quarried"},
+  {"group": "COLLECTED CONCRETE","label": "Collected concrete - Recycled","value": "Collected concrete - Recycled"},
   {group: '__other__', label: 'Not on list / Other', value: '__other__'},
 ];
 // END GENERATED PMG_YARD_PRICES:MATERIALS
@@ -1665,7 +1685,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261002-blue-scalpings-v82';
+const APP_BUILD_ID = '20261002-collected-concrete-v83';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -6233,7 +6253,11 @@ function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
 function updateConcreteTypeFields() {
   const show = isConcreteEntryCandidate();
   $('concrete-type-fields')?.classList.toggle('hidden', !show);
-  if (isLegoBlockMaterial($('f-material')?.value)) {
+  const collectedMaterial = $('f-material')?.value;
+  if (COLLECTED_CONCRETE_RATES[collectedMaterial] !== undefined) {
+    $('f-unit').value = 'm3';
+    $('f-concrete-type').value = collectedMaterial.toLowerCase().endsWith('quarried') ? 'quarried' : 'recycled';
+  } else if (isLegoBlockMaterial($('f-material')?.value)) {
     $('f-unit').value = 'each';
     if ($('f-concrete-type')) $('f-concrete-type').value = '';
   } else if (/^(?:40mm Quarried MOT|20mm Quarried MOT|Type 3 MOT|Quarried (?:6mm|10mm|20mm) Clean Stone|Quarried Concrete Aggregate \(4\/20\))$/i.test(String($('f-material')?.value || '').trim())) {
@@ -6264,6 +6288,13 @@ function maybeAutoPriceMaterial() {
   updateConcreteTypeFields();
   if (!canCurrentUserPriceJobs()) $('f-price').value = '';
   fPriceWasAuto = false;
+  updateCollectedConcretePreview();
+}
+function updateCollectedConcretePreview() {
+  let hint = $('collected-concrete-preview');
+  if (!hint) { hint = document.createElement('div'); hint.id = 'collected-concrete-preview'; $('f-qty').parentElement.appendChild(hint); }
+  const q = collectedConcreteQuote($('f-material').value.trim(), $('f-qty').value, $('f-unit').value);
+  hint.textContent = q ? (q.error || `Collected: £${q.amount.toFixed(2)} ex VAT (£${(q.amount*1.2).toFixed(2)} inc VAT). Minimum 0.5 m³.`) : '';
 }
 
 function updateWasteFieldsVisibility() {
@@ -6434,7 +6465,8 @@ $('f-material').addEventListener('input', () => {
   maybeAutoWasteMaterial();
 });
 $('f-qty').addEventListener('input', maybeAutoPriceMaterial);
-$('f-unit').addEventListener('change', updateConcreteTypeFields);
+$('f-unit').addEventListener('change', () => { updateConcreteTypeFields(); updateCollectedConcretePreview(); });
+$('f-qty').addEventListener('input', updateCollectedConcretePreview);
 $('f-notes').addEventListener('input', updateConcreteTypeFields);
 $('f-vehicle').addEventListener('change', updateConcreteTypeFields);
 $('f-price').addEventListener('input', () => { fPriceWasAuto = false; });
@@ -6471,8 +6503,10 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const from = $('f-from').value.trim();
   const to = $('f-to').value.trim();
   const vehicle = $('f-vehicle').value;
+  const collected = collectedConcreteQuote(material, weight, unit);
+  if (collected?.error) { toast(collected.error); btn.disabled = false; btn.textContent = 'Save row'; return; }
   const concreteEntry = isConcreteEntryCandidate({ vehicle, material, unit, notes });
-  const concreteType = concreteEntry ? $('f-concrete-type').value : '';
+  const concreteType = collected?.source || (concreteEntry ? $('f-concrete-type').value : '');
   const wagonVisits = concreteEntry ? Math.max(1, Math.min(20, Math.round(parseFloat($('f-wagon-visits').value) || 1))) : 1;
   const chargeableWaitingMinutes = concreteEntry ? Math.max(0, Math.min(600, parseFloat($('f-waiting-minutes').value) || 0)) : 0;
   const specialAccess = concreteEntry ? $('f-special-access').checked : false;

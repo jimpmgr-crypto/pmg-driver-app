@@ -1,6 +1,6 @@
 {
   "schema": "pmg-plant-snapshot-v1",
-  "generatedAt": "2026-08-10T00:45:01+00:00",
+  "generatedAt": "2026-10-02T00:45:01+00:00",
   "sharePointEvidenceRoot": "SHARED/Plant and Tool Service Records",
   "sources": {
     "plantScheduleWorkbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
@@ -331,7 +331,7 @@
         }
       ],
       "lastInspectionDate": "2025-03-14",
-      "lastCostDate": "2026-06-18",
+      "lastCostDate": "2026-09-15",
       "lastServiceDate": "2026-06-08",
       "nextServiceDueDate": "2027-06-08",
       "nextServiceDueBasis": "12_month_service_rule"
@@ -517,7 +517,8 @@
           "sheet": "Plant 53"
         }
       ],
-      "lastInspectionDate": "2025-02-28"
+      "lastInspectionDate": "2025-02-28",
+      "lastCostDate": "2026-09-07"
     },
     {
       "id": "plant-54",
@@ -646,7 +647,8 @@
           "sheet": "Plant 58"
         }
       ],
-      "lastInspectionDate": "2026-01-28"
+      "lastInspectionDate": "2026-01-28",
+      "lastCostDate": "2026-09-17"
     },
     {
       "id": "plant-59",
@@ -672,7 +674,8 @@
           "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
           "sheet": "Plant 59"
         }
-      ]
+      ],
+      "lastCostDate": "2026-09-10"
     },
     {
       "id": "plant-60",
@@ -780,7 +783,7 @@
           "sheet": "Plant 63"
         }
       ],
-      "lastCostDate": "2025-11-17"
+      "lastCostDate": "2026-09-10"
     },
     {
       "id": "plant-64",
@@ -970,7 +973,8 @@
           "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
           "sheet": "Plant 71"
         }
-      ]
+      ],
+      "lastCostDate": "2026-09-23"
     },
     {
       "id": "plant-72",
@@ -1023,7 +1027,7 @@
           "sheet": "Plant 73"
         }
       ],
-      "lastCostDate": "2026-07-14"
+      "lastCostDate": "2026-09-03"
     },
     {
       "id": "plant-74",
@@ -1049,7 +1053,7 @@
         }
       ],
       "lastInspectionDate": "2025-05-12",
-      "lastCostDate": "2026-01-21"
+      "lastCostDate": "2026-09-24"
     },
     {
       "id": "plant-75",
@@ -1440,10 +1444,229 @@
           "sheet": "Tractor"
         }
       ],
-      "lastCostDate": "2026-07-03"
+      "lastServiceDate": "2026-09-21",
+      "lastCostDate": "2026-09-21",
+      "nextServiceDueDate": "2027-09-21",
+      "nextServiceDueBasis": "12_month_service_rule"
     }
   ],
   "history": [
+    {
+      "id": "hist-c50c05639b858f1b",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2026-09-24",
+      "category": "invoice",
+      "sourceName": "Luscombe Plant Hire",
+      "description": "1xbreaker plus delivery &collection",
+      "hours": null,
+      "invoiceNumber": "60656",
+      "amount": 226.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 10
+      }
+    },
+    {
+      "id": "hist-7c51c054a3cbc692",
+      "assetId": "plant-71",
+      "plantNumber": "71",
+      "date": "2026-09-23",
+      "category": "repair",
+      "sourceName": "EK's",
+      "description": "1 X BATTERY",
+      "hours": null,
+      "invoiceNumber": "BLM2368344",
+      "amount": 103.19,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 71",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-a3d6a5bea460ef4a",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "date": "2026-09-21",
+      "category": "service",
+      "sourceName": "Cornthwaite Holdings Ltd",
+      "description": "oil & air filters, hy-gard & engine oil",
+      "hours": null,
+      "invoiceNumber": "130982",
+      "amount": 917.24,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-352236831c7d0ce8",
+      "assetId": "plant-58",
+      "plantNumber": "58",
+      "date": "2026-09-17",
+      "category": "repair",
+      "sourceName": "MRS Heat Transfer",
+      "description": "raidiator fitted woth cooling element, test & paint",
+      "hours": null,
+      "invoiceNumber": "15641",
+      "amount": 226.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 58",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-8823389bfca63bf0",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2026-09-15",
+      "category": "repair",
+      "sourceName": "FFP",
+      "description": "Went to site (ULV), tested, hose loose so fixed and tested to find no leaks",
+      "hours": null,
+      "invoiceNumber": "472265",
+      "amount": 73.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-ea1b28f6fc2c17b4",
+      "assetId": "plant-23",
+      "plantNumber": "23",
+      "date": "2026-09-15",
+      "category": "invoice",
+      "sourceName": "Digbits",
+      "description": "1xBushed Bucket Linkage",
+      "hours": null,
+      "invoiceNumber": "SO107998",
+      "amount": 212.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 23",
+        "row": 11
+      }
+    },
+    {
+      "id": "hist-cb4276d7d91bbe94",
+      "assetId": "plant-89",
+      "plantNumber": "89",
+      "date": "2026-09-10",
+      "category": "note",
+      "sourceName": "PV Dobson",
+      "description": "2xtrack 400x74x72",
+      "hours": null,
+      "invoiceNumber": "1585",
+      "amount": null,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 89",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-ac816788289409a8",
+      "assetId": "plant-63",
+      "plantNumber": "63",
+      "date": "2026-09-10",
+      "category": "repair",
+      "sourceName": "Matt Gunson Agri",
+      "description": "fitted new connection and tested",
+      "hours": null,
+      "invoiceNumber": "341",
+      "amount": 100.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 63",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-a8bf87e936ed6a88",
+      "assetId": "plant-59",
+      "plantNumber": "59",
+      "date": "2026-09-10",
+      "category": "invoice",
+      "sourceName": "Ribblesdale",
+      "description": "1 x 12v fuel solenoid",
+      "hours": null,
+      "invoiceNumber": "20338711",
+      "amount": 85.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 59",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-96d862bc40eccd18",
+      "assetId": "plant-53",
+      "plantNumber": "53",
+      "date": "2026-09-07",
+      "category": "invoice",
+      "sourceName": "Red Rose Tyres",
+      "description": "1 x tyre tube and call out charge to site",
+      "hours": null,
+      "invoiceNumber": "3667",
+      "amount": 75.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 53",
+        "row": 6
+      }
+    },
+    {
+      "id": "hist-046f1570ab45d03a",
+      "assetId": "plant-73",
+      "plantNumber": "73",
+      "date": "2026-09-03",
+      "category": "invoice",
+      "sourceName": "Taylor Braithwaite",
+      "description": "Rotor door lock, switch quick clamp & delivery",
+      "hours": null,
+      "invoiceNumber": "130588",
+      "amount": 170.75,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 73",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-42ba65f00d669bf0",
+      "assetId": "plant-tractor",
+      "plantNumber": "Tractor",
+      "date": "2026-07-31",
+      "category": "repair",
+      "sourceName": "Mark Hesketh",
+      "description": "labour and repairs",
+      "hours": null,
+      "invoiceNumber": "4730",
+      "amount": 235.54,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Tractor",
+        "row": 12
+      }
+    },
     {
       "id": "hist-7289b5ea60f7c405",
       "assetId": "plant-25",
@@ -1589,7 +1812,7 @@
       }
     },
     {
-      "id": "hist-0e4ad433210c431a",
+      "id": "hist-8f6dfc1628cacdc6",
       "assetId": "plant-tractor",
       "plantNumber": "Tractor",
       "date": "2026-07-03",
@@ -1603,7 +1826,7 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Tractor",
-        "row": 9
+        "row": 10
       }
     },
     {
@@ -1733,7 +1956,7 @@
       }
     },
     {
-      "id": "hist-6ca6de4dbcd22dbb",
+      "id": "hist-6048b534b87e6c21",
       "assetId": "plant-tractor",
       "plantNumber": "Tractor",
       "date": "2026-06-22",
@@ -1747,7 +1970,7 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Tractor",
-        "row": 7
+        "row": 8
       }
     },
     {
@@ -1892,6 +2115,24 @@
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 23",
         "row": 7
+      }
+    },
+    {
+      "id": "hist-d665f73f664cbdea",
+      "assetId": "plant-77",
+      "plantNumber": "77",
+      "date": "2026-06-16",
+      "category": "invoice",
+      "sourceName": "EK's",
+      "description": "16.06.26 | BLM2366139 | 5.44",
+      "hours": null,
+      "invoiceNumber": "BLM2366139",
+      "amount": 5.44,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 77",
+        "row": 10
       }
     },
     {
@@ -3570,7 +3811,21 @@
     }
   ],
   "filterParts": {
-    "plant-tractor": [],
+    "plant-tractor": [
+      {
+        "id": "part-c0836a8b677a2fba",
+        "assetId": "plant-tractor",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "oil & air filters, hy-gard & engine oil",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Tractor",
+          "row": 6
+        }
+      }
+    ],
     "plant-1": [
       {
         "id": "part-b03fe86dfa5a5dc6",
@@ -3802,6 +4057,7 @@
         }
       }
     ],
+    "plant-53": [],
     "plant-54": [
       {
         "id": "part-10dd18678623db94",
@@ -3818,6 +4074,22 @@
       }
     ],
     "plant-56": [],
+    "plant-58": [],
+    "plant-59": [
+      {
+        "id": "part-a951654a75a41d32",
+        "assetId": "plant-59",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "85 | 1 x 12v fuel solenoid",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 59",
+          "row": 6
+        }
+      }
+    ],
     "plant-60": [],
     "plant-62": [
       {
@@ -3934,6 +4206,7 @@
     ],
     "plant-69": [],
     "plant-70": [],
+    "plant-71": [],
     "plant-73": [],
     "plant-74": [],
     "plant-75": [
@@ -4250,6 +4523,7 @@
         }
       }
     ],
+    "plant-89": [],
     "plant-90": [
       {
         "id": "part-ea8405ccfadfc87f",
@@ -5205,11 +5479,11 @@
   ],
   "stats": {
     "assetCount": 53,
-    "historyEventCount": 118,
-    "filterPartCount": 52,
+    "historyEventCount": 131,
+    "filterPartCount": 54,
     "reviewItemCount": 64,
     "ignoredSheetCount": 36,
-    "serviceDateScheduleCount": 21,
+    "serviceDateScheduleCount": 22,
     "unusedSchedulePlantNumberCount": 4
   }
 }

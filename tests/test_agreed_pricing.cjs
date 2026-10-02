@@ -1,0 +1,29 @@
+const assert=require('node:assert/strict');
+const config=require('../../../config/pmg-yard-prices.json');
+const {evaluateAgreedPrice:evaluate}=require('../../../scripts/haultech-agreed-pricing.cjs');
+const p=config.haultech_completion_policy;
+let count=0;
+function base(kind='mixed_spoil_away') {return {evidenceVerified:true,jobDate:'2026-10-02',existingPrices:[0,0],invoiceHistoryClear:true,exportStateClear:true,quantity:20,unit:'t',customerId:'customer',siteId:'site',loadId:'load',agreementsChecked:true,kind,handlingOnlyConfirmed:true,vehicle:'eight_wheeler',fullLoadConfirmed:true,singleMaterialConfirmed:true,route:{seconds:1500,originPostcode:'FY6 9DJ',siteId:'site',method:'osrm_driving',evidence:'route.json',accessReviewed:true}};}
+function eq(f,amount,policy=p){count++;assert.equal(evaluate(policy,f,config).amount,amount,JSON.stringify(evaluate(policy,f,config)));}
+function hold(f,reason){count++;assert.equal(evaluate(p,f,config).reason,reason);}
+for(const [seconds,index] of [[1,0],[1499,0],[1500,0],[1500.001,1],[2699,1],[2700,1],[2700.001,2],[9000,2]]) {
+ for(const [kind,rates] of [['mixed_spoil_away',[220,240,260]],['6f2_delivered',[240,250,260]]]) {const f=base(kind);f.route.seconds=seconds;eq(f,rates[index]);}
+}
+for(const locality of ['Lytham','St Annes']) {let f=base();f.route=null;f.localityOverride=locality;f.localityEvidence='verified locality';eq(f,220);}
+let f=base('6f2_delivered');f.route.seconds=5000;f.localityOverride='Lytham';f.localityEvidence='source';eq(f,260);
+for(const amount of [235,250]) {f=base('6f2_delivered');f.agreement={evidence:'confirmed agreement',customerId:'customer',siteId:'site',kind:f.kind,quantity:20,unit:'t',amount,validOn:f.jobDate,deliveryInclusive:true};eq(f,amount);f.siteId='future-site';hold(f,'agreement_scope_mismatch');}
+for(const [qty,amount] of [[3,30],[4,30],[8,60],[9,60],[10,60],[12,60],[14,70]]) {f=base('grabbed_in');f.quantity=qty;hold(f,'grab_unloading_evidence_required');Object.assign(f,{serviceId:'grab_unload_truck_to_job',grabUnloadConfirmed:true,movement:'truck_to_job',handlingAlreadyCharged:false,handlingIncludedInAgreedPrice:false});eq(f,amount);}
+for(const [qty,amount] of [[5.5,330],[7.5,450],[8,240]]) {f=base('internal_concrete');Object.assign(f,{quantity:qty,unit:'m3',internalCustomerVerified:true,mixType:'C35 recycled',ticketId:'a',wholeJob:{id:'whole',final:true,evidence:'job source',totalM3:qty,tickets:[{id:'a',quantity:qty,mixType:'C35 recycled'}]}});eq(f,amount);}
+f=base('internal_concrete');Object.assign(f,{quantity:4,unit:'m3',internalCustomerVerified:true,mixType:'C35 recycled',ticketId:'a',wholeJob:{id:'whole',final:true,evidence:'job source',totalM3:8,tickets:[{id:'a',quantity:4,mixType:'C35 recycled'},{id:'b',quantity:4,mixType:'C35 recycled'}]}});eq(f,120);f.wholeJob.final=false;hold(f,'final_whole_job_required');f.wholeJob.final=true;f.wholeJob.tickets[1].id='a';hold(f,'invalid_or_duplicate_group_tickets');
+for(const [seconds,delivery] of [[1500,60],[1500.1,75],[2700,75],[2700.1,90]]) {f=base('part_mixed_delivery');Object.assign(f,{completeLoadItems:true,deliveryAlreadyCharged:false,items:[{id:'a',material:'6 inch edgings',quantity:2,unit:'each',deliveryInclusive:false},{id:'b',material:'8 inch edgings',quantity:1,unit:'each',deliveryInclusive:false}]});f.route.seconds=seconds;eq(f,14.8+delivery);f.items[1].material='unsupported';hold(f,'catalogue_item_or_unit_required');}
+for(const n of [-1,1,100]) {f=base();f.existingPrices=[n];hold(f,'existing_or_invalid_price');}
+f=base();f.jobDate='2026-10-01';hold(f,'outside_forward_scope');f=base();f.invoiceHistoryClear=false;hold(f,'invoice_or_export_hold');f=base();f.exportStateClear=false;hold(f,'invoice_or_export_hold');f=base();f.vehicle='artic';hold(f,'full_20t_eight_wheeler_required');f=base();f.quantity=19.9;hold(f,'full_20t_eight_wheeler_required');f=base();f.route.boundaryReviewRequired=true;hold(f,'road_route_review_required');f=base();f.agreementsChecked=false;hold(f,'negotiated_agreements_unresolved');f=base();f.route.seconds=NaN;hold(f,'road_route_review_required');
+console.log(JSON.stringify({passed:count,scope:'tariff boundaries, negotiated precedence, whole-job split grouping, duplicate guard, unsupported mapping, one delivery, invoice/export/date/price holds'}));
+
+for(const movement of ['yard_tipping','site_to_truck']) {const f=base('grabbed_in');Object.assign(f,{serviceId:'grab_unload_truck_to_job',grabUnloadConfirmed:true,movement,handlingAlreadyCharged:false,handlingIncludedInAgreedPrice:false});hold(f,'grab_unloading_evidence_required');}
+for(const key of ['handlingAlreadyCharged','handlingIncludedInAgreedPrice']) {const f=base('grabbed_in');Object.assign(f,{serviceId:'grab_unload_truck_to_job',grabUnloadConfirmed:true,movement:'truck_to_job',handlingAlreadyCharged:false,handlingIncludedInAgreedPrice:false});f[key]=true;hold(f,'handling_charge_duplicate_or_inclusion_review');}
+console.log('4 additional service-direction/inclusion/duplicate checks passed');
+
+f=base('internal_concrete');Object.assign(f,{quantity:4,unit:'m3',internalCustomerVerified:true,mixType:'C35 recycled',ticketId:'a',wholeJob:{id:'same-job',final:true,evidence:'verified job/mix tickets',totalM3:8,tickets:[{id:'a',quantity:4,mixType:'C35 recycled'},{id:'b',quantity:4,mixType:'C35 recycled'}]}});eq(f,120);f.wholeJob.tickets[1].mixType='C20 recycled';eq(f,240);delete f.wholeJob.tickets[1].mixType;hold(f,'verified_mix_group_required');console.log('3 additional same-job same-mix/different-mix/unknown-mix checks passed');
+
+f=base('6f2_delivered');f.grabUnloading={quantity:8,unit:'t',serviceId:'grab_unload_truck_to_job',grabUnloadConfirmed:true,movement:'truck_to_job',handlingAlreadyCharged:false,handlingIncludedInAgreedPrice:false};eq(f,300);console.log('composite delivery plus grab handling check passed');
