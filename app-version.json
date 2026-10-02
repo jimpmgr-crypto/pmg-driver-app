@@ -1,9 +1,9 @@
 {
-  "buildId": "20260930-holcim-prices-v81",
-  "updatedAt": "2026-09-30",
+  "buildId": "20261002-blue-scalpings-v82",
+  "updatedAt": "2026-10-02",
   "baselineCommit": "4b8fee9",
   "expectedWorkerBuildId": "20260930-holcim-aggregate-units-v22",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Add 4 inch (110mm) triple socket T 87.5 deg and Y 45 deg drainage junctions at GBP20.57 ex VAT each. Canonical Yard catalogue; existing worker and app behaviour retained. Lane split remains explicit: Fleet Live supplies Gary and Richard torque state, while Tony's plant app remains plant and tools only. Lineage marker retained: prestart-fleet-torque-source. Customer refresh preserves Black Moss Farm identity with FI Agricultural / F I Agricultural exact aliases; sync current Haultech customer fallback. Lego block catalogue from Jim Telegram 14000 (2026-09-24); each units preserved on volumetric wagons. White membrane GBP225 from 29 September, 20% gross margin on GBP180; black GBP125 unchanged. Holcim seven separate products, 25/30 percent margins except 6mm 20/25, upward 50p rounding; collection basis reset. Concrete aggregate, 10mm/20mm/6mm clean remain separate."
+  "notes": "Add 4 inch (110mm) triple socket T 87.5 deg and Y 45 deg drainage junctions at GBP20.57 ex VAT each. Canonical Yard catalogue; existing worker and app behaviour retained. Lane split remains explicit: Fleet Live supplies Gary and Richard torque state, while Tony's plant app remains plant and tools only. Lineage marker retained: prestart-fleet-torque-source. Customer refresh preserves Black Moss Farm identity with FI Agricultural / F I Agricultural exact aliases; sync current Haultech customer fallback. Lego block catalogue from Jim Telegram 14000 (2026-09-24); each units preserved on volumetric wagons. White membrane GBP225 from 29 September, 20% gross margin on GBP180; black GBP125 unchanged. Holcim seven separate products, 25/30 percent margins except 6mm 20/25, upward 50p rounding; collection basis reset. Concrete aggregate, 10mm/20mm/6mm clean remain separate. Jim approved blue scalpings GBP27.50/t both tiers, ex VAT and onward delivery, 2 October 2026."
 }

@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20260930-holcim-prices-v81';
+const CACHE_NAME = 'pmg-driver-live-v20261002-blue-scalpings-v82';
 const APP_SHELL = [
   '/',
   '/index.html',
