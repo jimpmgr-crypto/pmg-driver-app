@@ -49,7 +49,7 @@ vm.runInContext(worker.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CON
   assert.equal(missing.quantity,0);assert.equal(missing.unit,'each');
  }
  assert.equal(frontend.isConcreteEntryCandidate({vehicle:'LL21HJJ',material:'Concrete',unit:'m3'}),true);
- assert.equal(frontend.rateForMaterial('40mm Recycled MOT',10),20);
- assert.equal(frontend.rateForMaterial('40mm Recycled MOT',11),18);
+ assert.equal(frontend.rateForMaterial('40mm Recycled MOT',10),21.5);
+ assert.equal(frontend.rateForMaterial('40mm Recycled MOT',11),19.5);
  console.log('PASS: Lego each counts, retained units on all wagon types, no concrete auto-pricing/inference, unchanged wet concrete and tonne thresholds');
 })().catch(e=>{console.error(e);process.exitCode=1;});

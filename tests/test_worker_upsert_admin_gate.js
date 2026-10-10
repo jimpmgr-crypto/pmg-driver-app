@@ -196,7 +196,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
   assert.match(health.workerBuildId, /^20261002-collected-concrete-v24$/);
-  assert.strictEqual(health.runtimePatchId, '20260827-driver-load-attachment-v1');
+  assert.strictEqual(health.runtimePatchId, '20261007-day-sheet-pricing-r7');
 
   for (const [path,method] of [['/ht/agreed-pricing','POST'],['/ht/agreed-pricing/results','GET'],['/ht/pricing-evidence/job','POST']]) {
     const gate=await workerRequest(path,{method});

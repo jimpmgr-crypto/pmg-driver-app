@@ -32,6 +32,6 @@ vm.runInContext(worker.match(/\/\/ BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CON
   }
  }
  assert.equal(front.isConcreteEntryCandidate({vehicle:'LL21HJJ',material:'Concrete',unit:'m3'}),true);
- assert.equal(front.rateForMaterial('40mm Recycled MOT',10),20);
+ assert.equal(front.rateForMaterial('40mm Recycled MOT',10),21.5);
  console.log('PASS: seven Holcim prices, exact 10t boundary, 6mm exception, dry aggregate units and no wet-concrete auto-pricing.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

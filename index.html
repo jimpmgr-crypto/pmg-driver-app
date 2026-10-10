@@ -1027,8 +1027,8 @@
             <input type="number" id="f-wagon-visits" min="1" max="20" step="1" value="1" inputmode="numeric">
           </div>
           <div class="form-group">
-            <label>Chargeable waiting (minutes)</label>
-            <input type="number" id="f-waiting-minutes" min="0" max="600" step="5" value="0" inputmode="numeric">
+            <label>Total pour time (minutes)</label>
+            <input type="number" id="f-waiting-minutes" min="0" max="600" step="1" value="" placeholder="First 45 minutes included" inputmode="numeric">
           </div>
         </div>
         <label style="display:flex;align-items:flex-start;gap:8px;text-transform:none;letter-spacing:0">
@@ -1284,11 +1284,12 @@ const MATERIAL_PRICING = {
   "Rubble Grab Away": { type: "flat", rate: 0, unit: "tonnes" },
   "Tree Stump Disposal": { type: "job", rate: 40, unit: "each" },
   "6F2 Crushed Concrete": { type: 'tiered', threshold: 10, under10: 11.5, over10: 10, unit: "tonnes" },
-  "40mm Recycled MOT": { type: 'tiered', threshold: 10, under10: 20, over10: 18, unit: "tonnes" },
+  "40mm Recycled MOT": { type: 'tiered', threshold: 10, under10: 21.5, over10: 19.5, unit: "tonnes" },
   "Large Clean Crush": { type: 'tiered', threshold: 10, under10: 19.5, over10: 17.5, unit: "tonnes" },
   "Road Plainings": { type: 'tiered', threshold: 10, under10: 18, over10: 16, unit: "tonnes" },
   "20-5mm Concrete Agg": { type: "flat", rate: 37.5, unit: "tonnes" },
   "Recycled 20mm Clean Washed": { type: 'tiered', threshold: 10, under10: 26.5, over10: 23.5, unit: "tonnes" },
+  "Recycled 20-40mm Clean Washed": { type: 'tiered', threshold: 10, under10: 26.5, over10: 23.5, unit: "tonnes" },
   "Recycled 10mm Clean Washed": { type: 'tiered', threshold: 10, under10: 28.5, over10: 26.5, unit: "tonnes" },
   "40mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 31, over10: 29, unit: "tonnes" },
   "20mm Quarried MOT": { type: 'tiered', threshold: 10, under10: 33.5, over10: 31.5, unit: "tonnes" },
@@ -1351,7 +1352,7 @@ const MATERIAL_PRICING = {
   "Muck Barrow": { type: "day", rate: 50, unit: "days" },
   "110V Transformer": { type: "day", rate: 7, unit: "days" },
   "Tip Skip": { type: "fixed", rate: 50, unit: "weeks" },
-  "Drainage pipe 6m": { type: "flat", rate: 28.55, unit: "each" },
+  "Drainage pipe 6m": { type: "flat", rate: 40, unit: "each" },
   "Drainage collar": { type: "flat", rate: 4.1, unit: "each" },
   "4 inch triple socket T junction": { type: "flat", rate: 20.57, unit: "each" },
   "4 inch triple socket Y junction": { type: "flat", rate: 20.57, unit: "each" },
@@ -1436,6 +1437,7 @@ const MATERIALS = [
   {"group": "RECYCLED AGGREGATES","label": "Road Plainings","value": "Road Plainings"},
   {"group": "RECYCLED AGGREGATES","label": "20-5mm Concrete Agg","value": "20-5mm Concrete Agg"},
   {"group": "WASHED RECYCLED","label": "Recycled 20mm Clean Washed","value": "Recycled 20mm Clean Washed"},
+  {"group": "WASHED RECYCLED","label": "Recycled 20-40mm Clean Washed","value": "Recycled 20-40mm Clean Washed"},
   {"group": "WASHED RECYCLED","label": "Recycled 10mm Clean Washed","value": "Recycled 10mm Clean Washed"},
   {"group": "QUARRIED AGGREGATES","label": "40mm Quarried MOT","value": "40mm Quarried MOT"},
   {"group": "QUARRIED AGGREGATES","label": "20mm Quarried MOT","value": "20mm Quarried MOT"},
@@ -1685,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261002-collected-concrete-v83';
+const APP_BUILD_ID = '20261010-drainage-pipe-40';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2546,6 +2548,8 @@ async function flushRetryQueue() {
               body: JSON.stringify({
                 date: entry.date,
                 driverNotes: job.notes || '',
+                pourMinutes: job.pourMinutes ?? null,
+                concreteType: job.concreteType || '',
                 originalReference: job.reference || job.ticketNo || '',
                 quantity: Number(job.quantity) || 0,
                 weight: Number(job.quantity) || 0,
@@ -5573,6 +5577,12 @@ function renderSignScreen(job) {
         </select>
       </div>` : ''}
 
+    ${concreteSourceRequired ? `<div class="sign-field">
+      <label class="sign-field-label" for="sign-pour-minutes">Total pour time (minutes):</label>
+      <input type="number" id="sign-pour-minutes" class="sign-input" min="0" max="600" step="1" placeholder="e.g. 90">
+      <p>First 45 minutes included. Extra time £1 per minute plus VAT. Enter the full pour time.</p>
+    </div>` : ''}
+
     <div class="sign-field">
       <div class="sign-field-label">Signature:</div>
       <div class="sign-sig-wrap">
@@ -5796,6 +5806,9 @@ async function handleSignComplete() {
     return;
   }
 
+  const pourRaw=$('sign-pour-minutes')?.value || '';
+  const pourMinutes=pourRaw === '' ? null : Number(pourRaw);
+  if(pourMinutes !== null && (!Number.isFinite(pourMinutes)||pourMinutes<0||pourMinutes>600)) { toast('Enter a pour time between 0 and 600 minutes'); return; }
   setSignCompleteBusy(true);
 
   const consignee = $('sign-consignee')?.value?.trim() || '';
@@ -5818,6 +5831,7 @@ async function handleSignComplete() {
       hasSignature: !!sigData,
       hasPhoto: !!signPhotoFile,
       concreteType,
+      pourMinutes,
       state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
       haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
     });
@@ -5869,11 +5883,13 @@ async function handleSignComplete() {
           quantity: parseFloat(weight) || 0,
           weight: parseFloat(weight) || 0,
           concreteType,
+      pourMinutes,
         }),
       });
       if (!completeResp.ok) {
         throw new Error(await responseError(completeResp, 'Complete failed'));
       }
+      const completionPricing=await completeResp.clone().json().catch(()=>({}));
       const completionCheck = await verifyHaultechCompletion(haultechCompleteJob, haultechJobId);
 
       // Save POD metadata
@@ -5887,11 +5903,14 @@ async function handleSignComplete() {
             wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
             concreteType,
+      pourMinutes,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
         });
       } catch {}
 
+      if(pourMinutes !== null) job.pourMinutes=pourMinutes;
+      if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
       if (matchedLiveJob) updateJobStatusLocal(matchedLiveJob, 'complete');
       await saveJobsToCloud(todayISO(), allJobs);
@@ -5902,7 +5921,8 @@ async function handleSignComplete() {
             : `Haultech complete verified; ${proofSummary}`)
         : `Haultech complete call returned OK but raw diary check did not verify received/completed: ${completionCheck.reason}. ${proofSummary}`;
       setQueueState(proofEvent.eventId, proofState, proofMessage);
-      toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved' : '✓ Completed — Haultech verified') : '✓ Completed — sync check pending');
+      if(completionPricing.pricingReviewRequired) toast('Completed — pour charge needs office review');
+      else toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved' : '✓ Completed — Haultech verified') : '✓ Completed — sync check pending');
     } else {
       // Trial mode, driver-added, or cached job: safe local + worker KV only.
       if (sigData) {
@@ -5931,6 +5951,7 @@ async function handleSignComplete() {
             wtn, wasteTransferNote: wtn,
             hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
             concreteType,
+      pourMinutes,
             driver: currentUser.name, timestamp: new Date().toISOString(),
           }),
         });
@@ -5944,6 +5965,8 @@ async function handleSignComplete() {
         });
       } catch {}
 
+      if(pourMinutes !== null) job.pourMinutes=pourMinutes;
+      if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
       await saveJobsToCloud(todayISO(), allJobs);
       setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
@@ -6508,7 +6531,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
   const concreteEntry = isConcreteEntryCandidate({ vehicle, material, unit, notes });
   const concreteType = collected?.source || (concreteEntry ? $('f-concrete-type').value : '');
   const wagonVisits = concreteEntry ? Math.max(1, Math.min(20, Math.round(parseFloat($('f-wagon-visits').value) || 1))) : 1;
-  const chargeableWaitingMinutes = concreteEntry ? Math.max(0, Math.min(600, parseFloat($('f-waiting-minutes').value) || 0)) : 0;
+  const pourMinutes = concreteEntry && $('f-waiting-minutes').value !== '' ? Number($('f-waiting-minutes').value) : null;
   const specialAccess = concreteEntry ? $('f-special-access').checked : false;
   const richardPrice = driverEnteredPricePayload(weight, unit);
   const wtn = buildAddJobWasteTransferNote({ material, weight, unit, from, to, customerName, ref });
@@ -6567,7 +6590,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       material,
       concreteType,
       wagonVisits,
-      chargeableWaitingMinutes,
+      pourMinutes,
       specialAccess,
       from,
       to,
@@ -6632,6 +6655,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
 	      vehicle: localJob.vehicle,
       material,
       concreteType: localJob.concreteType,
+      pourMinutes: localJob.pourMinutes,
       from,
       to,
       quantity: weight,

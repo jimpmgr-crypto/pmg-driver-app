@@ -12,7 +12,7 @@ const env={PMG_DATA:{get:async k=>kv.get(k)||null,put:async(k,v)=>kv.set(k,JSON.
  result=await sandbox.verifiedAgreedReprice(env,clone(record),'2026-10-02');assert.equal(result.status,'preserved_existing_price');assert.equal(writes,1);
  record=fixture();history=[{invoiceId:1}];result=await sandbox.verifiedAgreedReprice(env,clone(record),'2026-10-02');assert.equal(result.status,'invoice_history_hold');assert.equal(writes,1);
  history=[];record=fixture();record.consignments[0].weight=19;result=await sandbox.deriveAgreedEvidence(record,19,env);assert.equal(result,null);
- record=fixture();record.customerId=config.haultech_completion_policy.protected_agreements[0].customer_id;record.consignments[0].deliveryAddressLine1='Norcross Lane';evidence=await sandbox.deriveAgreedEvidence(record,20,env);assert.equal(evidence.facts.agreement.amount,235);
+ record=fixture();record.customerId=config.haultech_completion_policy.protected_agreements[0].customer_id;record.deliveryVehicleId=config.haultech_completion_policy.eight_wheeler_vehicle_ids[0];record.consignments[0].deliveryAddressLine1='Norcross Lane';evidence=await sandbox.deriveAgreedEvidence(record,20,env);assert.equal(evidence.facts.agreement.amount,235);
  record.consignments[0].deliveryAddressLine1='Future Site';assert.equal(await sandbox.deriveAgreedEvidence(record,20,env),null);
  record=fixture();record.deliveryStatus='Scheduled';result=await sandbox.verifiedAgreedReprice(env,record,'2026-10-02');assert.equal(result.status,'awaiting_actual_completion');
  console.log('8 pipeline checks passed: live-field derivation, write/readback, idempotency, invoice exclusion, unsupported quantities, exact site agreement, future-site hold, planned-job hold');

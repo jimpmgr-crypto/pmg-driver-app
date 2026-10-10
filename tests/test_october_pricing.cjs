@@ -1,0 +1,26 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const config=require('../../../config/pmg-yard-prices.json');
+const source=fs.readFileSync(require.resolve('../../../scripts/haultech-agreed-pricing.cjs'),'utf8').replace('module.exports={evaluateAgreedPrice};','')+'\n'+fs.readFileSync(require.resolve('../worker/agreed-evidence-producer.js'),'utf8')+'\n'+fs.readFileSync(require.resolve('../worker/agreed-pricing-adapter.js'),'utf8');
+const clone=x=>JSON.parse(JSON.stringify(x));let history=[],writes=0,record,kv=new Map();
+const fixture=()=>({id:'job',jobId:12001,customerId:'generic-known-account',quotedPrice:0,totalPrice:0,useQuotedPrice:false,active:true,deliveryStatus:'Completed',deliveryDate:'2026-10-02T00:00:00Z',deliveryVehicleId:'eight-id',deliveryLoadId:'load',trafficNotes:'legitimate site note',accountNotes:'',consignments:[{id:'c',goodsDescription:'6F2 Crush',weight:20,quantity:20,invoicedCount:0,invoiceExportCount:0,deliveryAddressLine1:'1 Test Road',deliveryPostcode:'FY6 9DJ'}]});record=fixture();
+const sandbox={AGREED_COMPLETION_POLICY:config.haultech_completion_policy,AGREED_CATALOGUE:config,Date,Intl,AbortSignal,encodeURIComponent,PM_GROUNDWORKS_CUSTOMER_ID:'pmg',DRIVER_APP_VEHICLE_IDS_BY_REG:{PN25AMU:'eight-id'},jobHasExistingPrice:j=>[j.quotedPrice,j.totalPrice].some(n=>n!==0),cleanText:v=>v||'',jobCustomerId:j=>j.customerId,jobGoodsDescription:j=>j.consignments[0].goodsDescription,jobCustomerReference:j=>j.customerReference||'',firstConsignment:j=>j.consignments[0],jobQuantity:j=>j.consignments[0].weight,isDeliveredConcreteJob:j=>false,normalisedLookupText:v=>String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(),normalisedCompletionMaterial:j=>j.consignments[0].goodsDescription.toLowerCase(),normaliseUkPostcode:v=>v,normalisedStatus:v=>v.toLowerCase(),htFetch:async(_env,path,options)=>{if(path.includes('GetOldInvoices'))return {ok:true,json:async()=>history};if(path.includes('UpsertJob')){writes++;record=JSON.parse(options.body);record.consignments[0]._etag='fresh';return {ok:true};}throw Error(path);},fetchHaultechJobsByDate:async()=>({ok:true,jobs:[clone(record)]}),fetch:async(url)=>({ok:true,json:async()=>url.includes('postcodes.io')?{result:{longitude:-2.95,latitude:53.88}}:{code:'Ok',routes:[{duration:1500.01}]}})};
+vm.runInNewContext(source,sandbox);sandbox.completionAutoPrice=(j,q,e)=>sandbox.agreedCompletionAutoPrice(j,q,e);
+const env={PMG_DATA:{get:async k=>kv.get(k)||null,put:async(k,v)=>kv.set(k,JSON.parse(v))}};
+(async()=>{
+ sandbox.resolveDeliveryPostcodeFromAddress=async()=>({ok:false});
+ let j=fixture();j.consignments[0].goodsDescription='Spoil grab away.';j.consignments[0].collectionAddressLine1='6 Blacksmiths Row,Lytham';j.consignments[0].collectionPostcode='';j.consignments[0].deliveryAddressLine1='PMG Yard';j.consignments[0].deliveryPostcode='';j.consignments[0].weight=16;
+ let e=await sandbox.deriveAgreedEvidence(j,16,env);assert.equal(e.facts.localityOverride,'Lytham');assert.equal(e.facts.singleLoadConfirmed,true);
+ let p=await sandbox.agreedCompletionAutoPrice(j,16,env);assert.equal(p.quotedPrice,220);
+ j.consignments[0].collectionAddressLine1='Lytham Road Blackpool';assert.equal(await sandbox.deriveAgreedEvidence(j,16,env),null);
+ j.consignments[0].collectionAddressLine1='6 Blacksmiths Row Lytham';j.trafficNotes='2 loads';assert.equal(await sandbox.deriveAgreedEvidence(j,16,env),null);
+ const policy=config.haultech_completion_policy;const cid=policy.automatic_site_load_agreements[0].customerId;
+ j=fixture();j.customerId=cid;j.deliveryVehicleId=policy.eight_wheeler_vehicle_ids[0];j.consignments[0].goodsDescription='Spoil away';j.consignments[0].collectionAddressLine1='Norcross Lane';j.totalWeight=180;j.trafficNotes='9x20 ton loads clay spoil';
+ e=sandbox.resolveSiteLoadAgreement(policy,j);assert.equal(e.facts.agreement.amount,2430);
+ j.totalWeight=160;assert.equal(sandbox.resolveSiteLoadAgreement(policy,j).status,'review');
+ j.totalWeight=180;j.trafficNotes='';assert.equal(sandbox.resolveSiteLoadAgreement(policy,j).status,'review');
+ j.jobId=11264;assert.equal(sandbox.resolveSiteLoadAgreement(policy,j).reason,'manual_job_hold');
+ j=fixture();j.consignments[0].goodsDescription='Top soil.';j.consignments[0].collectionAddressLine1='PM Groundworks Yard';j.consignments[0].collectionPostcode='FY6 9DJ';
+ e=await sandbox.deriveAgreedEvidence(j,4,env);assert.equal(e.facts.items[0].material,'Grade 1 Topsoil');
+ j.consignments[0].collectionAddressLine1='External garden';j.consignments[0].collectionPostcode='';assert.equal(await sandbox.deriveAgreedEvidence(j,4,env),null);
+ console.log('10 October regression checks: outgoing-soil identity, incoming exclusion; part-load spoil, exact locality suffix, multi-load exclusion, Stainforth9loads, quantity/count conflict, missing count and source hold');
+})().catch(e=>{console.error(e);process.exit(1)});

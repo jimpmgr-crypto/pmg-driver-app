@@ -9,9 +9,32 @@ async function deriveAgreedEvidence(job, quantity, env) {
   if (!job.id || !customerId || !Number.isFinite(qty) || qty<=0 || date<AGREED_COMPLETION_POLICY.effective_from) return null;
   if(!Array.isArray(job.consignments) || job.consignments.length!==1) return null;
   if(isDeliveredConcreteJob(job) || customerId===PM_GROUNDWORKS_CUSTOMER_ID) return null;
+  if(AGREED_COMPLETION_POLICY.manual_job_holds?.[String(job.jobId)]) return null;
+  const scoped=resolveSiteLoadAgreement(AGREED_COMPLETION_POLICY,{...job,totalWeight:qty});
+  if(scoped) {
+    if(scoped.status!=='matched') return null;
+    return {policyVersion:AGREED_COMPLETION_POLICY.version,reviewed:true,source:scoped.facts.agreement.evidence,snapshot:agreedJobSnapshot(job,qty),facts:scoped.facts};
+  }
+  // Negotiated delivered full-load rates precede generic material tariffs on every source route.
+  const materialAgreements=(AGREED_COMPLETION_POLICY.automatic_delivered_load_agreements||[])
+    .filter(a=>a.customerId===customerId && a.goods_aliases.includes(normalisedLookupText(goods)));
+  if(materialAgreements.length) {
+    const address=[1,2,3,4,5].map(i=>cleanText(c[`deliveryAddressLine${i}`],240)).filter(Boolean);
+    const agreement=materialAgreements.find(a=>date>=a.effective_from && new RegExp(a.delivery_locality_pattern,'i').test(address.join(' ')));
+    const reg=Object.keys(DRIVER_APP_VEHICLE_IDS_BY_REG).find(k=>DRIVER_APP_VEHICLE_IDS_BY_REG[k]===(job.deliveryVehicleId||job.collectionVehicleId));
+    const notes=[job.accountNotes,job.trafficNotes,job.customerReference,goods].filter(Boolean).join(' ').replace(/\bnot\s+paid\b|\bunpaid\b/gi,'');
+    if(!agreement || qty!==agreement.full_load_tonnes || !AGREED_COMPLETION_POLICY.eight_wheeler_registrations.includes(reg) || /\b(paid|cash|free)\b|ring for amount|manual price|agreed price|no charge/i.test(notes)) return null;
+    const facts={jobDate:date,customerId,siteId:JSON.stringify({address,postcode:normaliseUkPostcode(c.deliveryPostcode)}),loadId:job.deliveryLoadId||job.collectionLoadId||job.id,quantity:qty,unit:'t',kind:agreement.kind||'6f2_delivered',agreementsChecked:true};
+    facts.agreement={customerId,siteId:facts.siteId,kind:facts.kind,quantity:qty,unit:'t',amount:agreement.amount_per_load,validOn:date,deliveryInclusive:agreement.delivery_inclusive===true,evidence:agreement.evidence};
+    return {policyVersion:AGREED_COMPLETION_POLICY.version,reviewed:true,source:agreement.evidence,snapshot:agreedJobSnapshot(job,qty),facts};
+  }
   const crush=['6f2','6f2 crush','6f2 crushed concrete','crush','recycled 6f2','recycled crush'].includes(goods);
   const spoil=['mixed spoil away','spoil mix grabbed away','spoil grab away','mixed spoil grab away'].includes(goods);
-  const part=AGREED_CATALOGUE.materials.find(m=>normalisedLookupText(m.name)===goods && m.active!==false && !['TIPPING','CONCRETE','OTHER'].includes(m.group));
+  const topsoil=AGREED_COMPLETION_POLICY.outgoing_topsoil_rule;
+  const origin=normalisedLookupText(c.collectionAddressLine1||'');
+  const outgoingSoil=topsoil?.enabled && topsoil.aliases.includes(normalisedLookupText(goods)) && (origin.startsWith('pm groundworks')||origin==='pmg yard');
+  const mappedGoods=outgoingSoil?topsoil.material:(AGREED_COMPLETION_POLICY.material_aliases?.[goods]||goods);
+  const part=AGREED_CATALOGUE.materials.find(m=>normalisedLookupText(m.name)===normalisedLookupText(mappedGoods) && m.active!==false && !['TIPPING','CONCRETE','OTHER'].includes(m.group));
   if(!crush && !spoil && !part) return null;
   const side=spoil?'collection':'delivery';
   const address=[1,2,3,4,5].map(i=>cleanText(c[`${side}AddressLine${i}`],240)).filter(Boolean);
@@ -27,8 +50,8 @@ async function deriveAgreedEvidence(job, quantity, env) {
   // EY15BOV is the established grab truck; vehicle type is reviewed in policy.
   const eight=AGREED_COMPLETION_POLICY.eight_wheeler_registrations.includes(reg);
   const kind=spoil?'mixed_spoil_away':crush&&qty===20&&eight?'6f2_delivered':'part_mixed_delivery';
-  if(spoil && (qty!==20 || !eight)) return null;
-  const facts={jobDate:date,customerId,siteId:JSON.stringify({address,postcode}),loadId:job.deliveryLoadId||job.collectionLoadId||job.id,quantity:qty,unit:'t',kind,agreementsChecked:true,vehicle:eight?'eight_wheeler':reg||'unknown',fullLoadConfirmed:qty===20&&eight,singleMaterialConfirmed:true};
+  if(spoil && (qty>20 || !eight || /\b(?:[2-9]|two|three)\s*(?:loads|trips)\b|[x×]\s*20/i.test([job.trafficNotes,job.accountNotes].join(' ')))) return null;
+  const facts={jobDate:date,customerId,siteId:JSON.stringify({address,postcode}),loadId:job.deliveryLoadId||job.collectionLoadId||job.id,quantity:qty,unit:'t',kind,agreementsChecked:true,vehicle:eight?'eight_wheeler':reg||'unknown',fullLoadConfirmed:qty===20&&eight,singleLoadConfirmed:spoil&&qty<=20&&eight,singleMaterialConfirmed:true};
   const protectedRule=AGREED_COMPLETION_POLICY.protected_agreements.find(a=>a.customer_id===customerId);
   if(protectedRule) {
     if(kind!==protectedRule.material || !protectedRule.exact_site_labels.includes(siteText)) return null;
@@ -37,7 +60,7 @@ async function deriveAgreedEvidence(job, quantity, env) {
   // Do not guess identity behind the miscellaneous A1 account.
   if(customerId===AGREED_COMPLETION_POLICY.a1_customer_id) return null;
   if(spoil) {
-    const locality=address.map(a=>normalisedLookupText(a)).find(a=>['lytham','st annes','lytham st annes'].includes(a));
+    const locality=address.map(a=>normalisedLookupText(a)).map(a=>a.match(/(?:^| )(lytham st annes|st annes|lytham)$/)?.[1]).find(Boolean);
     if(!locality && /lytham|st annes|saint annes/.test(siteText))return null;
     if(locality){facts.localityOverride=locality==='lytham'?'Lytham':'St Annes';facts.localityEvidence='Exact structured locality in live HaulTech address';}
   }
@@ -90,12 +113,11 @@ async function verifiedAgreedReprice(env,job,date) {
   // Never blindly retry. Reconcile a response or failure with live state.
   const readback=await fetchHaultechJobsByDate(env,date);
   const after=readback.ok?readback.jobs.find(j=>j.id===job.id):null;
-  const same=after && Number(after.quotedPrice)===price.quotedPrice && Number(after.totalPrice)===price.quotedPrice && after.useQuotedPrice===true && agreedJobSnapshot(after,jobQuantity(after))===agreedJobSnapshot(job,jobQuantity(job)) && after.trafficNotes===job.trafficNotes && after.deliveryStatus===job.deliveryStatus;
+  const same=after && Number(after.quotedPrice)===price.quotedPrice && Number(after.totalPrice)===price.quotedPrice && after.useQuotedPrice===true && agreedJobSnapshot(after,jobQuantity(after))===agreedJobSnapshot(price.job,jobQuantity(price.job)) && after.trafficNotes===price.job.trafficNotes && after.accountNotes===price.job.accountNotes && after.deliveryStatus===price.job.deliveryStatus;
   if(!same) return persistAgreedOutcome(env,job,{amount:price.quotedPrice,httpOk:response.ok,reason:'write_readback_not_proved'},'unknown_do_not_retry');
   return persistAgreedOutcome(env,after,{amount:price.quotedPrice,basis:price.basis,beforePrice:0},'verified');
 }
-async function runAgreedPricingSweep(env,event={}) {
-  const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(event.scheduledTime||Date.now()));
+async function runAgreedPricingDate(env,date) {
   const lookup=await fetchHaultechJobsByDate(env,date);
   if(!lookup.ok || lookup.jobs.length>=200) return {status:'coverage_incomplete',date};
   const results=[];
@@ -120,4 +142,22 @@ async function agreedDailyResults(env,date) {
   }
   const latest=await env.PMG_DATA.get('agreed-pricing-latest-run',{type:'json'});
   return {schema:'pmg.agreed-pricing-daily.v1',date,policyVersion:AGREED_COMPLETION_POLICY.version,observedAt:results.map(r=>r.observedAt).sort().pop()||latest?.observedAt||new Date().toISOString(),coverage:complete?'complete':'partial',results,latestRun:latest?.date===date?latest:null};
+}
+
+// Reuse the existing trigger: one current day plus one rotating prior day per run.
+async function runAgreedPricingSweep(env,event={}) {
+  const stamp=event.scheduledTime||Date.now();
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
+  if(event.date) {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(event.date)||event.date>today||event.date<AGREED_COMPLETION_POLICY.effective_from)return {status:'outside_forward_scope'};
+    return runAgreedPricingDate(env,event.date);
+  }
+  const result=await runAgreedPricingDate(env,today);
+  const days=AGREED_COMPLETION_POLICY.catchup_lookback_days||0;
+  if(days>0) {
+    const offset=1+(Math.floor(stamp/1800000)%days), d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-offset);
+    const prior=d.toISOString().slice(0,10);
+    if(prior>=AGREED_COMPLETION_POLICY.effective_from)result.catchup=await runAgreedPricingDate(env,prior);
+  }
+  return result;
 }

@@ -532,7 +532,7 @@ test.describe('driver app route audit', () => {
     const body = captured.driverAddRequests[0].body;
     expect(body.concreteType).toBe('recycled');
     expect(body.wagonVisits).toBe(2);
-    expect(body.chargeableWaitingMinutes).toBe(15);
+    expect(body.pourMinutes).toBe(15);
     expect(body.specialAccess).toBe(false);
     expect(body.deliveryAddress.postcode).toBe('FY6 9DJ');
     expect(body.deliveryAddress.line1).toBe('High View');
@@ -569,10 +569,12 @@ test.describe('driver app route audit', () => {
     expect(captured.completionRequests).toHaveLength(0);
 
     await page.locator('#sign-concrete-type').selectOption('quarried');
+    await page.locator('#sign-pour-minutes').fill('90');
     await page.locator('#sign-photo-input').setInputFiles({ name: 'proof.png', mimeType: 'image/png', buffer: TEST_PNG });
     await page.locator('#sign-save-main-btn').click();
     await expect.poll(() => captured.completionRequests.length).toBe(1);
     expect(captured.completionRequests[0].body.concreteType).toBe('quarried');
+    expect(captured.completionRequests[0].body.pourMinutes).toBe(90);
   });
 
   test('driver can change a saved driver row between Paid and Not paid', async ({ page }) => {
