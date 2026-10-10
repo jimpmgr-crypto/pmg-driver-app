@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20261010-drainage-pipe-40';
+const CACHE_NAME = 'pmg-driver-live-v20261010-mdpe-100m-10193';
 const APP_SHELL = [
   '/',
   '/index.html',
