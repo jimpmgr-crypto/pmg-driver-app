@@ -1687,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261013-completion-identity';
+const APP_BUILD_ID = '20261013-completion-identity-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2762,7 +2762,7 @@ function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
     if (!item || item.state !== 'pending Haultech') return item;
     const localJob = localJobs.find(lj => String(lj.id || lj.jobId || lj.ticketNo || '') === String(item.jobId || ''));
     if (!localJob || !isLocalDriverTempJob(localJob)) return item;
-    const matched = findMatchingLiveDriverJob(localJob, cloudJobs);
+    const matched = findMatchingLiveDriverJob(localJob, cloudJobs.filter(j => !j?._cached));
     if (!matched || getJobStatus(matched) !== 'complete') return item;
     changed = true;
     return {
