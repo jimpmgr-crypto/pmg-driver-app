@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261013-completion-identity';
+const WORKER_BUILD_ID = '20261013-concrete-source';
 const WORKER_RUNTIME_PATCH_ID = '20261007-day-sheet-pricing-r7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -932,6 +932,8 @@ async function buildDriverAddedHaultechPayload(env, body) {
   if (movementId) accountParts.push(`Driver movement: ${movementId}`);
   else if (sourceId && sourceId !== ref && !isLocalPhoneRowId(sourceId)) accountParts.push(`Phone source: ${sourceId}`);
   if (notes) accountParts.push(`Driver note: ${notes}`);
+  const selectedConcreteType = normaliseConcreteType(body.concreteType) || collected?.source;
+  if (selectedConcreteType) accountParts.push(`Driver confirmed ${selectedConcreteType.toUpperCase()} concrete source`);
   if (a1PaymentStatus) accountParts.push(`${exactA1Customer ? 'A1' : 'Customer'} payment: ${a1PaymentStatus}`);
   if (a1PaymentStatus) trafficParts.push(a1PaymentStatus);
   if (notes) trafficParts.push(notes);
@@ -2513,6 +2515,10 @@ function isDeliveredConcreteJob(job) {
     || /\bconcrete\b/.test(goods);
 }
 
+function requiresConcreteSourceForCompletion(job) {
+  return isDeliveredConcreteJob(job) || /\b(?:no[ -]?fines|kerb[ -]?mix|gen\s*\d+)\b/.test(normalisedCompletionMaterial(job));
+}
+
 function normaliseConcreteType(value) {
   const type = cleanText(value, 40).toLowerCase();
   if (type.startsWith('q')) return 'quarried';
@@ -3262,7 +3268,7 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   }
 
   const existingConcreteType = inferConcreteType(completionPricingBody(job));
-  if (isDeliveredConcreteJob(job) && !existingConcreteType && !normalizedConcreteType) {
+  if (requiresConcreteSourceForCompletion(job) && !existingConcreteType && !normalizedConcreteType) {
     return {
       ok: false,
       error: 'concrete_type_required',

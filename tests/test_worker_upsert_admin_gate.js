@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20261013-completion-identity$/);
+  assert.match(health.workerBuildId, /^20261013-concrete-source$/);
   assert.strictEqual(health.runtimePatchId, '20261007-day-sheet-pricing-r7');
 
   for (const [path,method] of [['/ht/agreed-pricing','POST'],['/ht/agreed-pricing/results','GET'],['/ht/pricing-evidence/job','POST']]) {
@@ -335,6 +335,15 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert((driverPayload.accountNotes || '').includes('Driver note: 6 ton tipped'), 'driver add should preserve notes in account notes');
   assert.strictEqual(driverPayload.trafficNotes, '6 ton tipped', 'traffic notes should contain the plain driver note only');
   assert(!driverPayload.trafficNotes.includes('Driver app source:'), 'traffic notes must not include source/audit jargon');
+
+  for (const source of ['quarried','recycled']) {
+    sandbox.__haultechJobs=[];sandbox.__fetches.length=0;
+    const sourceResp=await workerRequest('/ht/driver-add',{method:'POST',body:JSON.stringify({id:'driver-source-'+source,date:'2026-10-12',customer:'Customer One',driver:'Neil Antony',vehicle:'EY15BOV',material:'Kerb mix, bull nose kerbs, edgings.',quantity:3,unit:'m3',from:'PMG Yard',to:'Test site',reference:'SOURCE-FIXTURE',notes:'3 cube kerb mix plus kerbs',concreteType:source})});
+    assert.strictEqual(sourceResp.status,200);
+    const written=sandbox.__fetches.find(x=>x.url.includes('UpsertJob'));
+    assert(JSON.parse(written.options.body).accountNotes.includes('Driver confirmed '+source.toUpperCase()+' concrete source'),'creation must persist the actual source without waiting for completion');
+  }
+  sandbox.__haultechJobs=[];
 
   const paulDriverId = '2b5eab8a-0602-47b8-b242-28ef37eb6c2d';
   const paulVehicleId = '112689c0-e2f4-4e32-9bfb-8e4fa24bb422';
@@ -812,6 +821,11 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(completionPricing.calculatorCalls.length, 0);
   assert.strictEqual(completionPricing.upsertPayload, null, 'missing concrete type must not write or complete the job');
 
+  for (const material of ['NO FINES','GEN1','Kerb mix']) {
+    const check=await completeJobFixture({jobId:9888,id:'88888888-8888-4888-8888-888888888888',customerId:'external-customer',quotedPrice:0,consignments:[{goodsDescription:material,deliveryPostcode:'FY6 9DJ'}]},2);
+    assert.strictEqual(check.resp.status,422,material+' must require source');
+    assert.strictEqual(check.upsertPayload,null);
+  }
   completionPricing = await completeJobFixture({
     jobId: 9819,
     id: '19191919-1919-4919-8919-191919191919',

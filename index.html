@@ -1687,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261013-completion-identity-r2';
+const APP_BUILD_ID = '20261013-concrete-source';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -3292,21 +3292,21 @@ function getJobMaterial(job) {
 function jobRequiresConcreteSource(job) {
   const goods = String(getJobMaterial(job) || '').toLowerCase();
   if (/\b6f2\b|\bcrush(?:ed)?\b|\bhardcore\b|\bclean concrete\s*\/\s*brick\b|\bconcrete agg(?:regate)?\b/.test(goods)) return false;
-  return /\b(?:c|rc)\s*\d{2}/.test(goods)
+  return /\b(?:no[ -]?fines|kerb[ -]?mix|gen\s*\d+)\b/.test(goods)
+    || /\b(?:c|rc)\s*\d{2}/.test(goods)
     || /\bst\s*\d+\b/.test(goods)
     || /\bconcrete\b/.test(goods);
 }
 
 function concreteSourceAlreadyShown(job) {
-  const text = [
-    getJobMaterial(job),
-    getJobNotes(job),
-    job?.accountNotes,
-    job?.trafficNotes,
-  ].filter(Boolean).join(' ').toLowerCase();
-  if (/\bquarried\b|\bquarry\b|\bqu\b/.test(text)) return 'quarried';
-  if (/\brecycled\b|\brec\b/.test(text)) return 'recycled';
-  return '';
+  const explicit = String(job?.concreteType || job?._concreteType || '').toLowerCase();
+  if (['quarried', 'recycled'].includes(explicit)) return explicit;
+  const text = [getJobMaterial(job), getJobNotes(job), job?.accountNotes, job?.trafficNotes].filter(Boolean).join(' ').toLowerCase();
+  const confirmed = [...new Set([...text.matchAll(/driver confirmed (quarried|recycled) concrete source/g)].map(m => m[1]))];
+  if (confirmed.length) return confirmed.length === 1 ? confirmed[0] : '';
+  const quarried = /\bquarried\b|\bquarry\b|\bqu\b/.test(text);
+  const recycled = /\brecycled\b|\brec\b/.test(text);
+  return quarried === recycled ? '' : (quarried ? 'quarried' : 'recycled');
 }
 
 function getJobFrom(job) {
@@ -6288,7 +6288,7 @@ function isConcreteEntryCandidate({ vehicle, material, unit, notes } = {}) {
   const text = `${selectedMaterial} ${selectedNotes}`;
   return isVolumetricConcreteVehicle(selectedVehicle)
     || ['m3', 'm³', 'cube', 'cubes'].includes(selectedUnit)
-    || /\b(?:concrete|m3|m³|cube|cubes|c\d{2}|rc\d{2})\b/i.test(text);
+    || /\b(?:concrete|no[ -]?fines|kerb[ -]?mix|gen\s*\d+|st\s*\d+|m3|m³|cube|cubes|c\d{2}|rc\d{2})\b/i.test(text);
 }
 
 function updateConcreteTypeFields() {

@@ -666,3 +666,20 @@ test('identical real loads keep separate completion state after local merge and 
   await page.reload();
   expect(await check()).toEqual({states:['complete','scheduled'],redirect:null,cachedId:'22222222-2222-4222-8222-222222222222',ambiguous:null});
 });
+
+test('concrete source is required for named mixes and retains the driver choice', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=neil`);
+  for (const material of ['NO FINES','GEN1','Kerb mix','ST1','C35']) {
+    await page.evaluate(material => renderSignScreen({_cached:true,_material:material,_concreteType:'recycled',_notes:'',_customer:'Fixture',_quantity:2}),material);
+    await expect(page.locator('#sign-concrete-type')).toHaveValue('recycled');
+    await expect(page.locator('#sign-concrete-type')).toHaveAttribute('required','');
+  }
+  const values=await page.evaluate(()=>({
+    conflict:concreteSourceAlreadyShown({_cached:true,_material:'Concrete quarried recycled'}),
+    confirmed:concreteSourceAlreadyShown({_cached:true,_material:'Concrete QUARRIED',accountNotes:'Driver confirmed RECYCLED concrete source'}),
+    aggregate:jobRequiresConcreteSource({_cached:true,_material:'6F2 crushed concrete'}),
+    blocks:jobRequiresConcreteSource({_cached:true,_material:'Quarried Concrete Aggregate (4/20)'})
+  }));
+  expect(values).toEqual({conflict:'',confirmed:'recycled',aggregate:false,blocks:false});
+});
