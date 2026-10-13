@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20261013-concrete-source-r2';
+const CACHE_NAME = 'pmg-driver-live-v20261013-chipper-145';
 const APP_SHELL = [
   '/',
   '/index.html',
