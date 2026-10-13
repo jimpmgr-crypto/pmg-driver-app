@@ -651,3 +651,18 @@ test.describe('driver app route audit', () => {
     await expect(page.getByRole('button', { name: /Tick confirmed at 625 Nm/i })).toBeVisible();
   });
 });
+
+test('identical real loads keep separate completion state after local merge and reload', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=neil`);
+  const check = async () => page.evaluate(() => {
+    const a={id:'11111111-1111-4111-8111-111111111111',jobId:11422,deliveryStatus:'Completed',accountNotes:'Driver movement: driver-neil-one'};
+    const b={id:'22222222-2222-4222-8222-222222222222',jobId:11425,deliveryStatus:'Scheduled',accountNotes:'Driver movement: driver-neil-two'};
+    localStorage.setItem('pmg_local_jobs_'+todayISO(),JSON.stringify([{id:'driver-neil-one',movementId:'driver-neil-one',haultechJobId:a.id,status:'complete'}]));
+    const merged=mergeWithLocal(todayISO(),[a,b]);
+    return {states:merged.map(getJobStatus),redirect:findMatchingLiveDriverJob(a,[b]),cachedId:getHaultechJobId({_haultechJobId:b.id}),ambiguous:findMatchingLiveDriverJob({id:'driver-neil-one'},[a,{...b,accountNotes:a.accountNotes}])};
+  });
+  expect(await check()).toEqual({states:['complete','scheduled'],redirect:null,cachedId:'22222222-2222-4222-8222-222222222222',ambiguous:null});
+  await page.reload();
+  expect(await check()).toEqual({states:['complete','scheduled'],redirect:null,cachedId:'22222222-2222-4222-8222-222222222222',ambiguous:null});
+});

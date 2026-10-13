@@ -1687,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261010-mdpe-100m-10193';
+const APP_BUILD_ID = '20261013-completion-identity';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2735,17 +2735,23 @@ function driverMovementId(job) {
 }
 
 function sameDriverAddedMovement(a, b) {
+  // Two real jobs stay distinct even when every visible load detail matches.
+  const aId = getHaultechJobId(a);
+  const bId = getHaultechJobId(b);
+  if (aId && bId) return aId.toLowerCase() === bId.toLowerCase();
   const aMovement = driverMovementId(a);
   const bMovement = driverMovementId(b);
-  if (aMovement && bMovement) return aMovement === bMovement;
-  return sameDriverAddedFingerprint(driverAddedFingerprint(a), driverAddedFingerprint(b));
+  return !!(aMovement && bMovement && aMovement === bMovement);
 }
 
 function findMatchingLiveDriverJob(localJob, jobs = allJobs) {
-  return (jobs || []).find(candidate => {
-    if (!candidate || candidate === localJob || isLocalDriverTempJob(candidate)) return false;
-    return sameDriverAddedMovement(localJob, candidate);
-  }) || null;
+  const matches = (jobs || []).filter(candidate =>
+    candidate && candidate !== localJob && getHaultechJobId(candidate) &&
+    sameDriverAddedMovement(localJob, candidate)
+  );
+  const ids = new Set(matches.map(candidate => getHaultechJobId(candidate).toLowerCase()));
+  // Never choose the first of multiple live jobs for a single movement.
+  return ids.size === 1 ? matches[0] : null;
 }
 
 function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
@@ -2756,11 +2762,7 @@ function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
     if (!item || item.state !== 'pending Haultech') return item;
     const localJob = localJobs.find(lj => String(lj.id || lj.jobId || lj.ticketNo || '') === String(item.jobId || ''));
     if (!localJob || !isLocalDriverTempJob(localJob)) return item;
-    const matched = cloudJobs.find(j =>
-      !j?._cached &&
-      !isLocalDriverTempJob(j) &&
-      sameDriverAddedMovement(localJob, j)
-    );
+    const matched = findMatchingLiveDriverJob(localJob, cloudJobs);
     if (!matched || getJobStatus(matched) !== 'complete') return item;
     changed = true;
     return {
@@ -2796,7 +2798,8 @@ function mergeWithLocal(date, cloudJobs) {
     const local = localByKey.get(k);
     const semanticLocal = local || localJobs.find(lj =>
       isLocalDriverTempJob(lj) &&
-      sameDriverAddedMovement(lj, j)
+      sameDriverAddedMovement(lj, j) &&
+      findMatchingLiveDriverJob(lj, cloudJobs) === j
     );
     if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return j;
     const liveStatus = getJobStatus(j);
@@ -2811,7 +2814,7 @@ function mergeWithLocal(date, cloudJobs) {
     const k = String(lj.ticketNo || lj.id || '');
     if (!k || cloudKeys.has(k)) continue;
     if (isLocalDriverTempJob(lj)) {
-      if (cloudDriverMatches.some(match => sameDriverAddedMovement(lj, match.job))) {
+      if (findMatchingLiveDriverJob(lj, cloudJobs)) {
         continue;
       }
     }
@@ -3261,7 +3264,7 @@ function getHaultechJobId(job) {
   const c = getJobConsignment(job);
   // Haultech complete expects the job GUID, not the visible numeric
   // job/consignment number returned as jobId/consignmentId.
-  const id = [job.id, job._id, job.jobId, c?.id].find(isGuidId);
+  const id = [job?.haultechJobId, job?._haultechJobId, job?.id, job?._id, job?.jobId, c?.jobId].find(isGuidId);
   return id || null;
 }
 
@@ -5783,11 +5786,24 @@ function setSignCompleteBusy(isBusy) {
   });
 }
 
+// One in-flight save across both completion buttons, including programmatic taps.
+let signCompletionInFlight = false;
 // Save/submit button
 async function handleSignComplete() {
-  if (!activeJob) return;
+  if (!activeJob || signCompletionInFlight) return;
+  if (getJobStatus(activeJob) === 'complete') {
+    toast('This job is already completed');
+    return;
+  }
   const job = activeJob;
-  const matchedLiveJob = (job._cached || isDriverAddedJob(job)) ? findMatchingLiveDriverJob(job) : null;
+  const matchedLiveJob = !getHaultechJobId(job) ? findMatchingLiveDriverJob(job) : null;
+  if (!getHaultechJobId(job) && !matchedLiveJob && driverMovementId(job)) {
+    const candidates = allJobs.filter(candidate => getHaultechJobId(candidate) && sameDriverAddedMovement(job, candidate));
+    if (candidates.length) {
+      toast('This load matches more than one job. Ask the office to check before completing.');
+      return;
+    }
+  }
   const haultechCompleteJob = matchedLiveJob || job;
   const consId = getJobConsignmentId(haultechCompleteJob) || getJobConsignmentId(job);
   const haultechJobId = getHaultechJobId(haultechCompleteJob);
@@ -5809,6 +5825,7 @@ async function handleSignComplete() {
   const pourRaw=$('sign-pour-minutes')?.value || '';
   const pourMinutes=pourRaw === '' ? null : Number(pourRaw);
   if(pourMinutes !== null && (!Number.isFinite(pourMinutes)||pourMinutes<0||pourMinutes>600)) { toast('Enter a pour time between 0 and 600 minutes'); return; }
+  signCompletionInFlight = true;
   setSignCompleteBusy(true);
 
   const consignee = $('sign-consignee')?.value?.trim() || '';
@@ -5982,6 +5999,7 @@ async function handleSignComplete() {
     }
     toast('Error: ' + e.message);
   } finally {
+    signCompletionInFlight = false;
     setSignCompleteBusy(false);
   }
 }

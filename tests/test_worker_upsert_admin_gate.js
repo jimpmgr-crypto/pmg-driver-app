@@ -195,7 +195,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(health.ok, true);
   assert.strictEqual(health.service, 'pmg-driver-sync');
   assert.strictEqual(health.driverApiContract, 'pmg-driver-api-v2');
-  assert.match(health.workerBuildId, /^20261002-collected-concrete-v24$/);
+  assert.match(health.workerBuildId, /^20261013-completion-identity$/);
   assert.strictEqual(health.runtimePatchId, '20261007-day-sheet-pricing-r7');
 
   for (const [path,method] of [['/ht/agreed-pricing','POST'],['/ht/agreed-pricing/results','GET'],['/ht/pricing-evidence/job','POST']]) {
@@ -506,6 +506,14 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.strictEqual(resp.status, 200);
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Display/GetJobsByDatePaginated')), 'complete must look up the hidden Haultech GUID');
   assert(sandbox.__fetches.some(call => call.url.includes('/api/Job/QuickCompleteJob?id=8fa30d53-5770-43a6-8e20-d4f618034c7d')), 'complete must call QuickCompleteJob with the Haultech GUID, not the visible job number');
+  sandbox.__haultechJobs = [];
+
+  sandbox.__haultechJobs = [{jobId:8708,id:'8fa30d53-5770-43a6-8e20-d4f618034c7d',deliveryStatus:'Completed',quotedPrice:125,quantity:20}];
+  sandbox.__fetches.length = 0;
+  resp = await workerRequest('/ht/complete/8708', {method:'PATCH',body:JSON.stringify({date:'2026-06-11',quantity:99,driverNotes:'stale retry'})});
+  assert.strictEqual(resp.status,200);
+  assert.strictEqual((await resp.json()).alreadyCompleted,true);
+  assert(!sandbox.__fetches.some(call => /UpsertJob|QuickCompleteJob/.test(call.url)), 'stale completion cannot rewrite an already completed job');
   sandbox.__haultechJobs = [];
 
   let completionPricing = await completeJobFixture({

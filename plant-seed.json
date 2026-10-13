@@ -1,6 +1,6 @@
 {
   "schema": "pmg-plant-snapshot-v1",
-  "generatedAt": "2026-10-02T00:45:01+00:00",
+  "generatedAt": "2026-10-13T00:45:05+00:00",
   "sharePointEvidenceRoot": "SHARED/Plant and Tool Service Records",
   "sources": {
     "plantScheduleWorkbook": "/Users/bill/.openclaw/workspace/shared-docs/PMG/Plant Schedule revised 2024.xlsx",
@@ -518,7 +518,7 @@
         }
       ],
       "lastInspectionDate": "2025-02-28",
-      "lastCostDate": "2026-09-07"
+      "lastCostDate": "2026-10-06"
     },
     {
       "id": "plant-54",
@@ -1053,7 +1053,10 @@
         }
       ],
       "lastInspectionDate": "2025-05-12",
-      "lastCostDate": "2026-09-24"
+      "lastCostDate": "2026-10-07",
+      "lastServiceDate": "2026-10-07",
+      "nextServiceDueDate": "2027-10-07",
+      "nextServiceDueBasis": "12_month_service_rule"
     },
     {
       "id": "plant-75",
@@ -1163,7 +1166,7 @@
           "sheet": "Plant 78"
         }
       ],
-      "lastCostDate": "2025-11-28"
+      "lastCostDate": "2026-09-02"
     },
     {
       "id": "plant-79",
@@ -1452,6 +1455,42 @@
   ],
   "history": [
     {
+      "id": "hist-46c3a8569e7f1c9a",
+      "assetId": "plant-74",
+      "plantNumber": "74",
+      "date": "2026-10-07",
+      "category": "service",
+      "sourceName": "Luscombe Plant Hire",
+      "description": "service - fitted new fan belt & alternator belt",
+      "hours": null,
+      "invoiceNumber": "60861",
+      "amount": 82.5,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 74",
+        "row": 11
+      }
+    },
+    {
+      "id": "hist-bca273dbc3807c6f",
+      "assetId": "plant-53",
+      "plantNumber": "53",
+      "date": "2026-10-06",
+      "category": "repair",
+      "sourceName": "Red Rose Tyres",
+      "description": "replaced hose plus labour",
+      "hours": null,
+      "invoiceNumber": "140256",
+      "amount": 109.0,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 53",
+        "row": 8
+      }
+    },
+    {
       "id": "hist-c50c05639b858f1b",
       "assetId": "plant-74",
       "plantNumber": "74",
@@ -1646,6 +1685,24 @@
         "type": "service_workbook",
         "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
         "sheet": "Plant 73",
+        "row": 8
+      }
+    },
+    {
+      "id": "hist-896172484002cd86",
+      "assetId": "plant-78",
+      "plantNumber": "78",
+      "date": "2026-09-02",
+      "category": "invoice",
+      "sourceName": "Taylor & Braithwaite",
+      "description": "1xpush start button plus delivery",
+      "hours": null,
+      "invoiceNumber": "130570",
+      "amount": 124.29,
+      "source": {
+        "type": "service_workbook",
+        "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+        "sheet": "Plant 78",
         "row": 8
       }
     },
@@ -4057,7 +4114,21 @@
         }
       }
     ],
-    "plant-53": [],
+    "plant-53": [
+      {
+        "id": "part-95a8dd891f4dc17f",
+        "assetId": "plant-53",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "Fylde Hydraulics",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 53",
+          "row": 7
+        }
+      }
+    ],
     "plant-54": [
       {
         "id": "part-10dd18678623db94",
@@ -4208,7 +4279,21 @@
     "plant-70": [],
     "plant-71": [],
     "plant-73": [],
-    "plant-74": [],
+    "plant-74": [
+      {
+        "id": "part-2c83b17a1969b862",
+        "assetId": "plant-74",
+        "type": "Service/parts note",
+        "code": "",
+        "notes": "service - fitted new fan belt & alternator belt",
+        "source": {
+          "type": "service_workbook",
+          "workbook": "/Users/bill/.openclaw/workspace/state/fleet_live_katie_workbook_import/latest/HGV, VEHICLE & PLANT SERVICE SHEET.xlsx",
+          "sheet": "Plant 74",
+          "row": 11
+        }
+      }
+    ],
     "plant-75": [
       {
         "id": "part-d957c0e6aebbeb3a",
@@ -5479,11 +5564,11 @@
   ],
   "stats": {
     "assetCount": 53,
-    "historyEventCount": 131,
-    "filterPartCount": 54,
+    "historyEventCount": 134,
+    "filterPartCount": 56,
     "reviewItemCount": 64,
     "ignoredSheetCount": 36,
-    "serviceDateScheduleCount": 22,
+    "serviceDateScheduleCount": 23,
     "unusedSchedulePlantNumberCount": 4
   }
 }
