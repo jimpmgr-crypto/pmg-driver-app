@@ -683,3 +683,25 @@ test('concrete source is required for named mixes and retains the driver choice'
   }));
   expect(values).toEqual({conflict:'',confirmed:'recycled',aggregate:false,blocks:false});
 });
+
+test('offline backup keeps concrete fields and two loads sharing a reference', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=neil`);
+  const saved=await page.evaluate(()=>{
+    const make=id=>jobToLocal({jobId:id,_cached:true,_driverAdded:true,_driver:'Neil Antony',_customer:'Fixture',_reference:'SAME SITE',_material:'Kerb mix',_quantity:3,_unit:'m3',_concreteType:'recycled',_pourMinutes:0,_status:'scheduled',_vehicle:'EY15BOV',_notes:'fixture'});
+    const rows=[make('driver-offline-one'),make('driver-offline-two')];
+    localStorage.removeItem('pmg_local_jobs_'+todayISO());
+    return rows;
+  });
+  expect(saved.map(j=>[j.concreteType,j.unit,j.pourMinutes])).toEqual([['recycled','m3',0],['recycled','m3',0]]);
+  await page.route(`${WORKER_URL}/haultech-jobs/**`,route=>route.fulfill({json:[]}));
+  await page.route(`${WORKER_URL}/jobs/**`,route=>route.fulfill({json:saved}));
+  const recovered=await page.evaluate(async()=>{
+    await loadJobsFallback(todayISO());
+    return allJobs.map(j=>({id:j.jobId,source:concreteSourceAlreadyShown(j),unit:j._unit,minutes:j._pourMinutes}));
+  });
+  expect(recovered).toEqual([
+    {id:'driver-offline-one',source:'recycled',unit:'m3',minutes:0},
+    {id:'driver-offline-two',source:'recycled',unit:'m3',minutes:0}
+  ]);
+});

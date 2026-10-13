@@ -1687,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261013-concrete-source';
+const APP_BUILD_ID = '20261013-concrete-source-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2252,6 +2252,9 @@ function jobToLocal(j) {
     movementId: j.movementId || j._movementId || '',
     haultechJobId: j.haultechJobId || j._haultechJobId || '',
     haultechWriteState: j.haultechWriteState || j._haultechWriteState || '',
+    concreteType: concreteSourceAlreadyShown(j),
+    unit: j.unit || j._unit || '',
+    pourMinutes: j.pourMinutes ?? j._pourMinutes ?? null,
     driver,
     addedBy,
     createdBy: addedBy,
@@ -2827,6 +2830,8 @@ function mergeWithLocal(date, cloudJobs) {
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
       _haultechOrder: lj.haultechOrder,
       _unit: lj.unit,
+      _concreteType: lj.concreteType || '',
+      _pourMinutes: lj.pourMinutes ?? null,
       _movementId: lj.movementId || '',
       _haultechJobId: lj.haultechJobId || '',
       _haultechWriteState: lj.haultechWriteState || '',
@@ -3153,6 +3158,13 @@ async function loadJobsFallback(date) {
       _material: j.material, _from: j.from, _to: j.to,
       _vehicle: j.vehicle,
       _quantity: j.quantity, _price: j.price, _status: j.status,
+      _concreteType: j.concreteType || j._concreteType || '',
+      _unit: j.unit || j._unit || '',
+      _pourMinutes: j.pourMinutes ?? j._pourMinutes ?? null,
+      _movementId: j.movementId || j._movementId || '',
+      _haultechJobId: j.haultechJobId || j._haultechJobId || '',
+      _reference: j.reference || j.ticketNo || '',
+      _notes: j.notes || '',
       _paymentStatus: j.paymentStatus || j.a1PaymentStatus || '',
       _a1PaymentStatus: j.a1PaymentStatus || j.paymentStatus || '',
       _haultechOrder: Number.isFinite(Number(j.haultechOrder)) ? Number(j.haultechOrder) : haultechOrder,
@@ -3162,9 +3174,9 @@ async function loadJobsFallback(date) {
       const savedResp = await api(`/jobs/${date}`);
       const savedPayload = savedResp.ok ? await savedResp.json() : [];
       const savedJobs = Array.isArray(savedPayload) ? savedPayload : (savedPayload.jobs || []);
-      const existingKeys = new Set(jobs.map(j => String(j._reference || j.ticketNo || j.jobId || j.id || '')));
+      const existingKeys = new Set(jobs.map(j => String(getHaultechJobId(j) || driverMovementId(j) || j.jobId || j.id || '')));
       for (const lj of driverReviewBackupJobs(savedJobs)) {
-        const key = String(lj.reference || lj.ticketNo || lj.id || '');
+        const key = String(getHaultechJobId(lj) || driverMovementId(lj) || lj.id || '');
         if (key && existingKeys.has(key)) continue;
         if (isLocalDriverTempJob(lj) && findMatchingLiveDriverJob(lj, jobs)) continue;
         jobs.push({
@@ -3175,6 +3187,8 @@ async function loadJobsFallback(date) {
           _vehicle: lj.vehicle,
           _quantity: lj.quantity, _price: lj.price, _status: lj.status,
           _unit: lj.unit,
+      _concreteType: lj.concreteType || '',
+      _pourMinutes: lj.pourMinutes ?? null,
           _movementId: lj.movementId || '',
           _haultechJobId: lj.haultechJobId || '',
           _haultechWriteState: lj.haultechWriteState || '',
@@ -6702,6 +6716,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
 	      _addedBy: localJob.addedBy,
       _material: localJob.material, _from: localJob.from, _to: localJob.to,
       _concreteType: localJob.concreteType,
+      _pourMinutes: localJob.pourMinutes ?? null,
       _vehicle: localJob.vehicle,
       _quantity: localJob.quantity, _price: localJob.price, _status: localJob.status,
       _priceMode: localJob.priceMode,
