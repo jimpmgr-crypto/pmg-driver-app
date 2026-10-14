@@ -18,7 +18,7 @@ assert(
   'driver-created rows must not call /ht/upsert from the frontend'
 );
 assert(
-  addFormHandler.includes("api('/ht/driver-add'") || addFormHandler.includes('api("/ht/driver-add"'),
+  addFormHandler.includes("submitDriverAddedRow(localJob, localDate)") && indexHtml.includes("api('/ht/driver-add'"),
   'driver-created rows should call the restricted /ht/driver-add worker endpoint'
 );
 assert(

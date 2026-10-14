@@ -1687,7 +1687,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261013-chipper-145';
+const APP_BUILD_ID = '20261014-driver-add-singleflight';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2526,6 +2526,27 @@ function addToRetryQueue(date, jobs) {
   updateSyncUI();
 }
 
+// Share one creation request between Add and background retry on this phone.
+const driverAddRequests = new Map();
+async function submitDriverAddedRow(job, date) {
+  const key = `${date}:${job.movementId || job.id}`;
+  if (!job.movementId && !job.id) throw new Error('Missing movement identity');
+  if (!driverAddRequests.has(key)) {
+    const request = (async () => {
+      const response = await api('/ht/driver-add', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...job, date }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
+      return result;
+    })();
+    driverAddRequests.set(key, request);
+    request.catch(() => { if (driverAddRequests.get(key) === request) driverAddRequests.delete(key); });
+  }
+  return driverAddRequests.get(key);
+}
+
 async function flushRetryQueue() {
   const q = pruneRetryQueue();
   if (!q.length) return;
@@ -2536,13 +2557,7 @@ async function flushRetryQueue() {
       for (const job of entry.jobs) {
         if (!job?.movementId || job.haultechWriteState !== 'pending Haultech') continue;
         try {
-          const liveResp = await api('/ht/driver-add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...job, date: entry.date }),
-          });
-          const liveResult = await liveResp.json().catch(() => ({}));
-          if (!liveResp.ok || !liveResult.ok) throw new Error(liveResult.message || liveResult.error || `HTTP ${liveResp.status}`);
+          const liveResult = await submitDriverAddedRow(job, entry.date);
           job.haultechJobId = liveResult.jobId || liveResult.ref || job.haultechJobId || '';
           if (job.status === 'complete' && job.haultechJobId) {
             const completeResp = await api(`/ht/complete/${job.haultechJobId}`, {
@@ -6657,15 +6672,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     let confirmedJobId = localJob.id;
     if (LIVE_WRITE) {
       try {
-        const liveResp = await api('/ht/driver-add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...localJob, date: localDate }),
-        });
-        const liveResult = await liveResp.json().catch(() => ({}));
-        if (!liveResp.ok || !liveResult.ok) {
-          throw new Error(liveResult.message || liveResult.error || `HTTP ${liveResp.status}`);
-        }
+        const liveResult = await submitDriverAddedRow(localJob, localDate);
         haultechWriteState = 'written';
         confirmedJobId = liveResult.jobId || liveResult.ref || localJob.id;
         localJob.haultechWriteState = 'written';
