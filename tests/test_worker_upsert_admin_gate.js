@@ -290,7 +290,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   assert.deepStrictEqual(await resp.json(), { error: 'admin_key_required' });
   assert.strictEqual(sandbox.__fetches.length, 0, 'missing env admin key must fail closed');
 
-  resp = await upsertRequest({ 'X-PMG-Admin-Key': 'admin-key' }, { customerReference: 'ADMIN-OK' });
+  resp = await upsertRequest({ 'X-PMG-Admin-Key': 'admin-key' }, { customerReference: 'ADMIN-OK', quotedPrice: 0, totalPrice: 0, useQuotedPrice: false });
   assert.strictEqual(resp.status, 200);
   const adminUpsertResult = await resp.json();
   assert(adminUpsertResult.jobId, 'mocked admin upsert should return a job id');

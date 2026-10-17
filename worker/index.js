@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261017-sharepoint-revision-r3';
+const WORKER_BUILD_ID = '20261017-invoice-price-boundary-r4';
 const WORKER_RUNTIME_PATCH_ID = '20261007-day-sheet-pricing-r7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -471,6 +471,77 @@ async function concreteDeliveryPrice(body, quantity, concreteType, basePrice, { 
 function isVolumetricConcreteVehicle(value) {
   const token = compactToken(value);
   return VOLUMETRIC_CONCRETE_VEHICLES.has(token) || token.includes('LL21') || token.includes('FLF');
+}
+
+// This raw administrative route must not guess a missing price or coerce an
+// explicit blank/boolean to zero. The restricted driver builder supplies its own
+// explicit price and continues to use the normalizer below.
+function validateRawUpsertBody(body) {
+  let payload;
+  try { payload = JSON.parse(body); }
+  catch { return { error: 'invalid_upsert_json', status: 400 }; }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { error: 'invalid_upsert_object', status: 400 };
+  }
+  // JSON.parse alone silently keeps the last duplicate property. Tokenize only
+  // after grammar validation; decode keys so escaped aliases cannot bypass it.
+  const stack = [];
+  const tokens = body.match(/"(?:\\.|[^"\\])*"|[{}\[\],:]|[^,\s:{}\[\]]+/g) || [];
+  for (const token of tokens) {
+    if (/^-?\d/.test(token) && Number(token) === 0 && /[1-9]/.test(token.split(/[eE]/)[0])) {
+      return { error: 'invalid_upsert_numeric_value', status: 422 };
+    }
+    if (token === '{') stack.push({ object: true, keys: new Set(), key: true });
+    else if (token === '[') stack.push({ object: false });
+    else if (token === '}' || token === ']') stack.pop();
+    else if (token === ',') { if (stack.at(-1)?.object) stack.at(-1).key = true; }
+    else if (stack.at(-1)?.object && stack.at(-1).key && token.startsWith('"')) {
+      const frame = stack.at(-1);
+      const key = JSON.parse(token);
+      if (frame.keys.has(key)) return { error: 'duplicate_upsert_key', status: 400 };
+      frame.keys.add(key);
+      frame.key = false;
+    }
+  }
+  const hasNonfinite = value => typeof value === 'number' ? !Number.isFinite(value)
+    : value && typeof value === 'object' ? Object.values(value).some(hasNonfinite) : false;
+  if (hasNonfinite(payload)) return { error: 'nonfinite_upsert_value', status: 422 };
+  if (Object.hasOwn(payload, 'useQuotedPrice') && typeof payload.useQuotedPrice !== 'boolean') {
+    return { error: 'invalid_upsert_quote_flag', field: 'useQuotedPrice', status: 422 };
+  }
+  // Prevent case-variant aliases from reaching a supplier binder that may
+  // interpret keys case-insensitively after our canonical fields were checked.
+  const canonicalPriceFields = ['quotedPrice', 'totalPrice', 'price', 'useQuotedPrice'];
+  for (const key of Object.keys(payload)) {
+    if (canonicalPriceFields.some(field => field.toLowerCase() === key.toLowerCase()) && !canonicalPriceFields.includes(key)) {
+      return { error: 'noncanonical_upsert_price_field', status: 422 };
+    }
+  }
+  const amounts = [];
+  for (const field of ['quotedPrice', 'totalPrice', 'price']) {
+    const raw = payload[field];
+    // Null is absent evidence, never a zero. At least one actual amount is
+    // required, even for note-only updates, to avoid the old default-zero path.
+    if (raw === undefined || raw === null) continue;
+    const isDecimal = typeof raw === 'string' && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw.trim());
+    if (!(typeof raw === 'number' || isDecimal) || !Number.isFinite(Number(raw))) {
+      return { error: 'invalid_upsert_price', field, status: 422 };
+    }
+    // Reject nonzero numeric strings which underflow to zero during conversion.
+    if (typeof raw === 'string' && Number(raw) === 0 && /[1-9]/.test(raw.trim().split(/[eE]/)[0])) {
+      return { error: 'invalid_upsert_price', field, status: 422 };
+    }
+    amounts.push({ field, value: Number(raw) });
+  }
+  if (!amounts.length) return { error: 'upsert_price_required', status: 422 };
+  const selected = amounts[0].value;
+  if (amounts.some(amount => amount.value !== 0 && amount.value !== selected)) {
+    return { error: 'conflicting_upsert_prices', status: 422 };
+  }
+  // A positive/negative entered quote with a zero effective total is the known
+  // suppression case: normalization deliberately enables that recorded quote.
+  // A selected zero with a nonzero alternate was rejected above, not erased.
+  return { payload };
 }
 
 function normaliseDriverAddedUpsertPayload(payload) {
@@ -3912,10 +3983,11 @@ async function handleDriverRequest(request, env) {
         return corsResponse(JSON.stringify({ error: 'admin_key_required' }), 403);
       }
       const body = await request.text();
-      const parsed = safeJsonParse(body);
-      const upsertBody = parsed && typeof parsed === 'object'
-        ? JSON.stringify(normaliseDriverAddedUpsertPayload(parsed))
-        : body;
+      const checked = validateRawUpsertBody(body);
+      if (checked.error) {
+        return corsResponse(JSON.stringify({ error: checked.error, ...(checked.field ? { field: checked.field } : {}) }), checked.status);
+      }
+      const upsertBody = JSON.stringify(normaliseDriverAddedUpsertPayload(checked.payload));
       return htFetch(env, '/api/Job/UpsertJob?formId=', { method: 'POST', body: upsertBody });
     }
 
