@@ -336,57 +336,50 @@ def write_html_summary(folder: Path, markdown_text: str) -> None:
     atomic_write_text(folder / "plant-service-summary.html", html_text)
 
 
-def stage_event(
-    event: dict[str, Any],
-    root: Path,
-    state: dict[str, Any],
-    *,
-    force: bool,
-    dry_run: bool,
-    write_opencore: bool = True,
-) -> dict[str, Any]:
-    event_id = str(event.get("id") or "")
-    if not event_id:
-        return {"status": "skipped", "reason": "missing_event_id"}
-    if state["staged_events"].get(event_id) and not force:
-        return {"status": "skipped", "reason": "already_staged", "event_id": event_id}
+def stage_event(event, root, state, *, force, dry_run, write_opencore=True):
+    tools = evidence_tools()
+    event_id, asset_id = str(event.get("id") or ""), str(event.get("assetId") or "")
+    if not event_id or not asset_id or not tools.event_revision(event):
+        raise tools.EvidenceMismatch("missing_event_asset_or_revision")
+    old = state["staged_events"].get(event_id)
+    fingerprint = tools.source_fingerprint(event)
+    old_record = None
+    if old:
+        old_path = Path(str(old.get("local_staging_path") or "")) / "plant-service-event.json"
+        if old_path.is_file():
+            old_record = load_json(old_path, {})
+    if old_record and tools.source_fingerprint(old_record) == fingerprint and not force:
+        return {"status": "skipped", "reason": "same_source_revision", "event_id": event_id}
     folder = event_folder(root, event)
+    if old or event.get("correctedAt") or event.get("sharePointContentRevision"):
+        folder = folder.with_name(folder.name + " - revision " + fingerprint[:12])
     if dry_run:
-        return {"status": "would_stage", "event_id": event_id, "sharepoint_path": str(folder)}
-
+        return {"status": "would_stage", "event_id": event_id, "sharepoint_path": str(folder), "source_fingerprint": fingerprint}
     folder.mkdir(parents=True, exist_ok=True)
     atomic_write_text(folder / "plant-service-event.json", json.dumps(event, indent=2, sort_keys=True) + "\n")
-    checks = checklist_rows(event)
-    filters = filter_rows(event)
+    checks, filters = checklist_rows(event), filter_rows(event)
     write_csv(folder / "checksheet.csv", ["item", "status", "note"], checks)
     write_csv(folder / "filters-parts.csv", ["type", "code", "notes"], filters)
-    status = "staged"
-    markdown = build_markdown(event, folder, status)
+    markdown = build_markdown(event, folder, "staged")
     atomic_write_text(folder / "plant-service-summary.md", markdown)
     write_html_summary(folder, markdown)
-
-    fact = {
-        "event": "plant_service_sharepoint_stage",
-        "updated_at": now_utc(),
-        "status": status,
-        "event_id": event_id,
-        "date": event_date(event),
-        "asset_id": event.get("assetId") or "",
-        "plant_number": event.get("plantNumber") or "",
-        "category": event.get("category") or "",
-        "service_type": event.get("serviceType") or "",
-        "hours": event.get("hours"),
-        "next_due_date": event.get("nextDueDate") or "",
-        "next_due_hours": event.get("nextDueHours"),
-        "check_count": len(checks),
-        "filter_part_count": len(filters),
-        "anomalies_present": bool(str(event.get("anomalies") or "").strip()),
-        "local_staging_path": str(folder),
-        "sharepoint_path": str(folder),
-        "live_sharepoint_target": LIVE_SHAREPOINT_TARGET,
-        "live_sharepoint_status": "not_verified_by_this_helper",
-        "source": f"{WORKER_URL}/plant/sharepoint-export",
-    }
+    fact = {"event": "plant_service_sharepoint_stage", "updated_at": now_utc(), "status": "staged",
+            "event_id": event_id, "date": event_date(event), "asset_id": asset_id,
+            "plant_number": event.get("plantNumber") or "", "category": event.get("category") or "",
+            "service_type": event.get("serviceType") or "", "hours": event.get("hours"),
+            "next_due_date": event.get("nextDueDate") or "", "next_due_hours": event.get("nextDueHours"),
+            "check_count": len(checks), "filter_part_count": len(filters),
+            "anomalies_present": bool(str(event.get("anomalies") or "").strip()),
+            "local_staging_path": str(folder), "sharepoint_path": str(folder),
+            "live_sharepoint_target": LIVE_SHAREPOINT_TARGET,
+            "live_sharepoint_status": "not_verified_by_this_helper",
+            "source": f"{WORKER_URL}/plant/sharepoint-export", "source_fingerprint": fingerprint,
+            "event_revision": tools.event_revision(event)}
+    if old:
+        fact["previous_evidence"] = list(old.get("previous_evidence", [])) + [{
+            k: old.get(k) for k in ("local_staging_path", "live_sharepoint_verified_path", "live_sharepoint_status",
+                                    "source_fingerprint", "event_revision", "content_receipt", "worker_linked_at")
+        }]
     if write_opencore:
         append_jsonl(OPENCORE_LEDGER, fact)
     state["staged_events"][event_id] = fact
@@ -394,92 +387,82 @@ def stage_event(
     return fact
 
 
-def upload_unlinked_to_live_sharepoint(local_root: Path, state: dict[str, Any]) -> dict[str, Any]:
-    pending = [
-        row for row in state.get("staged_events", {}).values()
-        if not str(row.get("event_id") or "").startswith("plant-sharepoint-self-test")
-        if not str(row.get("live_sharepoint_status") or "").startswith("verified_live_sharepoint_rest_upload")
-        and Path(str(row.get("local_staging_path") or "")).is_dir()
-    ]
-    result = {
-        "event": "plant_service_live_sharepoint_upload",
-        "updated_at": now_utc(),
-        "status": "skipped_no_unverified_events",
-        "pending_events": len(pending),
-        "target": LIVE_SHAREPOINT_UPLOAD_TARGET,
-        "live_sharepoint_target": LIVE_SHAREPOINT_TARGET,
-    }
+def upload_unlinked_to_live_sharepoint(local_root, state):
+    pending = [r for r in state.get("staged_events", {}).values()
+               if not str(r.get("event_id") or "").startswith("plant-sharepoint-self-test")
+               if not r.get("content_receipt") and not r.get("worker_linked_at")
+               and Path(str(r.get("local_staging_path") or "")).is_dir()]
+    result = {"event": "plant_service_live_sharepoint_upload", "updated_at": now_utc(),
+              "status": "skipped_no_unverified_events", "pending_events": len(pending), "verified_events": 0,
+              "target": LIVE_SHAREPOINT_UPLOAD_TARGET, "live_sharepoint_target": LIVE_SHAREPOINT_TARGET, "errors": []}
     if not pending:
         return result
-    if not any(local_root.rglob("*")):
-        result["status"] = "skipped_no_local_files"
-        return result
-
     manifest = STATE_DIR / f"sharepoint-plant-live-upload-manifest-{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv"
-    cmd = [
-        sys.executable,
-        str(LIVE_UPLOAD_SCRIPT),
-        "--source",
-        str(local_root),
-        "--target",
-        LIVE_SHAREPOINT_UPLOAD_TARGET,
-        "--manifest",
-        str(manifest),
-        "--progress-every",
-        "50",
-    ]
+    cmd = [sys.executable, str(LIVE_UPLOAD_SCRIPT), "--source", str(local_root), "--target", LIVE_SHAREPOINT_UPLOAD_TARGET,
+           "--manifest", str(manifest), "--progress-every", "50"]
     try:
         proc = subprocess.run(cmd, text=True, capture_output=True, timeout=900, check=False)
+        result["returncode"] = proc.returncode
     except Exception as exc:
-        result.update({"status": "failed", "error": str(exc)[:1000]})
-        append_jsonl(OPENCORE_LEDGER, result)
-        return result
-
-    result["returncode"] = proc.returncode
-    result["stdout_tail"] = proc.stdout[-2000:]
-    result["stderr_tail"] = proc.stderr[-2000:]
+        result["transport_error"] = type(exc).__name__
     result["manifest"] = str(manifest)
-    if proc.returncode != 0:
-        result["status"] = "failed"
-        append_jsonl(OPENCORE_LEDGER, result)
-        return result
-
-    stamp = datetime.now().astimezone().isoformat(timespec="seconds")
-    verified_status = f"verified_live_sharepoint_rest_upload_{stamp}"
+    # Partial/unknown uploader outcome is resolved separately for each event.
     for row in pending:
-        row["live_sharepoint_status"] = verified_status
-        row["live_sharepoint_verified_path"] = local_to_live_path(str(row.get("local_staging_path") or ""), local_root)
-    result.update({
-        "status": "verified",
-        "verified_events": len(pending),
-        "verified_status": verified_status,
-    })
+        try:
+            receipt = verify_plant_pack(row, local_root, manifest=manifest)
+            row["content_receipt"] = receipt
+            row["live_sharepoint_status"] = "verified_live_sharepoint_rest_upload_exact_content"
+            row["live_sharepoint_verified_path"] = local_to_live_path(row["local_staging_path"], local_root)
+            row["event_revision"] = receipt["event_revision"]
+            row.pop("live_sharepoint_error", None)
+            result["verified_events"] += 1
+        except Exception as exc:
+            row["live_sharepoint_error"] = type(exc).__name__ + ": " + str(exc)[:160]
+            result["errors"].append({"event_id": row.get("event_id"), "error": row["live_sharepoint_error"]})
+    result["status"] = "failed" if result["errors"] else "verified"
     append_jsonl(OPENCORE_LEDGER, result)
     return result
 
 
-def mark_worker_links(state: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
-    rows = [
-        row for row in state.get("staged_events", {}).values()
-        if str(row.get("live_sharepoint_status") or "").startswith("verified_live_sharepoint_rest_upload")
-        and not row.get("worker_linked_at")
-    ]
+def mark_worker_links(state, *, dry_run):
+    tools = evidence_tools()
+    rows = [r for r in state.get("staged_events", {}).values()
+            if r.get("content_receipt") and not r.get("worker_linked_at")]
     result = {"event": "plant_service_worker_linkback", "updated_at": now_utc(), "pending_links": len(rows), "linked": 0, "failed": 0}
     for row in rows:
-        payload = {
-            "eventId": row["event_id"],
-            "sharePointEvidencePath": row.get("live_sharepoint_verified_path") or row.get("local_staging_path") or "",
-        }
         if dry_run:
-            result["linked"] += 1
             continue
         try:
-            post_json(f"{WORKER_URL}/plant/evidence-links", payload)
+            receipt = verify_plant_pack(row, Path(state.get("local_staging_root") or LOCAL_STAGING_ROOT))
+            expected = receipt["event_revision"]
+            remote_path = tools.safe_remote_path(row["live_sharepoint_verified_path"])
+            url = f"{WORKER_URL}/plant/assets/{urllib.parse.quote(row['asset_id'], safe='')}?role=tony"
+            def read_event():
+                event = tools.exact_plant_event(fetch_json(url), row["asset_id"], row["event_id"])
+                if tools.event_revision(event) != expected or tools.source_fingerprint(event) != receipt["source_fingerprint"]:
+                    raise tools.EvidenceMismatch("live_event_changed_before_link")
+                return event
+            def linked(event):
+                return event.get("sharePointWriteState") == "linked" and tools.safe_remote_path(event.get("sharePointEvidencePath", "")) == remote_path and event.get("sharePointEvidenceRevision") == expected
+            event = read_event()
+            if not linked(event):
+                try:
+                    reply = post_json(f"{WORKER_URL}/plant/evidence-links", {"eventId": row["event_id"],
+                        "sharePointEvidencePath": row["live_sharepoint_verified_path"], "expectedEventRevision": expected})
+                    if not isinstance(reply, dict) or reply.get("ok") is not True:
+                        raise tools.EvidenceMismatch("link_ack_not_ok")
+                except Exception:
+                    # Read back before deciding: a lost response may follow commit.
+                    pass
+                if not linked(read_event()):
+                    raise tools.EvidenceMismatch("link_unconfirmed_do_not_retry_blindly")
             row["worker_linked_at"] = now_utc()
+            row["worker_linked_revision"] = expected
+            row.pop("worker_link_error", None)
             result["linked"] += 1
         except Exception as exc:
             result["failed"] += 1
-            row["worker_link_error"] = str(exc)[:500]
+            row["worker_link_error"] = type(exc).__name__ + ": " + str(exc)[:160]
     append_jsonl(OPENCORE_LEDGER, result)
     return result
 
@@ -586,7 +569,21 @@ def load_pending_events(args: argparse.Namespace) -> tuple[list[dict[str, Any]],
             return payload, {"schema": "local-list"}
         return payload.get("pendingEvents") or [], payload
     payload = fetch_json(f"{WORKER_URL}/plant/sharepoint-export")
-    return payload.get("pendingEvents") or [], payload
+    tools = evidence_tools()
+    if not isinstance(payload, dict) or payload.get("schema") != "pmg-plant-sharepoint-export-v1" or not isinstance(payload.get("pendingEvents"), list):
+        raise tools.EvidenceMismatch("invalid_pending_plant_export")
+    events = list(payload["pendingEvents"])
+    identities = [row.get("id") for row in events]
+    if any(not value for value in identities) or len(set(identities)) != len(identities):
+        raise tools.EvidenceMismatch("duplicate_pending_plant_event")
+    if getattr(args, "reconcile_existing", False):
+        by_id = {row["id"]: row for row in events}
+        for row in audit_existing_events(load_state()):
+            if row["id"] in by_id and tools.source_fingerprint(by_id[row["id"]]) != tools.source_fingerprint(row):
+                raise tools.EvidenceMismatch("plant_source_changed_during_reconciliation")
+            by_id[row["id"]] = row
+        events = list(by_id.values())
+    return events, payload
 
 
 def run_sync(args: argparse.Namespace) -> int:
@@ -685,12 +682,71 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-worker-link", action="store_true", help="Do not POST confirmed SharePoint paths back to the worker.")
     parser.add_argument("--check-worker", action="store_true", help="Check whether the live PMG worker has the plant SharePoint export route deployed.")
     parser.add_argument("--self-test", action="store_true", help="Generate a synthetic plant service pack.")
+    parser.add_argument("--reconcile-existing", action="store_true", help="Explicit audit of previously staged content; use --dry-run first. Does not change the schedule.")
     return parser.parse_args()
 
 
 def main() -> int:
     return run_sync(parse_args())
 
+
+def evidence_tools():
+    import importlib
+    scripts = str(WORKSPACE / "scripts")
+    if scripts not in sys.path:
+        sys.path.append(scripts)
+    return importlib.import_module("pmg_sharepoint_event_receipts")
+
+def verify_plant_pack(row, local_root, *, manifest=None):
+    tools = evidence_tools()
+    folder = Path(str(row.get("local_staging_path") or "")).resolve()
+    folder.relative_to(Path(local_root).resolve())
+    event = load_json(folder / "plant-service-event.json", {})
+    if not event or tools.event_revision(event) != str(row.get("event_revision") or tools.event_revision(event)):
+        raise tools.EvidenceMismatch("staged_revision_changed")
+    expected_folder = event_folder(Path(local_root).resolve(), event)
+    revision_folder = expected_folder.with_name(expected_folder.name + " - revision " + tools.source_fingerprint(event)[:12])
+    if folder not in (expected_folder, revision_folder):
+        raise tools.EvidenceMismatch("canonical_plant_folder_mismatch")
+    receipt = tools.verify_pack(folder=folder,
+        remote_folder=local_to_live_path(str(folder), local_root),
+        required_files=("plant-service-event.json", "plant-service-summary.md", "plant-service-summary.html", "checksheet.csv", "filters-parts.csv"),
+        record_name="plant-service-event.json",
+        identity={"id": str(row.get("event_id") or ""), "assetId": str(row.get("asset_id") or "")},
+        expected_record=event, manifest=manifest)
+    receipt["event_revision"] = tools.event_revision(event)
+    return receipt
+
+def audit_existing_events(state, unresolved=None):
+    """Read-only, explicit one-time coverage of already-staged event identities."""
+    tools = evidence_tools()
+    records, changed = {}, []
+    for event_id, row in state.get("staged_events", {}).items():
+        if str(event_id).startswith("plant-sharepoint-self-test"):
+            continue
+        asset_id = str(row.get("asset_id") or "")
+        if not asset_id:
+            raise tools.EvidenceMismatch("existing_event_missing_asset_identity")
+        if asset_id not in records:
+            records[asset_id] = fetch_json(f"{WORKER_URL}/plant/assets/{urllib.parse.quote(asset_id, safe='')}?role=tony")
+        current = tools.exact_plant_event(records[asset_id], asset_id, event_id)
+        old_path = Path(str(row.get("local_staging_path") or "")) / "plant-service-event.json"
+        old = load_json(old_path, None)
+        if old is None:
+            try:
+                remote = tools.safe_remote_path(row.get("live_sharepoint_verified_path") or "")
+                old = json.loads(tools.download_live_file(remote + "/plant-service-event.json"))
+            except Exception:
+                old = None
+        if not isinstance(old, dict) or old.get("id") != event_id or old.get("assetId") != asset_id:
+            if unresolved is not None:
+                unresolved.append({"event_id": event_id, "asset_id": asset_id,
+                                   "reason": "existing_staged_event_unavailable_or_wrong_identity"})
+                continue
+            raise tools.EvidenceMismatch("existing_staged_event_unavailable_or_wrong_identity")
+        if tools.source_fingerprint(old) != tools.source_fingerprint(current):
+            changed.append(current)
+    return changed
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261017-safe-app-storage-r2';
+const WORKER_BUILD_ID = '20261017-sharepoint-revision-r3';
 const WORKER_RUNTIME_PATCH_ID = '20261007-day-sheet-pricing-r7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -4412,6 +4412,18 @@ async function handleDriverRequest(request, env) {
         next.correctedAt = new Date().toISOString();
         next.correctedBy = cleanText(body.correctedBy || body.updatedBy || 'plant-app', 120);
         next.correctionReason = cleanText(body.correctionReason || 'mechanic_entry_correction', 300);
+        // A correction invalidates the published copy. Retain the old evidence
+        // pointer for audit, but require content verification of this revision.
+        if (event.sharePointWriteState === 'linked') {
+          next.previousSharePointEvidence = {
+            path: event.sharePointEvidencePath || '',
+            url: event.sharePointEvidenceUrl || '',
+            linkedAt: event.sharePointLinkedAt || '',
+            eventRevision: event.sharePointContentRevision || event.correctedAt || event.createdAt || '',
+          };
+        }
+        next.sharePointContentRevision = crypto.randomUUID();
+        next.sharePointWriteState = 'queued_for_sharepoint_evidence';
         updatedEvent = next;
         return next;
       });
@@ -4439,12 +4451,23 @@ async function handleDriverRequest(request, env) {
       const eventId = cleanText(body.eventId, 160);
       if (!eventId) return corsResponse(JSON.stringify({ error: 'event_id_required' }), 400);
       const events = safeArray(await getKvJson(env, PLANT_MANUAL_EVENTS_KEY, []));
+      const targetEvent = events.find(event => event.id === eventId);
+      if (!targetEvent) return notFound();
+      const currentRevision = targetEvent.sharePointContentRevision || targetEvent.correctedAt || targetEvent.createdAt || '';
+      const expectedRevision = cleanText(body.expectedEventRevision, 80);
+      // Reject an acknowledgement for a stale file while an edit is queued.
+      // Older publishers may acknowledge an uncorrected original only.
+      if ((targetEvent.correctedAt && !expectedRevision) ||
+          (expectedRevision && expectedRevision !== currentRevision)) {
+        return corsResponse(JSON.stringify({ error: 'plant_evidence_revision_conflict' }), 409);
+      }
       let found = false;
       const updatedEvents = events.map(event => {
         if (event.id !== eventId) return event;
         found = true;
         return {
           ...event,
+          sharePointEvidenceRevision: currentRevision,
           sharePointEvidencePath: cleanText(body.sharePointEvidencePath || event.sharePointEvidencePath, 400),
           sharePointEvidenceUrl: cleanText(body.sharePointEvidenceUrl || event.sharePointEvidenceUrl, 800),
           sharePointWriteState: 'linked',
