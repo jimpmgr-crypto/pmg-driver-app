@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261017-safe-app-storage';
+const WORKER_BUILD_ID = '20261017-safe-app-storage-r2';
 const WORKER_RUNTIME_PATCH_ID = '20261007-day-sheet-pricing-r7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -4657,7 +4657,12 @@ import { handlePlantTransaction } from './plant-transaction.js';
 import { bulkTicketRows, recordTicketIndex, readDateTickets, ticketIndexStub, handleTicketIndex } from './ticket-index.js';
 
 function withStoreCors(response) {
-  return new Response(response.body, { status: response.status, headers: { ...Object.fromEntries(response.headers), ...CORS_HEADERS, 'Cache-Control': 'no-store' } });
+  // Headers.set replaces case-insensitively; object spread can keep both the
+  // lower-case upstream name and mixed-case CORS name, producing "*, *".
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(CORS_HEADERS)) headers.set(name, value);
+  headers.set('Cache-Control', 'no-store');
+  return new Response(response.body, { status: response.status, headers });
 }
 function jobStoreRequest(env, date, method, body, suffix = '') {
   if (!env.PMG_APP_STORE) return Promise.resolve(corsResponse(JSON.stringify({ error: 'transactional_storage_unavailable' }), 503));
