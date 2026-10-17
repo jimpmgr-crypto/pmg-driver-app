@@ -1241,6 +1241,7 @@
 
 <div id="toast"></div>
 
+<script src="/job-backup-journal.js"></script>
 <script>
 // BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const COLLECTED_CONCRETE_RATES = {"Collected concrete - Quarried": 130, "Collected concrete - Recycled": 120};
@@ -1687,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261014-driver-add-singleflight';
+const APP_BUILD_ID = '20261017-driver-safe-storage';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2244,12 +2245,18 @@ function showError(msg) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function jobToLocal(j) {
+  // Already-normalized backup rows must not be run through live Haultech
+  // getters, which would discard their material, addresses and price basis.
+  if (!j._cached && typeof j.customer === 'string' && 'from' in j && 'to' in j && !Array.isArray(j.consignments)) {
+    return { ...j, collectionAddress: getCollectionAddress(j), deliveryAddress: getDeliveryAddress(j) };
+  }
   const wtn = getJobWasteTransferNote(j);
   const addedBy = getJobAddedBy(j);
   const driver = getJobDriver(j) || addedBy;
   return {
     id: j.id || j.jobId,
-    movementId: j.movementId || j._movementId || '',
+    _backupRevision: j._backupRevision,
+    movementId: driverMovementId(j),
     haultechJobId: j.haultechJobId || j._haultechJobId || '',
     haultechWriteState: j.haultechWriteState || j._haultechWriteState || '',
     concreteType: concreteSourceAlreadyShown(j),
@@ -2260,11 +2267,20 @@ function jobToLocal(j) {
     createdBy: addedBy,
     vehicle: getJobVehicle(j),
     customer: getJobCustomer(j),
+    customerId: j.customerId || j._customerId || '',
     material: getJobMaterial(j),
     from: getJobFrom(j),
     to: getJobTo(j),
+    collectionAddress: getCollectionAddress(j),
+    deliveryAddress: getDeliveryAddress(j),
     quantity: getJobWeight(j),
     price: getJobPrice(j),
+    priceMode: j.priceMode || j._priceMode || '',
+    priceInput: j.priceInput ?? j._priceInput ?? '',
+    wagonVisits: j.wagonVisits ?? j._wagonVisits ?? 1,
+    specialAccess: j.specialAccess ?? j._specialAccess ?? false,
+    proofReceipt: j.proofReceipt || j._proofReceipt || null,
+    attachments: j.attachments || j._attachments || null,
     status: getJobStatus(j),
     reference: getJobRef(j),
     notes: getJobNotes(j),
@@ -2285,10 +2301,27 @@ function jobToLocal(j) {
   };
 }
 
+function cachedDriverFields(row) {
+  return {
+    _backupRevision: row._backupRevision,
+    _customerId: row.customerId || row._customerId || '',
+    _priceMode: row.priceMode || row._priceMode || '',
+    _priceInput: row.priceInput ?? row._priceInput ?? '',
+    _wagonVisits: row.wagonVisits ?? row._wagonVisits ?? 1,
+    _specialAccess: row.specialAccess ?? row._specialAccess ?? false,
+    _proofReceipt: row.proofReceipt || row._proofReceipt || null,
+    _attachments: row.attachments || row._attachments || null,
+    _movementId: row.movementId || row._movementId || '',
+    _haultechJobId: row.haultechJobId || row._haultechJobId || '',
+    _haultechWriteState: row.haultechWriteState || row._haultechWriteState || '',
+    _unit: row.unit || row._unit || '',
+    _concreteType: row.concreteType || row._concreteType || '',
+    _pourMinutes: row.pourMinutes ?? row._pourMinutes ?? null,
+  };
+}
+
 function localSaveJobs(date, jobs) {
-  try {
-    localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(jobs.map(jobToLocal)));
-  } catch(e) { console.warn('localSaveJobs:', e); }
+  localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(jobs.map(jobToLocal)));
 }
 
 function localGetJobs(date) {
@@ -2297,12 +2330,34 @@ function localGetJobs(date) {
 }
 
 async function cloudPutJobs(date, jobs) {
+  const payload = await PmgJobBackup.prepare(localStorage, date, jobs, currentUser?.name);
   const resp = await fetch(WORKER_URL + '/jobs/' + date, {
     method: 'PUT',
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(jobs),
+    body: JSON.stringify(payload),
   });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const result = await resp.json().catch(() => null);
+  if (!resp.ok || result?.ok !== true) {
+    const message = resp.status === 409
+      ? 'This row changed elsewhere. Your proposed work is retained for an office check.'
+      : 'Job backup was not confirmed. The saved request will be retried.';
+    PmgJobBackup.problem(localStorage, date, payload, message);
+    throw new Error(message);
+  }
+  PmgJobBackup.accept(payload, result, jobs);
+  // Attach receipts only to the identical snapshot, never to a newer edit.
+  const localRows = localGetJobs(date);
+  PmgJobBackup.accept(payload, result, localRows);
+  localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(localRows));
+  if (typeof allJobs !== 'undefined') {
+    for (const job of allJobs) {
+      const snapshot = jobToLocal(job);
+      const saved = jobs.find(row => PmgJobBackup.identity(row) === PmgJobBackup.identity(snapshot) && PmgJobBackup.canonical(PmgJobBackup.clean(row)) === PmgJobBackup.canonical(PmgJobBackup.clean(snapshot)));
+      if (saved) job._backupRevision = saved._backupRevision;
+    }
+  }
+  await PmgJobBackup.finish(localStorage, date, payload);
+  PmgJobBackup.problem(localStorage, date, payload, null);
 }
 
 function driverReviewBackupJobs(jobs) {
@@ -2319,10 +2374,9 @@ function setRetryQueue(q) {
 }
 
 function pruneRetryQueue(q = getRetryQueue()) {
-  const today = todayISO();
-  const fresh = q.filter(entry => entry && entry.date === today && Array.isArray(entry.jobs) && entry.jobs.length);
-  if (fresh.length !== q.length) setRetryQueue(fresh);
-  return fresh;
+  // Retain older/unrecognized entries for office recovery. Only today's valid
+  // rows are eligible for the automatic writer below.
+  return Array.isArray(q) ? q : [];
 }
 
 function localEventKey() {
@@ -2412,7 +2466,7 @@ function setQueueStateIfPending(eventId, state, reason) {
   }
 }
 
-function queueTrialEvent(type, job, payload = {}) {
+function queueTrialEvent(type, job, payload = {}, options = {}) {
   const now = new Date().toISOString();
   const jobId = String(job?.id || job?.jobId || payload.jobId || ('driver-' + Date.now()));
   const event = {
@@ -2441,24 +2495,29 @@ function queueTrialEvent(type, job, payload = {}) {
     jobId,
     jobNumber: event.jobNumber,
     driver: event.driver,
-    state: event.haultechWriteState,
-    reason: payload.reason || (LIVE_WRITE ? 'Ready for live write' : 'Saved locally'),
+    state: event.haultechWriteState === 'written' ? 'pending Haultech' : event.haultechWriteState,
+    reason: payload.reason || (event.haultechWriteState === 'written' ? 'Waiting for worker acknowledgement' : (LIVE_WRITE ? 'Ready for live write' : 'Saved locally')),
     missingPrice: payload.price === '' || payload.price === null || payload.price === undefined,
     updatedAt: now,
   });
   setWritebackQueue(queue);
 
-  persistTrialEventToWorker(event);
+  if (!options.deferPersist) persistTrialEventToWorker(event);
   return event;
 }
 
 async function persistTrialEventToWorker(event) {
+  let acknowledged = false;
   try {
-    await fetch(WORKER_URL + `/ticket/trial-${event.eventId}`, {
+    const response = await fetch(WORKER_URL + `/ticket/trial-${event.eventId}`, {
       method: 'PUT',
       headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
     });
+    if (!response.ok) throw new Error(`Worker audit not accepted (HTTP ${response.status})`);
+    const receipt = await response.json();
+    if (receipt?.ok !== true) throw new Error('Worker audit acknowledgement was not confirmed');
+    acknowledged = true;
     const alreadyWritten = event.haultechWriteState === 'written' || event.state === 'written';
     setQueueStateIfPending(
       event.eventId,
@@ -2469,6 +2528,7 @@ async function persistTrialEventToWorker(event) {
     setQueueState(event.eventId, 'failed', e.message || 'Worker KV failed');
   }
   updateSyncUI();
+  return acknowledged;
 }
 
 function updateJobStatusLocal(job, status) {
@@ -2513,7 +2573,7 @@ function renderQueueSummary(options = {}) {
     : (waiting ? `${waiting} item${waiting === 1 ? '' : 's'} saved and waiting to send` : 'Everything sent');
   const note = options.technical
     ? 'Completed jobs write to Haultech after proof is protected. Local backups remain available for retry.'
-    : 'You can carry on if signal drops. Anything waiting will retry automatically.';
+    : 'Pending day-sheet rows retry when connected. Other unconfirmed items need an office check; keep any unsaved proof open.';
   return `<details class="queue-strip"><summary>${esc(options.technical ? 'Technical sync details' : `Sync details — ${summary}`)}</summary><div style="margin-top:8px">${pills}<div style="margin-top:6px">${esc(note)}</div></div></details>`;
 }
 
@@ -2548,18 +2608,26 @@ async function submitDriverAddedRow(job, date) {
 }
 
 async function flushRetryQueue() {
+  if (flushRetryQueue.running) return;
+  flushRetryQueue.running = true;
+  try {
   const q = pruneRetryQueue();
   if (!q.length) return;
-  const remaining = [];
+  const results = new Map();
   for (const entry of q) {
+    if (!entry || entry.date !== todayISO() || !Array.isArray(entry.jobs) || !entry.jobs.length) continue;
+    const original = JSON.stringify(entry);
+    const originalJobs = JSON.stringify(entry.jobs);
     try {
       let liveWritePending = false;
       for (const job of entry.jobs) {
         if (!job?.movementId || job.haultechWriteState !== 'pending Haultech') continue;
         try {
+          if (['cancelled', 'not-done', 'carry-forward', 'problem', 'needs-office-review'].includes(job.status)) throw new Error('Cancelled or held row needs office review; automatic creation stopped');
           const liveResult = await submitDriverAddedRow(job, entry.date);
           job.haultechJobId = liveResult.jobId || liveResult.ref || job.haultechJobId || '';
           if (job.status === 'complete' && job.haultechJobId) {
+            if (!job.proofReceipt?.protected) throw new Error('Completion proof not verified; office review required');
             const completeResp = await api(`/ht/complete/${job.haultechJobId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
@@ -2574,24 +2642,38 @@ async function flushRetryQueue() {
               }),
             });
             if (!completeResp.ok) throw new Error(await responseError(completeResp, 'Complete retry failed'));
+            await requireWorkerAcknowledgement(completeResp, 'Completion retry');
+            const completionCheck = await verifyHaultechCompletion({ ...job, date: entry.date }, job.haultechJobId);
+            if (!completionCheck.ok) throw new Error('Completion retry not verified: ' + completionCheck.reason);
           }
           job.haultechWriteState = 'written';
-        } catch {
+        } catch (error) {
+          job.haultechWriteError = error.message || 'Retry not confirmed';
           liveWritePending = true;
         }
       }
-      localStorage.setItem('pmg_local_jobs_' + entry.date, JSON.stringify(entry.jobs));
+      // A newer form save/refresh must never be overwritten by an older flush.
+      if (localStorage.getItem('pmg_local_jobs_' + entry.date) === originalJobs) {
+        localStorage.setItem('pmg_local_jobs_' + entry.date, JSON.stringify(entry.jobs));
+      }
       await cloudPutJobs(entry.date, entry.jobs);
-      if (liveWritePending) remaining.push(entry);
+      results.set(original, liveWritePending ? entry : null);
     } catch {
-      remaining.push(entry);
+      results.set(original, entry);
     }
   }
+  const remaining = pruneRetryQueue().flatMap(entry => {
+    const key = JSON.stringify(entry);
+    if (!results.has(key)) return [entry];
+    const result = results.get(key);
+    return result ? [result] : [];
+  });
   setRetryQueue(remaining);
   if (remaining.length === 0 && q.length > 0) {
     toast('✓ Jobs synced to cloud');
   }
   updateSyncUI();
+  } finally { flushRetryQueue.running = false; }
 }
 
 function needsWritebackAttention(item) {
@@ -2601,19 +2683,23 @@ function needsWritebackAttention(item) {
 function updateSyncUI() {
   markDriverFailedWritebacksSavedLocally();
   const backupPending = pruneRetryQueue().length > 0;
+  const olderPending = pruneRetryQueue().some(entry => entry?.date !== todayISO());
   const queue = getWritebackQueue();
   const writebackPending = queue.some(item => item.state === 'pending Haultech');
   const writebackFailed = queue.some(item => item.state === 'failed');
-  const pending = queue.some(needsWritebackAttention);
+  const backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO());
+  const pending = queue.some(needsWritebackAttention) || olderPending || !!backupProblem;
   const banner = $('sync-banner');
   if (pending) {
     banner.classList.remove('hidden');
     document.body.classList.add('has-sync-banner');
     const label = banner.querySelector('span');
     if (label) {
-      label.textContent = writebackFailed
-        ? '⚠️ Something did not send. Your work is saved — tap Retry or tell the office.'
-        : 'Saved on this phone. It will send automatically when the signal returns.';
+      label.textContent = backupProblem || (olderPending
+        ? '⚠️ Earlier work still needs an office check. The saved retry record has been retained.'
+        : (writebackFailed
+            ? '⚠️ Something did not send. Keep any proof open — tap Retry or tell the office.'
+            : 'Some work is waiting for confirmation. Tap Retry or tell the office.'));
     }
   } else {
     banner.classList.add('hidden');
@@ -2643,13 +2729,17 @@ async function saveJobsToCloud(date, jobs) {
   localSaveJobs(date, jobs);
   if (!reviewBackup.length) {
     updateSyncUI();
-    return;
+    return true;
   }
+  if (reviewBackup.some(job => job.haultechWriteState === 'pending Haultech')) addToRetryQueue(date, reviewBackup);
   try {
     await cloudPutJobs(date, reviewBackup);
     updateSyncUI();
+    return true;
   } catch {
     addToRetryQueue(date, reviewBackup);
+    updateSyncUI();
+    return false;
   }
 }
 
@@ -2793,53 +2883,50 @@ function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
   if (changed) setWritebackQueue(updated);
 }
 
-function mergeWithLocal(date, cloudJobs) {
+function mergeWithLocal(date, cloudJobs, options = {}) {
   const localJobs = localGetJobs(date);
   if (!localJobs.length) return cloudJobs;
-
-  const cloudKeys = new Set();
+  const identity = j => String(getHaultechJobId(j) || driverMovementId(j) || j.id || j.jobId || '');
+  const cloudKeys = new Set(cloudJobs.map(identity).filter(Boolean));
   const localByKey = new Map();
-  const cloudDriverMatches = [];
   for (const lj of localJobs) {
-    const k = String(lj.ticketNo || lj.id || '');
-    if (k) localByKey.set(k, lj);
+    const k = identity(lj);
+    if (k) localByKey.set(k, localByKey.has(k) ? null : lj);
   }
-  for (const j of cloudJobs) {
-    const k = j.ticketNo || j.jobNumber || j.id || j.jobId;
-    if (k) cloudKeys.add(String(k));
-    const fp = driverAddedFingerprint(j);
-    if (fp || driverMovementId(j)) cloudDriverMatches.push({ job: j, fp });
-  }
-
+  // Only the unmodified live response may prove a completed writeback.
+  clearMatchedDriverWritebackQueue(localJobs, cloudJobs);
   cloudJobs = cloudJobs.map(j => {
-    const k = String(j.ticketNo || j.jobNumber || j.id || j.jobId || '');
+    const k = identity(j);
     const local = localByKey.get(k);
     const semanticLocal = local || localJobs.find(lj =>
       isLocalDriverTempJob(lj) &&
       sameDriverAddedMovement(lj, j) &&
       findMatchingLiveDriverJob(lj, cloudJobs) === j
     );
-    if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return j;
+    const retained = semanticLocal ? { ...cachedDriverFields(semanticLocal), ...j, _backupRevision: semanticLocal._backupRevision } : j;
+    if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return retained;
     const liveStatus = getJobStatus(j);
-    if (liveStatus === 'complete') return j;
-    return { ...j, status: semanticLocal.status };
+    if (liveStatus === 'complete') return retained;
+    return { ...retained, status: semanticLocal.status };
   });
-  clearMatchedDriverWritebackQueue(localJobs, cloudJobs);
-
   const toAdd = [];
   const toRepush = [];
   for (const lj of localJobs) {
-    const k = String(lj.ticketNo || lj.id || '');
+    const k = identity(lj);
     if (!k || cloudKeys.has(k)) continue;
+    if (!isLocalDriverTempJob(lj) && !options.allowOfficialCached) continue;
     if (isLocalDriverTempJob(lj)) {
       if (findMatchingLiveDriverJob(lj, cloudJobs)) {
         continue;
       }
     }
     toAdd.push({
-      jobId: lj.id, _cached: true, _driverAdded: true,
+      jobId: lj.id, _cached: true, _driverAdded: isLocalDriverTempJob(lj),
       _driver: lj.driver, _customer: lj.customer,
       _material: lj.material, _from: lj.from, _to: lj.to,
+      ...cachedDriverFields(lj),
+      _collectionAddress: getCollectionAddress(lj),
+      _deliveryAddress: getDeliveryAddress(lj),
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _routeOrder: lj.routeOrder, _loadNumber: lj.loadNumber,
@@ -2859,11 +2946,11 @@ function mergeWithLocal(date, cloudJobs) {
       _containment: lj.containment || '',
       savedAt: lj.savedAt,
     });
-    toRepush.push(lj);
+    if (isLocalDriverTempJob(lj)) toRepush.push(lj);
   }
 
   if (toRepush.length) {
-    cloudPutJobs(date, localJobs).catch(() => addToRetryQueue(date, localJobs));
+    cloudPutJobs(date, toRepush).catch(() => addToRetryQueue(date, toRepush));
   }
 
   return [...cloudJobs, ...toAdd];
@@ -2977,7 +3064,7 @@ function showJobDetail(job) {
   currentScreen = 'detail';
   activeJob = job;
   const terminal = isTerminalJobStatus(getJobStatus(job));
-  const canDelete = isDriverAddedJob(job);
+  const canDelete = canDeleteLocalDriverJob(job);
   $('job-detail-screen').classList.remove('hidden');
   $('detail-bottom-bar').style.display = 'flex';
   $('detail-sign-btn').classList.toggle('hidden', terminal);
@@ -3123,6 +3210,26 @@ function logout() {
   currentScreen = 'login';
 }
 
+async function hydrateBackupRevisions(date, jobs) {
+  if (!jobs.length) return jobs;
+  const response = await api('/jobs/' + date);
+  if (!response.ok) return jobs; // No guessed revision or silently rebased work.
+  const rows = await response.json();
+  if (!Array.isArray(rows)) return jobs;
+  const localRows = localGetJobs(date);
+  return jobs.map(job => {
+    const movementId = driverMovementId(job);
+    if (!movementId || localRows.some(row => driverMovementId(row) === movementId)) return job;
+    const matches = rows.filter(row => driverMovementId(row) === movementId && Number.isSafeInteger(row._backupRevision));
+    if (matches.length !== 1) return job;
+    const stored = matches[0], candidate = { ...job, savedAt: stored.savedAt || job.savedAt };
+    // Only an identical freshly read snapshot can acquire its revision. An
+    // existing local proposal never borrows a newer phone's base revision.
+    if (PmgJobBackup.canonical(PmgJobBackup.clean(jobToLocal(candidate))) !== PmgJobBackup.canonical(PmgJobBackup.clean(stored))) return job;
+    return { ...candidate, _backupRevision: stored._backupRevision };
+  });
+}
+
 async function loadJobs(options = {}) {
   if (!options.force && document.hidden) return;
   const date = todayISO();
@@ -3142,7 +3249,8 @@ async function loadJobs(options = {}) {
     }
     const data = await resp.json();
     const now = new Date().toISOString();
-    let jobs = Array.isArray(data) ? data : (data.items || data.data || []);
+    let jobs = Array.isArray(data) ? data : (data?.items || data?.data);
+    if (!Array.isArray(jobs) || jobs.some(j => !j || typeof j !== 'object')) throw new Error('Invalid Haultech diary response');
     // Haultech returns diary jobs in the order arranged inside each load.
     // Keep that source sequence: hidden timestamps are creation/update times,
     // not the driver's planned order of work.
@@ -3151,11 +3259,12 @@ async function loadJobs(options = {}) {
       _haultechOrder: haultechOrder,
       savedAt: j.savedAt || now,
     }));
+    jobs = await hydrateBackupRevisions(date, jobs);
     jobs = mergeWithLocal(date, jobs);
     allJobs = jobs;
     lastJobsUpdatedAt = new Date();
     renderJobs();
-    saveJobsToCloud(date, allJobs); // non-blocking backup
+    saveJobsToCloud(date, allJobs).catch(error => showError('Phone backup failed: ' + error.message));
   } catch (e) {
     console.error('Load jobs error:', e);
     showError('Could not reach Haultech. Showing cached data.');
@@ -3171,6 +3280,9 @@ async function loadJobsFallback(date) {
       jobId: j.id, _cached: true, _driver: j.driver, _customer: j.customer,
       _addedBy: j.addedBy || j.createdBy || j.driver || '',
       _material: j.material, _from: j.from, _to: j.to,
+      ...cachedDriverFields(j),
+      _collectionAddress: getCollectionAddress(j),
+      _deliveryAddress: getDeliveryAddress(j),
       _vehicle: j.vehicle,
       _quantity: j.quantity, _price: j.price, _status: j.status,
       _concreteType: j.concreteType || j._concreteType || '',
@@ -3199,6 +3311,9 @@ async function loadJobsFallback(date) {
           _driver: lj.driver, _customer: lj.customer,
           _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
           _material: lj.material, _from: lj.from, _to: lj.to,
+          ...cachedDriverFields(lj),
+      _collectionAddress: getCollectionAddress(lj),
+          _deliveryAddress: getDeliveryAddress(lj),
           _vehicle: lj.vehicle,
           _quantity: lj.quantity, _price: lj.price, _status: lj.status,
           _unit: lj.unit,
@@ -3222,17 +3337,20 @@ async function loadJobsFallback(date) {
         if (key) existingKeys.add(key);
       }
     } catch {}
-    jobs = mergeWithLocal(date, jobs);
+    jobs = mergeWithLocal(date, jobs, { allowOfficialCached: true });
     allJobs = jobs;
     renderJobs();
   } catch {
     // Last resort — pure localStorage
     const localJobs = localGetJobs(date);
     allJobs = localJobs.map(lj => ({
-      jobId: lj.id, _cached: true, _driverAdded: true,
+      jobId: lj.id, _cached: true, _driverAdded: isLocalDriverTempJob(lj),
       _driver: lj.driver, _customer: lj.customer,
       _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
       _material: lj.material, _from: lj.from, _to: lj.to,
+      ...cachedDriverFields(lj),
+      _collectionAddress: getCollectionAddress(lj),
+      _deliveryAddress: getDeliveryAddress(lj),
       _vehicle: lj.vehicle,
       _quantity: lj.quantity, _price: lj.price, _status: lj.status,
       _paymentStatus: lj.paymentStatus || lj.a1PaymentStatus || '',
@@ -3250,12 +3368,10 @@ async function loadJobsFallback(date) {
 
 function getJobDriver(job) {
   if (job._cached) return job._driver || getJobAddedBy(job) || '';
-  const addedBy = getJobAddedBy(job);
-  if (addedBy) return addedBy;
   const did = job.deliveryDriverId || job.collectionDriverId;
   if (did && DRIVER_IDS[did]) return DRIVER_IDS[did];
   const alloc = (job.allocations || [])[0];
-  return alloc?.driverName || alloc?.driver || job.driverName || job.driver || '';
+  return alloc?.driverName || alloc?.driver || job.driverName || job.driver || getJobAddedBy(job) || '';
 }
 
 function getJobDriverId(job) {
@@ -3549,6 +3665,8 @@ function rawHaultechJobLooksDone(job) {
 }
 
 function sameHaultechJob(a, b, consId) {
+  const targetId = getHaultechJobId(b) || (isGuidId(consId) ? consId : null);
+  if (targetId) return String(getHaultechJobId(a) || '').toLowerCase() === targetId.toLowerCase();
   const aIds = [a?.id, a?._id, getJobConsignment(a)?.id, a?.jobId, a?.jobNumber].filter(Boolean).map(String);
   const bIds = [b?.id, b?._id, getJobConsignment(b)?.id, b?.jobId, b?.jobNumber].filter(Boolean).map(String);
   if (consId && aIds.includes(String(consId))) return true;
@@ -3557,7 +3675,7 @@ function sameHaultechJob(a, b, consId) {
 
 async function verifyHaultechCompletion(job, consId) {
   try {
-    const resp = await api(`/ht/jobs?date=${todayISO()}&raw=true`);
+    const resp = await api(`/ht/jobs?date=${getHaultechJobDate(job)}&raw=true`);
     if (!resp.ok) throw new Error(await responseError(resp, 'Raw Haultech check failed'));
     const payload = await resp.json();
     const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || []);
@@ -3603,28 +3721,36 @@ function getJobRef(job) {
   return job.customerReference || '';
 }
 
+function jobAddressParts(address) {
+  return ['line1', 'line2', 'line3', 'line4', 'line5', 'postcode']
+    .map(key => String(address?.[key] ?? '').trim()).filter(Boolean);
+}
+
+function getJobAddress(job, mode) {
+  const leg = mode === 'collection' ? 'collection' : 'delivery';
+  const c = job ? getJobConsignment(job) : null;
+  const saved = job?.[`_${leg}Address`] || job?.[`${leg}Address`];
+  const stored = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+  // Live consignment fields remain authoritative. Cached/driver-added rows
+  // retain the structured address, including existing place metadata.
+  const address = c ? {} : { ...stored };
+  for (let line = 1; line <= 5; line++) {
+    address[`line${line}`] = String((c ? c[`${leg}AddressLine${line}`] : stored[`line${line}`]) ?? '').trim();
+  }
+  address.postcode = String((c ? c[`${leg}Postcode`] : stored.postcode) ?? '').trim();
+  if (!c && !jobAddressParts(address).length) {
+    const fallback = leg === 'collection' ? (job?._from || job?.from) : (job?._to || job?.to);
+    address.line1 = String(stored.formattedAddress || fallback || '').trim();
+  }
+  return address;
+}
+
 function getDeliveryAddress(job) {
-  if (job._cached) return { line1: job._to || '', line3: '', line4: '', postcode: '' };
-  const c = getJobConsignment(job);
-  if (!c) return { line1: '', line3: '', line4: '', postcode: '' };
-  return {
-    line1: c.deliveryAddressLine1 || '',
-    line3: c.deliveryAddressLine3 || '',
-    line4: c.deliveryAddressLine4 || '',
-    postcode: c.deliveryPostcode || '',
-  };
+  return getJobAddress(job, 'delivery');
 }
 
 function getCollectionAddress(job) {
-  if (job._cached) return { line1: job._from || '', line3: '', line4: '', postcode: '' };
-  const c = getJobConsignment(job);
-  if (!c) return { line1: '', line3: '', line4: '', postcode: '' };
-  return {
-    line1: c.collectionAddressLine1 || '',
-    line3: c.collectionAddressLine3 || '',
-    line4: c.collectionAddressLine4 || '',
-    postcode: c.collectionPostcode || '',
-  };
+  return getJobAddress(job, 'collection');
 }
 
 function getJobContact(job) {
@@ -3657,9 +3783,7 @@ function getDeliveryWindow(job) {
 
 function jobMapQuery(job, mode = 'delivery') {
   const addr = mode === 'collection' ? getCollectionAddress(job) : getDeliveryAddress(job);
-  const parts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
-  if (parts.length) return parts.join(', ');
-  return mode === 'collection' ? getJobFrom(job) : getJobTo(job);
+  return jobAddressParts(addr).join(', ');
 }
 
 function mapUrlForQuery(query, provider = 'apple') {
@@ -3669,6 +3793,7 @@ function mapUrlForQuery(query, provider = 'apple') {
 }
 
 function mapChoiceLinks(query, mode = 'delivery') {
+  query = String(query || '').trim();
   if (!query) return '';
   return `
     <div class="map-panel-actions">
@@ -3713,8 +3838,6 @@ function getDriverJobs(driverId, driverName) {
   const lname = driverName.toLowerCase();
   return allJobs.filter(j => {
     if (j._cached) return (j._driver || getJobAddedBy(j) || '').toLowerCase() === lname;
-    const addedBy = getJobAddedBy(j);
-    if (addedBy && sameDriverName(addedBy, driverName)) return true;
     const jDriverId = getJobDriverId(j);
     if (jDriverId) return jDriverId === driverId;
     const jDriverName = getJobDriver(j);
@@ -3784,7 +3907,7 @@ function renderDriverView(container) {
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} — jobs connected to the office</strong><br>
       ${LIVE_WRITE
-        ? 'Your jobs, proof and day-sheet rows send back automatically. If the signal drops, the app keeps what you have entered so you can continue when it returns.'
+        ? 'Saved day-sheet rows are retained on this phone. Keep any unsent photo or signature form open. Pending rows retry when connected; other unconfirmed work needs an office check.'
         : 'Your jobs are visible and anything you enter is saved safely for the office.'}
     </div>` : '';
   const summary = `
@@ -3888,37 +4011,37 @@ async function handleDayReviewAction(job, action) {
   const ok = window.confirm('Cancel this job? Only press Yes if it was not done today.');
   if (!ok) return;
 
-  const status = 'cancelled';
   const reason = 'Cancelled by driver - not done today';
-  const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
-  const haultechNote = composeDriverHaultechNote({ reason });
-  const event = queueTrialEvent('day_review_cancelled', job, {
-    status,
-    reason,
-    state: 'saved locally',
-    haultechWriteState: 'saved locally',
-  });
-
-  updateJobStatusLocal(job, status);
-  localSaveJobs(todayISO(), allJobs);
-  try {
-    if (haultechNote) await writeHaultechDriverNoteForJob(job, haultechNote);
-  } catch (e) {
-    setQueueState(event.eventId, 'failed', e.message || 'Haultech note write failed; local day review still saved on this phone');
-  }
-  try {
-    await api(`/job-status/${storageKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, reason, driver: currentUser.name, date: todayISO() }),
-    });
-    setQueueState(event.eventId, 'saved locally', `${reason}; not completed in Haultech`);
-  } catch (e) {
-    setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local day review still saved on this phone');
-  }
-  await saveJobsToCloud(todayISO(), allJobs);
-  toast('Job cancelled');
+  const confirmed = await cancelDriverJob(job, { reason, type: 'day_review_cancelled' });
+  toast(confirmed ? 'Job cancelled' : 'Cancellation needs attention — keep any proof open and tell the office');
   renderJobs();
+}
+
+async function cancelDriverJob(job, { reason, note = '', photo = null, type = 'job_cancelled' }) {
+  job._cancellationPending = true;
+  const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
+  const event = queueTrialEvent(type, job, { status: 'cancelled', reason, note, hasPhoto: !!photo,
+    state: 'pending Haultech', haultechWriteState: 'pending Haultech' }, { deferPersist: true });
+  try {
+    updateJobStatusLocal(job, 'cancelled');
+    localSaveJobs(todayISO(), allJobs);
+    if (!await persistTrialEventToWorker(event)) throw new Error('Cancellation audit not confirmed');
+    if (photo) await saveWorkerProofAsset(`problem-${event.eventId}`, await photo.arrayBuffer(), photo.type || 'image/jpeg');
+    const haultechNote = composeDriverHaultechNote({ reason, note });
+    if (haultechNote) await writeHaultechDriverNoteForJob(job, haultechNote);
+    const response = await api(`/job-status/${storageKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled', reason, note, movementId: driverMovementId(job), driver: currentUser.name, date: todayISO() }),
+    });
+    await requireWorkerAcknowledgement(response, 'Cancellation status');
+    if (await saveJobsToCloud(todayISO(), allJobs) === false) throw new Error('Cancellation status saved; the changed backup still needs an office check');
+    setQueueState(event.eventId, 'saved locally', `${reason}; PMG status saved, not completed in Haultech`);
+    job._cancellationPending = false;
+    return true;
+  } catch (error) {
+    setQueueState(event.eventId, 'failed', error.message || 'Cancellation sync not confirmed');
+    return false;
+  }
 }
 
 function getFinishedDayVehicle(jobs) {
@@ -3953,7 +4076,7 @@ function saveFinishedForDay(jobs) {
     haultechWriteState: 'written',
     reason: 'Driver finished for the day; all jobs reviewed',
   });
-  setQueueState(event.eventId, 'written', 'Driver finished for the day; all jobs reviewed');
+  // queueTrialEvent confirms the worker audit before marking this written.
   dayReviewOpen = false;
   updateSyncUI();
   toast('✓ Finished for the day saved');
@@ -4058,8 +4181,8 @@ function writeCachedTorqueTasks(vehicle, tasks) {
 function currentTorqueTasks() {
   const vehicle = normaliseVehicleRef(getSelectedDriverVehicle());
   if (!vehicle) return [];
-  if (normaliseVehicleRef(torqueCheckState.vehicle) !== vehicle) return [];
-  if (torqueCheckState.loading || torqueCheckState.error) return [];
+  if (normaliseVehicleRef(torqueCheckState.vehicle) !== vehicle) return readCachedTorqueTasks(vehicle);
+  if (torqueCheckState.loading || torqueCheckState.error) return readCachedTorqueTasks(vehicle);
   return safeList(torqueCheckState.tasks);
 }
 
@@ -4095,14 +4218,14 @@ function renderTorqueGateStatus(record = getLocalWalkaroundRecord()) {
     return `
       <div class="torque-gate required">
         <div class="torque-gate-title">Wheel torque check due</div>
-        <div class="torque-gate-detail">Confirm wheel torque before moving this wagon. Required amount: ${esc(amount)}.</div>
+        <div class="torque-gate-detail">Confirm wheel torque before moving this wagon. Required amount: ${esc(amount)}.${stateMatches && torqueCheckState.error ? ' Current verification unavailable; reconnect or ask the office.' : ''}</div>
       </div>`;
   }
   if (stateMatches && torqueCheckState.loading) {
-    return '';
+    return '<div class="torque-gate required">Checking current wheel torque requirements…</div>';
   }
   if (stateMatches && torqueCheckState.error) {
-    return '';
+    return '<div class="torque-gate required">Wheel torque verification unavailable. Known checks remain due; reconnect or ask the office before starting.</div>';
   }
   return '';
 }
@@ -4117,21 +4240,24 @@ function ensureTorqueChecksForSelectedVehicle(options = {}) {
   const now = Date.now();
   const sameVehicle = normaliseVehicleRef(torqueCheckState.vehicle) === vehicleRef;
   if (!options.force && sameVehicle && (torqueCheckState.loading || (now - torqueCheckState.loadedAt < TORQUE_REFRESH_MS))) return;
-  torqueCheckState = { vehicle: vehicleRef, loading: true, error: '', tasks: [], checkedAt: torqueCheckState.checkedAt || '', loadedAt: torqueCheckState.loadedAt || 0 };
+  const requestState = { vehicle: vehicleRef, loading: true, error: '', tasks: readCachedTorqueTasks(vehicleRef), checkedAt: torqueCheckState.checkedAt || '', loadedAt: torqueCheckState.loadedAt || 0 };
+  torqueCheckState = requestState;
   fleetApi(`/api/driver-torque?vehicle=${encodeURIComponent(vehicleRef)}`)
     .then(async resp => {
       if (!resp.ok) throw new Error(await responseError(resp, `torque check HTTP ${resp.status}`));
       return resp.json();
     })
     .then(data => {
-      const tasks = safeList(data.openTasks);
+      if (!data || !Array.isArray(data.openTasks)) throw new Error('Invalid torque verification response');
+      if (torqueCheckState !== requestState) return;
+      const tasks = data.openTasks;
       torqueCheckState = { vehicle: vehicleRef, loading: false, error: '', tasks, checkedAt: data.checkedAt || new Date().toISOString(), loadedAt: Date.now() };
       writeCachedTorqueTasks(vehicleRef, tasks);
       if (currentScreen === 'jobs') renderJobs();
     })
     .catch(err => {
-      torqueCheckState = { vehicle: vehicleRef, loading: false, error: err.message || 'Torque check failed', tasks: [], checkedAt: '', loadedAt: Date.now() };
-      writeCachedTorqueTasks(vehicleRef, []);
+      if (torqueCheckState !== requestState) return;
+      torqueCheckState = { vehicle: vehicleRef, loading: false, error: err.message || 'Torque check failed', tasks: readCachedTorqueTasks(vehicleRef), checkedAt: '', loadedAt: Date.now() };
       if (currentScreen === 'jobs') renderJobs();
     });
 }
@@ -4144,6 +4270,8 @@ function selectedWalkaroundLabel() {
 
 function hasSelectedWalkaroundComplete() {
   const record = getLocalWalkaroundRecord();
+  const vehicle = normaliseVehicleRef(getSelectedDriverVehicle());
+  if (normaliseVehicleRef(torqueCheckState.vehicle) !== vehicle || torqueCheckState.loading || torqueCheckState.error || !torqueCheckState.loadedAt) return false;
   return !!record && pendingTorqueTasksForSelectedVehicle(record).length === 0;
 }
 
@@ -4165,6 +4293,11 @@ function requireWalkaroundBeforeDriverAction(actionLabel = 'driving') {
   const pendingTorque = pendingTorqueTasksForSelectedVehicle();
   const done = hasSelectedWalkaroundComplete();
   if (vehicle && done) return true;
+  if (vehicle && (torqueCheckState.loading || torqueCheckState.error)) {
+    toast(torqueCheckState.loading ? 'Checking current wheel torque requirements — please wait' : 'Wheel torque verification unavailable — reconnect or ask the office');
+    focusWalkaroundGate();
+    return false;
+  }
   toast(pendingTorque.length
     ? `Confirm wheel torque ${pendingTorque[0].torqueNm || DEFAULT_WHEEL_TORQUE_NM} Nm before ${actionLabel}`
     : (vehicle ? `Complete walkaround for ${vehicle} before ${actionLabel}` : 'Select truck / wagon and complete walkaround first'));
@@ -4198,28 +4331,38 @@ async function saveWalkaroundTicketRecord(record) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(record),
   });
-  if (!resp.ok) throw new Error(await responseError(resp, `walkaround ticket HTTP ${resp.status}`));
+  await requireWorkerAcknowledgement(resp, 'Walkaround ticket');
   return true;
 }
 
 async function flushWalkaroundTicketQueue(options = {}) {
+  if (flushWalkaroundTicketQueue.running) return;
+  flushWalkaroundTicketQueue.running = true;
+  try {
   const queue = getPendingWalkaroundTickets();
   if (!queue.length) return;
-  const remaining = [];
+  const results = new Map();
   let synced = 0;
   for (const queued of queue) {
     const record = { ...queued, syncState: 'saved_to_worker', syncError: '', retriedAt: new Date().toISOString() };
     try {
       await saveWalkaroundTicketRecord(record);
-      setLocalWalkaroundRecord(record);
+      const current = readJSON(walkaroundStorageKeyFor(record), null);
+      if (!current || current.recordId === record.recordId) setLocalWalkaroundRecord(record);
+      results.set(JSON.stringify(queued), null);
       synced += 1;
     } catch (err) {
-      remaining.push({ ...queued, syncError: err.message || 'Ticket retry failed' });
+      results.set(JSON.stringify(queued), { ...queued, syncError: err.message || 'Ticket retry failed' });
     }
   }
-  setPendingWalkaroundTickets(remaining);
+  setPendingWalkaroundTickets(getPendingWalkaroundTickets().flatMap(item => {
+    const key = JSON.stringify(item);
+    if (!results.has(key)) return [item];
+    return results.get(key) ? [results.get(key)] : [];
+  }));
   if (synced && !options.silent) toast(`Walkaround office sync updated`);
   if (synced && currentScreen === 'jobs') renderJobs();
+  } finally { flushWalkaroundTicketQueue.running = false; }
 }
 
 function requiredWalkaroundPhotoSlots() {
@@ -4944,7 +5087,7 @@ async function uploadWalkaroundAsset(recordId, kind, blob) {
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': blob.type || 'application/octet-stream' },
     body: blob,
   });
-  if (!resp.ok) throw new Error(await responseError(resp, `${kind} upload HTTP ${resp.status}`));
+  await requireWorkerAcknowledgement(resp, `${kind} upload`);
   return { kind, assetId, url: `${WORKER_URL}/photos/${assetId}` };
 }
 
@@ -5326,7 +5469,7 @@ function renderDeliveryTab(container, job) {
   const notes = getJobNotes(job);
   const terminal = isTerminalJobStatus(getJobStatus(job));
 
-  const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+  const addrParts = jobAddressParts(addr);
   const mapQuery = addrParts.join(', ');
 
   container.innerHTML = `
@@ -5422,7 +5565,7 @@ function renderCollectionTab(container, job) {
   const weight = getJobWeight(job);
   const terminal = isTerminalJobStatus(getJobStatus(job));
 
-  const addrParts = [addr.line1, addr.line3, addr.line4, addr.postcode].filter(Boolean);
+  const addrParts = jobAddressParts(addr);
   const mapQuery = addrParts.join(', ');
 
   container.innerHTML = `
@@ -5521,10 +5664,17 @@ $('detail-sign-btn').addEventListener('click', () => {
   if (activeJob && !isTerminalJobStatus(getJobStatus(activeJob))) showSignScreen(activeJob);
 });
 
+function canDeleteLocalDriverJob(job) {
+  // Live or pending rows may already exist centrally; local deletion would
+  // hide them without cancelling the retained retry or the real job.
+  return !!job && !LIVE_WRITE && isDriverAddedJob(job) && !getHaultechJobId(job)
+    && !['pending Haultech', 'written'].includes(job.haultechWriteState || job._haultechWriteState);
+}
+
 $('detail-delete-btn').addEventListener('click', async () => {
   if (!activeJob) return;
-  if (!isDriverAddedJob(activeJob)) {
-    toast('Only driver-added rows can be deleted');
+  if (!canDeleteLocalDriverJob(activeJob)) {
+    toast('Use Cancel or ask the office to remove a live or pending row');
     return;
   }
   const jobNum = getJobNumber(activeJob);
@@ -5540,11 +5690,11 @@ $('detail-delete-btn').addEventListener('click', async () => {
     // Driver app deletes are local-only. Live Haultech deletions stay an office
     // action so a driver cannot remove a real job by mistake.
     // Remove from local list
-    allJobs = allJobs.filter(j => (j.id || j.jobId || '') !== (activeJob.id || activeJob.jobId || ''));
     // Remove from local storage
     const date = todayISO();
     const localJobs = localGetJobs(date).filter(j => j.id !== jobId);
     localSaveJobs(date, localJobs);
+    allJobs = allJobs.filter(j => (j.id || j.jobId || '') !== (activeJob.id || activeJob.jobId || ''));
     toast('✅ Ticket deleted');
     showJobList();
   } catch(e) {
@@ -5701,6 +5851,46 @@ async function responseError(resp, fallback) {
   }
 }
 
+async function requireWorkerAcknowledgement(response, label) {
+  if (!response.ok) throw new Error(`${label} HTTP ${response.status}`);
+  const receipt = await response.json();
+  if (receipt?.ok !== true) throw new Error(`${label} acknowledgement not confirmed`);
+  return receipt;
+}
+
+async function saveWorkerProofAsset(assetId, body, contentType = 'application/octet-stream') {
+  const response = await fetch(WORKER_URL + `/photos/${assetId}`, {
+    method: 'PUT', headers: { 'X-PMG-Key': API_KEY, 'Content-Type': contentType }, body,
+  });
+  await requireWorkerAcknowledgement(response, 'Proof upload');
+  return { assetId, protected: true };
+}
+
+async function saveProofMetadata(storageKey, metadata) {
+  const response = await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
+    method: 'PUT', headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(metadata),
+  });
+  const receipt = await requireWorkerAcknowledgement(response, 'Proof details');
+  if (metadata.eventId && (receipt.proofReceipt?.protected !== true || receipt.proofReceipt.eventId !== metadata.eventId
+    || receipt.proofReceipt.jobId !== metadata.jobId || receipt.proofReceipt.date !== metadata.date)) throw new Error('Protected proof receipt not confirmed');
+  return receipt.proofReceipt || null;
+}
+
+async function saveAddedJobProof(movementId, signatureData, photo) {
+  const assets = [];
+  if (signatureData) {
+    const body = await (await fetch(signatureData)).arrayBuffer();
+    assets.push(await saveWorkerProofAsset(`add-sig-${movementId}`, body, 'image/png'));
+  }
+  if (photo) assets.push(await saveWorkerProofAsset(`add-photo-${movementId}`, await photo.arrayBuffer(), photo.type || 'image/jpeg'));
+  if (!assets.length) return null;
+  const receipt = { protected: true, purpose: 'driver_added_attachment', assets };
+  await saveProofMetadata(`add-${movementId}`, { jobId: movementId, driver: currentUser.name, ...receipt,
+    hasPhoto: !!photo, hasSignature: !!signatureData, timestamp: new Date().toISOString() });
+  return receipt;
+}
+
 async function writeHaultechDriverNoteForJob(job, driverNotes) {
   const haultechJobId = getHaultechJobId(job);
   if (!LIVE_WRITE || !haultechJobId || job?._cached || isDriverAddedJob(job)) {
@@ -5716,17 +5906,31 @@ async function writeHaultechDriverNoteForJob(job, driverNotes) {
     }),
   });
   if (!resp.ok) throw new Error(await responseError(resp, 'Driver note write failed'));
-  return resp.json().catch(() => ({ ok: true }));
+  const receipt = await resp.json();
+  if (receipt?.ok !== true) throw new Error('Driver note acknowledgement not confirmed');
+  return receipt;
 }
 
-async function uploadProofAsset(consId, storageKey, kind, contentType, body) {
+async function uploadProofAsset(consId, storageKey, kind, contentType, body, eventId) {
   const result = {
     kind,
     attemptedHaultech: true,
     haultechUploaded: false,
+    haultechSubmitted: false,
     fallbackSaved: false,
     error: '',
+    assetId: `proof-${eventId}-${kind}`,
   };
+  // The upstream MPOD success body has no established custody contract.
+  // Protect every supplied asset in PMG before attempting the optional copy.
+  try {
+    if (!eventId) throw new Error('Missing proof event identity');
+    await saveWorkerProofAsset(result.assetId, body, contentType);
+    result.fallbackSaved = true;
+  } catch (error) {
+    result.error = `PMG proof not protected: ${error.message || error}`;
+    return result;
+  }
   try {
     const resp = await api(`/ht/mpod/${consId}`, {
       method: 'POST',
@@ -5734,32 +5938,19 @@ async function uploadProofAsset(consId, storageKey, kind, contentType, body) {
       body,
     });
     if (!resp.ok) throw new Error(await responseError(resp, `${kind} upload HTTP ${resp.status}`));
-    result.haultechUploaded = true;
-    return result;
+    result.haultechSubmitted = true;
+    result.error = 'Haultech upload submitted; custody unverified';
   } catch (e) {
     result.error = e.message || `${kind} upload failed`;
   }
 
-  try {
-    const prefix = kind === 'signature' ? 'sig' : 'pod';
-    const fallbackResp = await fetch(WORKER_URL + `/photos/${prefix}-${storageKey}-${Date.now()}`, {
-      method: 'PUT',
-      headers: { 'X-PMG-Key': API_KEY },
-      body,
-    });
-    if (!fallbackResp.ok) throw new Error(await responseError(fallbackResp, `${kind} fallback HTTP ${fallbackResp.status}`));
-    result.fallbackSaved = true;
-  } catch (fallbackError) {
-    result.error = `${result.error}; fallback failed: ${fallbackError.message || fallbackError}`;
-  }
   return result;
 }
 
 function summarizeProofResults(results) {
   if (!results.length) return 'No photo/signature supplied; Haultech complete only';
   return results.map(r => {
-    if (r.haultechUploaded) return `${r.kind}: uploaded to Haultech`;
-    if (r.fallbackSaved) return `${r.kind}: Haultech upload failed, saved to office queue (${r.error})`;
+    if (r.fallbackSaved) return `${r.kind}: protected in PMG; ${r.haultechSubmitted ? 'Haultech copy submitted but unverified' : 'Haultech copy not confirmed'}`;
     return `${r.kind}: Haultech upload failed and fallback failed (${r.error})`;
   }).join('; ');
 }
@@ -5880,7 +6071,9 @@ async function handleSignComplete() {
       pourMinutes,
       state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
       haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
-    });
+    }, { deferPersist: true });
+    if (!signPhotoFile && !sigData) throw new Error('Add a photo or signature before completing');
+    if (!await persistTrialEventToWorker(proofEvent)) throw new Error('Proof audit not confirmed — keep this form open and retry');
 
     if (LIVE_WRITE && !isDriverAdded) {
       const proofResults = [];
@@ -5894,17 +6087,17 @@ async function handleSignComplete() {
       // for this tenant, so worker KV fallback is treated as protected proof.
       if (signPhotoFile) {
         const photoData = await signPhotoFile.arrayBuffer();
-        proofResults.push(await uploadProofAsset(consId, storageKey, 'photo', signPhotoFile.type || 'image/jpeg', photoData));
+        proofResults.push(await uploadProofAsset(consId, storageKey, 'photo', signPhotoFile.type || 'image/jpeg', photoData, proofEvent.eventId));
       }
 
       if (sigData) {
         const sigBlob = await (await fetch(sigData)).arrayBuffer();
-        proofResults.push(await uploadProofAsset(consId, storageKey, 'signature', 'image/png', sigBlob));
+        proofResults.push(await uploadProofAsset(consId, storageKey, 'signature', 'image/png', sigBlob, proofEvent.eventId));
       }
 
       const proofSummary = summarizeProofResults(proofResults);
       const missingHaultechProof = proofResults.filter(r => !r.haultechUploaded);
-      const failedFallbacks = proofResults.filter(r => !r.haultechUploaded && !r.fallbackSaved);
+      const failedFallbacks = proofResults.filter(r => !r.fallbackSaved);
       if (failedFallbacks.length) {
         setQueueState(
           proofEvent.eventId,
@@ -5917,6 +6110,14 @@ async function handleSignComplete() {
 
       // Complete in Haultech only after supplied proof has been protected either
       // in Haultech or in the PMG worker fallback store.
+      await saveProofMetadata(storageKey, {
+        jobId: proofEvent.jobId, haultechJobId, consignmentId: consId, eventId: proofEvent.eventId, date: proofEvent.date,
+        podCode: 'success', podCodeId: POD_CODES.success,
+        consigneeName: consignee, driverNotes: notes, notes: mergedNotes,
+        weight: parseFloat(weight) || 0, wtn, wasteTransferNote: wtn,
+        hasSignature: !!sigData, hasPhoto: !!signPhotoFile, proofAssets: proofResults,
+        concreteType, pourMinutes, driver: currentUser.name, timestamp: new Date().toISOString(),
+      });
       const completeResp = await api(`/ht/complete/${haultechJobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -5937,79 +6138,47 @@ async function handleSignComplete() {
       }
       const completionPricing=await completeResp.clone().json().catch(()=>({}));
       const completionCheck = await verifyHaultechCompletion(haultechCompleteJob, haultechJobId);
-
-      // Save POD metadata
-      try {
-        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
-          method: 'PUT',
-          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            consignmentId: consId, podCode: 'success', podCodeId: POD_CODES.success,
-            consigneeName: consignee, driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
-            wtn, wasteTransferNote: wtn,
-            hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
-            concreteType,
-      pourMinutes,
-            driver: currentUser.name, timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch {}
+      if (!completionCheck.ok) throw new Error('Completion was submitted but not verified in Haultech. Proof is protected; office check required. ' + completionCheck.reason);
 
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
       if (matchedLiveJob) updateJobStatusLocal(matchedLiveJob, 'complete');
       await saveJobsToCloud(todayISO(), allJobs);
-      const proofState = completionCheck.ok && !missingHaultechProof.length ? 'written' : 'saved locally';
+      const proofState = 'written';
       const proofMessage = completionCheck.ok
         ? (missingHaultechProof.length
-            ? `Haultech complete verified; proof saved in PMG fallback: ${proofSummary}`
+            ? `Haultech complete verified; proof protected in PMG: ${proofSummary}`
             : `Haultech complete verified; ${proofSummary}`)
         : `Haultech complete call returned OK but raw diary check did not verify received/completed: ${completionCheck.reason}. ${proofSummary}`;
       setQueueState(proofEvent.eventId, proofState, proofMessage);
       if(completionPricing.pricingReviewRequired) toast('Completed — pour charge needs office review');
       else toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved' : '✓ Completed — Haultech verified') : '✓ Completed — sync check pending');
     } else {
-      // Trial mode, driver-added, or cached job: safe local + worker KV only.
+      // Unmapped/local rows still need protected proof and acknowledged status.
+      // Do not dismiss the form or destroy its only photo on an upload failure.
+      const proofAssets = [];
       if (sigData) {
-        try {
-          const sigBlob = await (await fetch(sigData)).arrayBuffer();
-          await fetch(WORKER_URL + `/photos/sig-${storageKey}-${Date.now()}`, {
-            method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: sigBlob,
-          });
-        } catch {}
+        const sigBlob = await (await fetch(sigData)).arrayBuffer();
+        proofAssets.push({ kind: 'signature', ...await saveWorkerProofAsset(`proof-${proofEvent.eventId}-signature`, sigBlob, 'image/png') });
       }
       if (signPhotoFile) {
-        try {
-          const photoData = await signPhotoFile.arrayBuffer();
-          await fetch(WORKER_URL + `/photos/pod-${storageKey}-${Date.now()}`, {
-            method: 'PUT', headers: { 'X-PMG-Key': API_KEY }, body: photoData,
-          });
-        } catch {}
+        const photoData = await signPhotoFile.arrayBuffer();
+        proofAssets.push({ kind: 'photo', ...await saveWorkerProofAsset(`proof-${proofEvent.eventId}-photo`, photoData, signPhotoFile.type || 'image/jpeg') });
       }
-      try {
-        await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
-          method: 'PUT',
-          headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId: storageKey, podCode: 'success', consigneeName: consignee,
-            driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
-            wtn, wasteTransferNote: wtn,
-            hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
-            concreteType,
-      pourMinutes,
-            driver: currentUser.name, timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch {}
-
-      try {
-        await api(`/job-status/${storageKey}`, {
+      const protectedReceipt = await saveProofMetadata(storageKey, {
+        jobId: proofEvent.jobId, eventId: proofEvent.eventId, date: proofEvent.date, podCode: 'success', consigneeName: consignee,
+        driverNotes: notes, notes: mergedNotes, weight: parseFloat(weight) || 0,
+        wtn, wasteTransferNote: wtn, hasSignature: !!sigData, hasPhoto: !!signPhotoFile,
+        proofAssets, concreteType, pourMinutes, driver: currentUser.name, timestamp: new Date().toISOString(),
+      });
+      const statusResponse = await api(`/job-status/${storageKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'complete', driver: currentUser.name, date: todayISO() }),
-        });
-      } catch {}
+      });
+      await requireWorkerAcknowledgement(statusResponse, 'Completion status');
+      job.proofReceipt = protectedReceipt;
 
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
@@ -6052,23 +6221,31 @@ async function departJob(job, btn) {
     localSaveJobs(todayISO(), allJobs);
     const event = queueTrialEvent('started', job, {
       status: 'started',
-      state: 'written',
-      haultechWriteState: 'written',
+      state: 'pending Haultech',
+      haultechWriteState: 'pending Haultech',
       localOnly: true,
       haultechWrite: false,
-    });
+    }, { deferPersist: true });
+    let workerConfirmed = false;
     try {
-      await api(`/job-status/${storageKey}`, {
+      // Keep one original event identity. Confirm its audit before the status
+      // write so success in one channel cannot hide failure in the other.
+      if (!await persistTrialEventToWorker(event)) throw new Error('Start saved on this phone; worker audit was not confirmed');
+      const response = await api(`/job-status/${storageKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'started', driver: currentUser.name, date: todayISO() }),
       });
+      if (!response.ok) throw new Error(`Worker status not accepted (HTTP ${response.status})`);
+      const receipt = await response.json();
+      if (receipt?.ok !== true) throw new Error('Worker status acknowledgement was not confirmed');
+      workerConfirmed = true;
       setQueueState(event.eventId, 'written', 'Started status saved locally and in PMG worker; no Haultech write');
     } catch (e) {
       setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local status is still saved on this phone');
     }
     if (currentScreen === 'jobs') renderJobs();
-    toast('In Transit saved');
+    toast(workerConfirmed ? 'In Transit saved' : 'In Transit saved on this phone — worker sync needs attention');
   } catch (e) {
     toast('Error: ' + (e.message || 'Start failed'));
   } finally {
@@ -6144,7 +6321,7 @@ function clearSelectedAddress(key) {
 
 function selectStructuredAddress(key, address) {
   const value = address?.formattedAddress || [
-    address?.line1, address?.line2, address?.line3, address?.line4, address?.postcode,
+    address?.line1, address?.line2, address?.line3, address?.line4, address?.line5, address?.postcode,
   ].filter(Boolean).join(', ');
   selectedAddresses[key] = { ...address };
   $(`f-${key}`).value = value;
@@ -6550,7 +6727,10 @@ async function loadCustomers(options = {}) {
   if (customers.length && !options.force) return;
   try {
     const resp = await api(`/customers?t=${Date.now()}`);
-    if (resp.ok) customers = await resp.json();
+    if (resp.ok) {
+      const next = await resp.json();
+      if (Array.isArray(next) && next.every(c => c && typeof c.id === 'string' && typeof c.name === 'string')) customers = next;
+    }
   } catch {}
 }
 
@@ -6560,6 +6740,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
   if (!customerName) { toast('Enter customer / site'); return; }
 
   const btn = $('add-job-submit');
+  if (btn.disabled) return;
   btn.disabled = true; btn.textContent = 'Saving…';
 
   const date = todayISO();
@@ -6634,6 +6815,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
 	      createdBy: currentUser.name,
       vehicle,
       customer: $('f-customer').value,
+      customerId: $('f-customer-id').value.trim(),
       material,
       concreteType,
       wagonVisits,
@@ -6663,6 +6845,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
       ticketNo: ref || ('local-' + Date.now()),
       _driverAdded: true,
     };
+    const addSignature = fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas) ? fSigCanvas.toDataURL('image/png') : null;
+    const addPhoto = fPhotoFile;
+    localJob.attachments = await saveAddedJobProof(movementId, addSignature, addPhoto);
     const existingLocal = localGetJobs(localDate);
     existingLocal.push(localJob);
     localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
@@ -6708,8 +6893,8 @@ $('add-job-form').addEventListener('submit', async (e) => {
       paymentStatus: a1PaymentStatus,
       wtn,
       wasteTransferNote: wtn,
-      hasSignature: fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas),
-      hasPhoto: !!fPhotoFile,
+      hasSignature: !!addSignature,
+      hasPhoto: !!addPhoto,
       state: haultechWriteState,
       haultechWriteState,
       reason: haultechReason,
@@ -6722,6 +6907,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
 	      _driver: localJob.driver, _customer: localJob.customer,
 	      _addedBy: localJob.addedBy,
       _material: localJob.material, _from: localJob.from, _to: localJob.to,
+      ...cachedDriverFields(localJob),
+      _collectionAddress: getCollectionAddress(localJob),
+      _deliveryAddress: getDeliveryAddress(localJob),
       _concreteType: localJob.concreteType,
       _pourMinutes: localJob.pourMinutes ?? null,
       _vehicle: localJob.vehicle,
@@ -6795,7 +6983,7 @@ $('problem-reasons').addEventListener('click', e => {
 });
 $('problem-submit').addEventListener('click', async () => {
   if (!activeJob) return;
-  if (isTerminalJobStatus(getJobStatus(activeJob))) {
+  if (isTerminalJobStatus(getJobStatus(activeJob)) && !activeJob._cancellationPending) {
     $('problem-modal').classList.add('hidden');
     toast('Job already closed');
     return;
@@ -6804,40 +6992,11 @@ $('problem-submit').addEventListener('click', async () => {
   if (!ok) return;
   const reason = selectedProblemReason || 'Other';
   const note = $('problem-note').value.trim();
-  const haultechNote = composeDriverHaultechNote({ reason, note });
   const photo = $('problem-photo').files[0] || null;
-  const event = queueTrialEvent('job_cancelled', activeJob, {
-    reason,
-    note,
-    hasPhoto: !!photo,
-    state: 'saved locally',
-    haultechWriteState: 'saved locally',
-  });
-  if (photo) {
-    try {
-      const body = await photo.arrayBuffer();
-      await fetch(WORKER_URL + `/photos/problem-${event.eventId}`, {
-        method: 'PUT',
-        headers: { 'X-PMG-Key': API_KEY },
-        body,
-      });
-    } catch {}
-  }
-  updateJobStatusLocal(activeJob, 'cancelled');
-  try {
-    if (haultechNote) await writeHaultechDriverNoteForJob(activeJob, haultechNote);
-  } catch (e) {
-    setQueueState(event.eventId, 'failed', e.message || 'Haultech note write failed; local cancellation still saved on this phone');
-  }
-  try {
-    await api(`/job-status/${activeJob.id || activeJob.jobId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled', reason, note, driver: currentUser.name, date: todayISO() }),
-    });
-  } catch {}
+  const confirmed = await cancelDriverJob(activeJob, { reason, note, photo });
+  toast(confirmed ? 'Job cancelled' : 'Cancellation needs attention — keep any proof open and tell the office');
+  if (!confirmed) return;
   $('problem-modal').classList.add('hidden');
-  toast('Job cancelled');
   showJobList();
   renderJobs();
 });

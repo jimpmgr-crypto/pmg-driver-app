@@ -28,8 +28,8 @@ for (const driver of driverRoutes) {
 }
 
 assert(
-  serviceWorker.includes("if (e.request.mode === 'navigate') return caches.match('/')"),
-  'named driver shortcuts must retain an offline root fallback'
+  serviceWorker.includes("if (e.request.mode === 'navigate') return await readPublicShellCache('/')"),
+  'named driver shortcuts must retain an offline root fallback that checks privacy headers'
 );
 
 for (const driver of driverRoutes) {

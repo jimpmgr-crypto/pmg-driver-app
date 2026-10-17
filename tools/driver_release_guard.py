@@ -20,7 +20,8 @@ import urllib.request
 from pathlib import Path
 
 
-PROJECT = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app").resolve()
+CANONICAL_PROJECT = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app").resolve()
+PROJECT = Path(__file__).resolve().parents[1]
 PAGES_PROJECT = "pmg-driver-app"
 LIVE_URL = "https://pmg-driver-app.pages.dev"
 WORKER_HEALTH_URL = "https://pmg-driver-sync.jimpmgr.workers.dev/health"
@@ -31,10 +32,12 @@ DEPLOY_FILES = (
     "icon-192.png",
     "icon-512.png",
     "index.html",
+    "job-backup-journal.js",
     "manifest.json",
     "plant-manifest.json",
     "plant-seed.json",
     "plant.html",
+    "plant-write-journal.js",
     "ref-job-detail.jpg",
     "ref-sign-screen.jpg",
     "sw.js",
@@ -70,7 +73,10 @@ def require(condition: bool, message: str) -> None:
 
 
 def validate_source() -> dict:
-    require(Path.cwd().resolve() == PROJECT, f"Run only from canonical project: {PROJECT}")
+    require(Path.cwd().resolve() == PROJECT, f"Run from the source checkout: {PROJECT}")
+    source_common = output(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"])
+    canonical_common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=CANONICAL_PROJECT, text=True, check=True, capture_output=True).stdout.strip()
+    require(Path(source_common).resolve() == Path(canonical_common).resolve(), "Source must be the canonical repository or its managed Git worktree")
     version = json.loads((PROJECT / "app-version.json").read_text())
     index = (PROJECT / "index.html").read_text()
     browser_audit = (PROJECT / "tests" / "driver_app_browser_audit.spec.js").read_text()
@@ -111,21 +117,42 @@ def validate_git(*, require_main: bool) -> tuple[str, str]:
     branch = output(["git", "branch", "--show-current"])
     commit = output(["git", "rev-parse", "HEAD"])
     if require_main:
-        require(branch == "main", f"production deploy requires main, not {branch!r}")
+        require(branch in ("main", ""), f"production deploy requires main or detached origin/main, not {branch!r}")
         run(["git", "fetch", "origin", "main"])
         require(output(["git", "rev-parse", "origin/main"]) == commit, "HEAD must be pushed to origin/main before deploy")
     return branch, commit
 
 
-def run_checks(*, browser: bool) -> None:
+def run_checks(*, browser: bool, browser_evidence: Path | None = None) -> None:
     run(["python3", "-m", "py_compile", "tools/driver_release_guard.py", "tools/driver_app_runtime_check.py"])
     run(["node", "--check", "worker/index.js"])
     run(["node", "--check", "sw.js"])
     run(["npm", "run", "test:unit"])
     run(["npx", "wrangler", "deploy", "--dry-run"], cwd=PROJECT / "worker")
-    if browser:
-        run(["npm", "run", "test:browser"])
+    if browser_evidence:
+        validate_browser_evidence(browser_evidence)
+    elif browser:
+        raise RuntimeError("Browser checks must use the supported CUA surface; supply --browser-evidence after source-bound checks")
     run(["python3", "/Users/bill/.openclaw/workspace/scripts/pmg-app-lane-guard.py"])
+
+
+def evidence_files() -> tuple[str, ...]:
+    return tuple(sorted(set(DEPLOY_FILES) | {"worker/wrangler.toml"} | {str(path.relative_to(PROJECT)) for path in (PROJECT / "worker").glob("*.js")}))
+
+
+def validate_browser_evidence(path: Path) -> dict:
+    evidence = json.loads(path.read_text())
+    require(evidence.get("method") == "CUA" and evidence.get("status") == "passed", "Missing passing CUA browser evidence")
+    checks = evidence.get("checks")
+    require(isinstance(checks, list) and checks and all(check.get("status") == "passed" for check in checks), "Browser evidence contains failed or unresolved checks")
+    required = {"driver-recovery", "plant-native-journal", "plant-lost-reply", "safe-update", "yard-recovery"}
+    require(required <= {check.get("group") for check in checks}, "Required browser scenario coverage is incomplete")
+    hashes = evidence.get("sourceHashes", {})
+    require(set(hashes) == set(evidence_files()), "Browser evidence must bind all published files and worker modules/config")
+    for relative in evidence_files():
+        require(hashes.get(relative) == sha256(PROJECT / relative), f"Browser evidence is stale for {relative}")
+    require(bool(evidence.get("observedAt")) and bool(evidence.get("independentReview")), "Browser evidence needs date and independent review reference")
+    return evidence
 
 
 def build_artifact(target: Path) -> dict[str, str]:
@@ -199,17 +226,31 @@ def deploy(version: dict, hashes: dict[str, str], artifact: Path, commit: str) -
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--browser", action="store_true", help="Run the full mobile Playwright suite.")
+    parser.add_argument("--stage", type=Path, help="Stage exact verified artifact for a coordinated backend migration then Pages deployment.")
+    parser.add_argument("--browser-evidence", type=Path, help="Passing CUA report bound to the exact release files and worker modules.")
     parser.add_argument("--deploy", action="store_true", help="Deploy worker and exact tested Pages artifact.")
     parser.add_argument("--verify-live", action="store_true", help="Read the current live release back without deploying.")
     args = parser.parse_args()
     version = validate_source()
-    branch, commit = validate_git(require_main=args.deploy)
-    run_checks(browser=args.browser or args.deploy)
+    branch, commit = validate_git(require_main=args.deploy or bool(args.stage))
+    require(not (args.stage and args.deploy), "Choose staged migration or combined deployment")
+    require(not args.stage or args.browser_evidence is not None, "Release staging requires CUA evidence")
+    run_checks(browser=args.browser or args.deploy or bool(args.stage), browser_evidence=args.browser_evidence)
     with tempfile.TemporaryDirectory(prefix="pmg-driver-release-") as temp:
         artifact = Path(temp)
         hashes = build_artifact(artifact)
         print(json.dumps({"buildId": version["buildId"], "branch": branch, "commit": commit, "hashes": hashes}, indent=2))
+        if args.stage:
+            require(not args.stage.exists(), "Stage destination already exists; preserve it and choose a fresh directory")
+            validated = validate_browser_evidence(args.browser_evidence)
+            require(all(hashes[name] == validated["sourceHashes"][name] for name in DEPLOY_FILES), "Staged artifact differs from tested CUA source")
+            shutil.copytree(artifact, args.stage)
+            (args.stage.parent / (args.stage.name + "-source-binding.json")).write_text(json.dumps({"commit": commit, "buildId": version["buildId"], "sourceHashes": {relative: sha256(PROJECT / relative) for relative in evidence_files()}, "artifactHashes": hashes}, indent=2) + "\n")
         if args.deploy:
+            require("PMG_APP_STORE" not in (PROJECT / "worker/wrangler.toml").read_text(), "Transactional storage release requires --stage and verified index backfill before Pages; follow coordinated rollout plan")
+            require(args.browser_evidence is not None, "Deployment requires CUA browser evidence")
+            validated = validate_browser_evidence(args.browser_evidence)
+            require(all(hashes[name] == validated["sourceHashes"][name] for name in DEPLOY_FILES), "Deployment artifact differs from tested CUA source")
             deploy(version, hashes, artifact, commit)
         elif args.verify_live:
             verify_live(version, hashes)

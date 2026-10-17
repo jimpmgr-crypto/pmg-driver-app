@@ -36,7 +36,7 @@ Object.assign(ctx,{
  $:()=>({value:'',focus(){}}),getJobConsignmentId:()=>null,
  jobRequiresConcreteSource:()=>false,setSignCompleteBusy:()=>{},
  composeDriverHaultechNote:()=>'',applyDriverCompletionNote:()=>'',getSignSigData:()=> 'data:fixture',getJobWasteTransferNote:()=>null,
- queueTrialEvent:()=>{queued++;return {eventId:'proof-fixture'};},setQueueState:()=>{},signPhotoFile:null,
+ queueTrialEvent:()=>{queued++;return {eventId:'proof-fixture'};},persistTrialEventToWorker:async()=>true,saveProofMetadata:async()=>{},setQueueState:()=>{},signPhotoFile:null,
  fetch:async()=>({arrayBuffer:async()=>new ArrayBuffer(0)}),uploadProofAsset:async()=>({haultechUploaded:true,fallbackSaved:true}),summarizeProofResults:()=>'',
  getHaultechJobDate:()=> '2026-10-12',driverNoteLookupDates:()=>[],getJobRef:()=>'',
  api:async url=>{assert.equal(url,'/ht/complete/'+a);calls++;await new Promise(r=>release=r);return {ok:true,clone:()=>({json:async()=>({})})};},

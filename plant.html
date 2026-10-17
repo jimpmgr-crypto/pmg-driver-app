@@ -965,6 +965,8 @@
       </div>
 
       <div class="stats" id="stats"></div>
+      <div id="pendingPlantWrites" class="service-alerts" aria-live="polite"></div>
+      <div id="plantUpdateNotice" class="notification-card" style="display:none"><div><b>Plant app update ready</b><span>Finish your work, then reload to use the update.</span></div><button id="plantReloadUpdate" type="button">Reload update</button></div>
       <div id="serviceAlerts" class="service-alerts" aria-live="polite"></div>
       <div id="notificationCard" class="notification-card is-hidden">
         <div>
@@ -1150,6 +1152,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="/plant-write-journal.js"></script>
   <script>
     const WORKER_URL = 'https://pmg-driver-sync.jimpmgr.workers.dev';
     const API_KEY = 'pmg2026driver';
@@ -1208,11 +1211,19 @@
     };
 
     const els = {};
+    let plantDataGeneration = 0;
+    let plantRecordGeneration = 0;
+    let plantJournal = null;
+    let plantPendingRenderGeneration = 0;
+    const plantRetryScopes = new Set();
+    const plantDirtyForms = new Set();
+    const plantNewWriteIntents = new Map();
+    const PLANT_BUILD_ID = '20261017-plant-safe-writes';
 
     document.addEventListener('DOMContentLoaded', () => {
       [
         'subhead', 'syncState', 'searchInput', 'plantGroupFilter', 'statusFilter', 'sortMode', 'selectedServiceAsset',
-        'stats', 'serviceAlerts', 'notificationCard', 'notificationText', 'enableNotifications', 'assetList',
+        'stats', 'pendingPlantWrites', 'plantUpdateNotice', 'plantReloadUpdate', 'serviceAlerts', 'notificationCard', 'notificationText', 'enableNotifications', 'assetList',
         'usageReadingLabel', 'usageReadingHint', 'serviceIntervalLabel', 'serviceIntervalHint', 'nextUsageReadingLabel', 'nextUsageReadingHint',
         'recordDetail', 'serviceForm', 'assetForm', 'identityForm', 'checksheet', 'filterEditList', 'addFilterRow', 'toast'
       ].forEach(id => { els[id] = document.getElementById(id); });
@@ -1239,17 +1250,7 @@
         if (acknowledgement) {
           event.preventDefault();
           event.stopPropagation();
-          try {
-            await api(`/plant/alerts/${encodeURIComponent(acknowledgement.dataset.ackPlantAlert)}/acknowledge`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ acknowledgedBy: 'Tony' })
-            });
-            await loadData();
-            toast('Marked as seen by Tony.');
-          } catch (error) {
-            toast(error.message || 'Could not mark this alert as seen.');
-          }
+          await acknowledgePlantAlertButton(acknowledgement);
           return;
         }
         const button = event.target.closest('.service-alert-card');
@@ -1268,6 +1269,12 @@
       els.identityForm.addEventListener('submit', saveIdentity);
       els.addFilterRow.addEventListener('click', () => addFilterEditRow());
       els.enableNotifications.addEventListener('click', enableServiceNotifications);
+      els.pendingPlantWrites.addEventListener('click', event => {
+        const button = event.target.closest('[data-plant-retry]');
+        if (button) retryPendingPlantWrite(button.dataset.plantRetry);
+      });
+      for (const form of [els.serviceForm,els.assetForm,els.identityForm]) form.addEventListener('input',()=>{plantDirtyForms.add(form);plantNewWriteIntents.set(form,crypto.randomUUID())});
+      els.plantReloadUpdate.addEventListener('click', reloadPlantUpdate);
       window.selectPlantAsset = selectAsset;
 
       serviceField('date').value = new Date().toISOString().slice(0, 10);
@@ -1306,22 +1313,166 @@
       updateNextDueDateFromServiceDate(true);
       renderChecksheet();
       addFilterEditRow();
+      renderPendingPlantWrites();
       loadData();
       setupNotifications();
+      setupPlantUpdates();
     });
 
     async function api(path, opts = {}) {
       const headers = { 'X-PMG-Key': API_KEY, ...(opts.headers || {}) };
-      const response = await fetch(WORKER_URL + path, { ...opts, headers });
-      if (!response.ok) {
-        let message = `Request failed ${response.status}`;
-        try {
-          const body = await response.json();
-          message = body.error || message;
-        } catch {}
-        throw new Error(message);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      try {
+        const response = await fetch(WORKER_URL + path, {cache:'no-store', ...opts, headers, signal:controller.signal});
+        if (!response.ok) {
+          let message = `Request failed ${response.status}`;
+          try {
+            const body = await response.json();
+            message = body.error || message;
+          } catch {}
+          const error = new Error(message === 'plant_update_required_reload' ? 'A Plant app update is required. Reload this page before saving.' : message);
+          error.status = response.status;
+          throw error;
+        }
+        return await response.json();
+      } catch (error) {
+        if (controller.signal.aborted) throw new Error('Request timed out. Any original save is kept for safe retry.');
+        throw error;
+      } finally {
+        clearTimeout(timeout);
       }
-      return response.json();
+    }
+
+    function getPlantWriteJournal() {
+      if (!plantJournal) {
+        if (typeof PMGPlantWrites === 'undefined') throw new Error('Safe save support did not load. Reload before saving.');
+        plantJournal = PMGPlantWrites.createJournal(PMGPlantWrites.createIndexedStore(window.indexedDB),
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? () => crypto.randomUUID() : null);
+      }
+      return plantJournal;
+    }
+
+    function plantWriteReceiptMatches(entry, result) {
+      if (result?.ok !== true || result.requestId !== entry.requestId) return false;
+      if (entry.kind === 'service') return typeof result.event?.id === 'string' && !!result.event.id.trim()
+        && result.event.assetId === entry.payload.assetId && result.event.date === entry.payload.date;
+      if (entry.kind === 'identity') return plantIdentityAcknowledged(result.asset, entry.payload, decodeURIComponent(entry.path.split('/').pop()));
+      return entry.kind === 'asset' && typeof result.asset?.id === 'string' && !!result.asset.id.trim();
+    }
+
+    async function submitPlantWrite(kind, path, method, payload, recoveryEntry = null) {
+      const journal = getPlantWriteJournal();
+      const form = kind === 'service' ? els.serviceForm : kind === 'asset' ? els.assetForm : els.identityForm;
+      const intentToken = plantNewWriteIntents.get(form) || null;
+      // Recovery sends the captured original even if another tab confirms or replaces
+      // its journal slot while this tab is awaiting the pending list.
+      const entry = recoveryEntry || await journal.prepare(kind, path, method, payload, !!intentToken, intentToken);
+      try {
+        const result = await api(entry.path, {method: entry.method, headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({...entry.payload, requestId: entry.requestId})});
+        if (!plantWriteReceiptMatches(entry, result)) throw new Error('Save was not confirmed for this request. Use Retry original; do not create another entry.');
+        // A lost local receipt must never turn a confirmed server save into a failed save.
+        // The durable original remains safe to retry if this local update is unavailable.
+        try { await journal.confirm(entry, result); } catch {}
+        if (plantNewWriteIntents.get(form) === entry.intentToken) plantNewWriteIntents.delete(form);
+        return result;
+      } catch (error) {
+        // The transactional server discards writes on these validation responses.
+        // Unlike an ambiguous network failure, they can be corrected as a new request.
+        if ([400,404,422].includes(error.status)) {
+          try { await journal.reject(entry, error.message); } catch {}
+        }
+        throw error;
+      } finally {
+        renderPendingPlantWrites();
+      }
+    }
+
+    async function renderPendingPlantWrites() {
+      if (!els.pendingPlantWrites) return;
+      const generation = ++plantPendingRenderGeneration;
+      try {
+        const pending = await getPlantWriteJournal().pending();
+        if (generation !== plantPendingRenderGeneration) return;
+        els.pendingPlantWrites.innerHTML = pending.map(entry => {
+          const label = entry.kind === 'service' ? `Service entry for ${entry.payload.plantNumber || entry.payload.assetId} on ${entry.payload.date}`
+            : entry.kind === 'identity' ? `Plant details for ${entry.payload.displayName || entry.path.split('/').pop()}` : 'New plant item';
+          return `<div class="notification-card"><div><b>Save needs confirmation</b><span>${escapeHtml(label)}. Retry the original request safely.</span></div><button type="button" data-plant-retry="${escapeHtml(entry.scope)}" ${plantRetryScopes.has(entry.scope) ? 'disabled' : ''}>Retry original</button></div>`;
+        }).join('');
+      } catch (error) {
+        if (generation === plantPendingRenderGeneration) els.pendingPlantWrites.textContent = error.message || 'Safe save storage unavailable. Reload before saving.';
+      }
+    }
+
+    async function retryPendingPlantWrite(scope) {
+      if (plantRetryScopes.has(scope)) return;
+      if (!state.workerOnline) return toast('Worker is not available. The original request is kept for retry.');
+      plantRetryScopes.add(scope);
+      renderPendingPlantWrites();
+      let confirmed = false;
+      try {
+        const entry = (await getPlantWriteJournal().pending()).find(item => item.scope === scope);
+        if (!entry) return toast('This save is already confirmed.');
+        await submitPlantWrite(entry.kind, entry.path, entry.method, entry.payload, entry);
+        confirmed = true;
+        // Retrying is receipt recovery, so never reset a newer selection or draft.
+        toast('Original save confirmed. Your current form is kept; select the item again to refresh its record.');
+      } catch (error) {
+        toast(confirmed ? 'Original save confirmed. Select the item again to refresh.' : (error.message || 'Could not confirm the original save. It is kept for retry.'));
+      } finally {
+        plantRetryScopes.delete(scope);
+        renderPendingPlantWrites();
+      }
+    }
+
+    async function acknowledgePlantAlertButton(button) {
+      if (button.disabled) return;
+      const assetId = button.dataset.ackPlantAlert;
+      button.disabled = true;
+      let confirmed = false;
+      try {
+        const result = await api(`/plant/alerts/${encodeURIComponent(assetId)}/acknowledge`, {
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acknowledgedBy:'Tony'})});
+        const ack = result?.asset?.alertAcknowledgement;
+        if (result?.ok !== true || result.asset?.id !== assetId || ack?.current !== true
+          || ack.acknowledgedBy !== 'Tony' || !Number.isFinite(Date.parse(ack.acknowledgedAt))) throw new Error('Alert acknowledgement was not confirmed. Try again.');
+        confirmed = true;
+        state.assets = state.assets.map(asset=>asset.id===assetId?{...asset,alertAcknowledgement:ack}:asset);
+        if (state.record?.asset?.id === assetId) state.record.asset.alertAcknowledgement = ack;
+        // Acknowledging an alert must not rehydrate unrelated identity/service drafts.
+        renderServiceAlerts();renderAssetList();
+        toast('Marked as seen by Tony.');
+      } catch (error) {
+        toast(confirmed ? 'Marked as seen by Tony, but the view could not refresh.' : (error.message || 'Could not mark this alert as seen.'));
+      } finally { if (button.isConnected) button.disabled = false; }
+    }
+
+    function markPlantFormClean(form) { plantDirtyForms.delete(form);plantNewWriteIntents.delete(form); }
+
+    async function checkPlantUpdate() {
+      try {
+        const response = await fetch(`/app-version.json?plant=${Date.now()}`,{cache:'no-store'});
+        if (!response.ok) return;
+        const version = await response.json();
+        if (typeof version.plantBuildId === 'string' && version.plantBuildId !== PLANT_BUILD_ID) els.plantUpdateNotice.style.display = '';
+      } catch {}
+    }
+
+    function setupPlantUpdates() {
+      if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',event=>{
+        if (event.data?.type === 'PMG_SW_UPDATED') checkPlantUpdate();
+      });
+      window.addEventListener('focus',checkPlantUpdate);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkPlantUpdate()});
+      setInterval(()=>{if(!document.hidden)checkPlantUpdate()},300000);
+      checkPlantUpdate();
+    }
+
+    function reloadPlantUpdate() {
+      if (plantRetryScopes.size || [els.serviceForm,els.assetForm,els.identityForm].some(form=>form.dataset.saving==='true')) return toast('Wait for the current save reply before reloading.');
+      if (plantDirtyForms.size && !window.confirm('Reloading will discard unsaved form edits. Confirmed saves and pending original requests are kept. Reload now?')) return;
+      window.location.reload();
     }
 
     function urlBase64ToUint8Array(value) {
@@ -1380,6 +1531,7 @@
     }
 
     async function enableServiceNotifications() {
+      if (state.notifications?.status === 'checking') return;
       if (!notificationSupported()) {
         state.notifications = {
           status: 'unsupported',
@@ -1394,7 +1546,6 @@
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
           state.notifications = { status: permission === 'denied' ? 'blocked' : 'ready', message: 'Notifications were not enabled on this phone.' };
-          renderNotificationCard();
           return;
         }
         const config = await api('/plant/push-config');
@@ -1408,12 +1559,12 @@
         }
         await savePushSubscription(subscription);
         state.notifications = { status: 'enabled', message: 'Notifications are on for this phone.' };
-        renderNotificationCard();
         toast('Service notifications enabled.');
       } catch (error) {
         state.notifications = { status: 'ready', message: 'Notification setup failed. Try again from the Home Screen app.' };
-        renderNotificationCard();
         toast(error.message || 'Notification setup failed.');
+      } finally {
+        renderNotificationCard();
       }
     }
 
@@ -1425,43 +1576,72 @@
         role: 'tony',
         enabled: true
       };
-      return api('/plant/push-subscriptions', {
+      const result = await api('/plant/push-subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
+      const endpoint = String(body.endpoint || '').replace(/\s+/g,' ').trim().slice(0,2000);
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(endpoint)));
+      const expectedId = btoa(String.fromCharCode(...digest)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+      if (result?.ok !== true || result.enabled !== true || result.id !== expectedId) throw new Error('Notification registration was not confirmed for this phone.');
+      return result;
     }
 
     async function loadData() {
+      const generation = ++plantDataGeneration;
+      const selectedRecordGeneration = plantRecordGeneration;
+      let preserveIdentityDraft = false;
+      let expectedRecordGeneration = selectedRecordGeneration;
       setBusy(true);
-      let workerPayload = null;
       try {
-        workerPayload = await api(`/plant/assets?role=${encodeURIComponent(state.role)}`);
-        state.workerOnline = true;
+        let workerPayload = null;
+        try {
+          workerPayload = await api(`/plant/assets?role=${encodeURIComponent(state.role)}`);
+          if (!workerPayload || !Array.isArray(workerPayload.assets)
+            || workerPayload.assets.some(asset => !asset || typeof asset.id !== 'string' || !asset.id.trim())) {
+            throw new Error('Plant list was not confirmed.');
+          }
+        } catch { workerPayload = null; }
+        if (generation !== plantDataGeneration) return;
+        if (workerPayload) {
+          // An authoritative empty list is empty; do not resurrect seed assets.
+          state.workerOnline = true;
+          state.mode = 'worker';
+          state.assets = workerPayload.assets;
+          state.stats = workerPayload.stats || {};
+          state.reviewItems = workerPayload.reviewItems || [];
+          state.historyByAsset = {};
+          state.reviewByAsset = groupByAsset(state.reviewItems);
+          state.filterParts = {};
+        } else {
+          const seed = await loadSeedState();
+          if (generation !== plantDataGeneration) return;
+          Object.assign(state, seed);
+          state.workerOnline = false;
+          state.mode = 'seed';
+        }
+        if (plantRecordGeneration !== selectedRecordGeneration
+          || (state.record?.asset?.id === state.selectedId && plantDirtyForms.has(els.identityForm))) {
+          preserveIdentityDraft = true;
+          return;
+        }
+        if (!state.selectedId || !state.assets.some(asset => asset.id === state.selectedId)) {
+          state.selectedId = state.assets[0]?.id || '';
+        }
+        expectedRecordGeneration = plantRecordGeneration + 1;
+        await loadRecord(state.selectedId);
       } catch (error) {
+        if (generation !== plantDataGeneration) return;
         state.workerOnline = false;
+        state.mode = 'unavailable';
+        toast(error.message || 'Plant data could not be checked.');
+      } finally {
+        if (generation === plantDataGeneration) {
+          setBusy(false);
+          renderAll({preserveIdentityDraft:preserveIdentityDraft || plantRecordGeneration !== expectedRecordGeneration});
+        }
       }
-
-      if (workerPayload && Array.isArray(workerPayload.assets) && workerPayload.assets.length) {
-        state.mode = 'worker';
-        state.assets = workerPayload.assets;
-        state.stats = workerPayload.stats || {};
-        state.reviewItems = workerPayload.reviewItems || [];
-        state.historyByAsset = {};
-        state.reviewByAsset = groupByAsset(state.reviewItems);
-        state.filterParts = {};
-      } else {
-        const seed = await loadSeedState();
-        Object.assign(state, seed);
-        state.mode = state.workerOnline ? 'seed-worker' : 'seed';
-      }
-
-      if (!state.selectedId || !state.assets.some(asset => asset.id === state.selectedId)) {
-        state.selectedId = state.assets[0]?.id || '';
-      }
-      await loadRecord(state.selectedId);
-      setBusy(false);
-      renderAll();
     }
 
     async function loadSeedState() {
@@ -1513,20 +1693,26 @@
     }
 
     async function loadRecord(assetId) {
-      if (!assetId) {
-        state.record = null;
-        return;
-      }
-      state.selectedId = assetId;
-      localStorage.setItem('pmgPlantSelected', assetId);
+      const generation = ++plantRecordGeneration;
+      state.selectedId = assetId || '';
+      state.record = null;
+      try { localStorage.setItem('pmgPlantSelected', state.selectedId); } catch {}
+      if (!assetId) return;
       if (state.mode === 'worker') {
         try {
-          state.record = await api(`/plant/assets/${encodeURIComponent(assetId)}?role=${encodeURIComponent(state.role)}`);
-          updateUsageModeForAsset(state.record?.asset);
-          return;
+          const record = await api(`/plant/assets/${encodeURIComponent(assetId)}?role=${encodeURIComponent(state.role)}`);
+          if (generation !== plantRecordGeneration || state.selectedId !== assetId) return;
+          if (record?.asset?.id !== assetId || !Array.isArray(record.history) || !Array.isArray(record.filterParts)) {
+            throw new Error('Plant record could not be confirmed. Select it again to reload.');
+          }
+          state.record = record;
+          updateUsageModeForAsset(record.asset);
         } catch (error) {
-          toast(error.message);
+          if (generation !== plantRecordGeneration || state.selectedId !== assetId) return;
+          toast(error.message || 'Plant record could not be checked.');
         }
+        // A failed live history read is unknown, not a verified empty history.
+        return;
       }
       const asset = state.assets.find(item => item.id === assetId);
       state.record = {
@@ -1546,10 +1732,11 @@
       if (state.mode === 'worker') return 'Worker live';
       if (state.mode === 'seed-worker') return 'Seed preview, worker ready';
       if (state.mode === 'seed') return 'Seed preview';
+      if (state.mode === 'unavailable') return 'Unavailable — retained data only';
       return 'Loading';
     }
 
-    function renderAll() {
+    function renderAll(options = {}) {
       document.body.dataset.role = 'tony';
       els.subhead.textContent = 'Tony mechanic';
       els.syncState.textContent = syncLabel();
@@ -1558,7 +1745,7 @@
       renderNotificationCard();
       renderAssetList();
       renderRecord();
-      renderIdentityForm();
+      if (!options.preserveIdentityDraft) renderIdentityForm();
       renderSelectedServiceAsset();
     }
 
@@ -1803,12 +1990,14 @@
     }
 
     function inlineAssetDetail(asset, alert = null) {
-      const record = state.record?.asset?.id === asset.id
-        ? state.record
+      const selectedRecord = state.record?.asset?.id === asset.id ? state.record : null;
+      const detailUnavailable = state.mode === 'worker' && !selectedRecord;
+      const record = selectedRecord
+        ? selectedRecord
         : {
             asset,
-            history: state.historyByAsset[asset.id] || [],
-            filterParts: state.filterParts[asset.id] || [],
+            history: detailUnavailable ? null : (state.historyByAsset[asset.id] || []),
+            filterParts: detailUnavailable ? null : (state.filterParts[asset.id] || []),
             reviewItems: state.reviewByAsset[asset.id] || []
           };
       const fullAsset = record.asset || asset;
@@ -1830,10 +2019,11 @@
         inlineFact('Next service due', nextDueText(fullAsset)),
         inlineFact('Last service', formatDate(fullAsset.lastServiceDate) || '-'),
         inlineFact(usageLabel(fullAsset), isVehicleAsset(fullAsset) ? (fullAsset.lastKnownMileage || fullAsset.lastServiceMileage || '-') : (fullAsset.lastKnownHours || fullAsset.lastServiceHours || '-')),
-        inlineFact('History', `${historyRows.length || fullAsset.historyCount || 0} rows`),
-        inlineFact('Filters / parts', `${filterRows.length || fullAsset.filterPartCount || 0} rows`)
+        inlineFact('History', detailUnavailable ? 'Unavailable' : `${historyRows.length} rows`),
+        inlineFact('Filters / parts', detailUnavailable ? 'Unavailable' : `${filterRows.length} rows`)
       ].filter(Boolean).join('');
       const lines = [];
+      if (detailUnavailable) lines.push(inlineLine('History and parts', 'Unavailable. Select this item again to reload.'));
       if (alertInfo) lines.push(inlineLine('Alert', `${alertInfo.label} - ${alertInfo.detail}`));
       (fullAsset.scheduleNotes || []).slice(0, 3).forEach(note => {
         lines.push(inlineLine('Schedule note', note));
@@ -1938,7 +2128,7 @@
       if (!els.identityForm) return;
       const asset = state.record?.asset;
       const fields = els.identityForm.elements;
-      Array.from(fields).forEach(field => { field.disabled = !asset; });
+      Array.from(fields).forEach(field => { field.disabled = !asset || els.identityForm.dataset.saving === 'true'; });
       if (!asset) {
         els.identityForm.reset();
         return;
@@ -2076,7 +2266,8 @@
     }
 
     function selectedServiceAsset() {
-      return state.record?.asset || state.assets.find(item => item.id === state.selectedId) || null;
+      return state.record?.asset?.id === state.selectedId ? state.record.asset
+        : state.assets.find(item => item.id === state.selectedId) || null;
     }
 
     function defaultIntervalForAsset(asset) {
@@ -2170,10 +2361,26 @@
       return categoryForServiceType(serviceType) === 'service' ? defaultIntervalForAsset(asset) : null;
     }
 
+    function beginPlantSave(form) {
+      form.dataset.saving = 'true';
+      const controls = Array.from(form.elements).map(control => ({ control, disabled: control.disabled }));
+      controls.forEach(({ control }) => { control.disabled = true; });
+      return () => {
+        delete form.dataset.saving;
+        controls.forEach(({ control, disabled }) => {
+          if (control.isConnected) control.disabled = disabled
+            || (form === els.identityForm && state.record?.asset?.id !== state.selectedId);
+        });
+      };
+    }
+
     async function saveServiceEntry(event) {
       event.preventDefault();
-      if (!state.selectedId) return toast('Select a plant item first.');
+      if (els.serviceForm.dataset.saving === 'true') return;
+      if (!state.selectedId || state.record?.asset?.id !== state.selectedId) return toast('Select a plant item and wait for its record first.');
       if (!state.workerOnline) return toast('Worker is not available. Entry not saved.');
+      const assetId = state.selectedId;
+      const selectionGeneration = plantRecordGeneration;
       const form = new FormData(els.serviceForm);
       const serviceType = String(form.get('serviceType') || '');
       const asset = selectedServiceAsset() || state.assets.find(item => item.id === state.selectedId) || {};
@@ -2188,7 +2395,7 @@
         if (!ok) return;
       }
       const payload = {
-        assetId: state.selectedId,
+        assetId,
         plantNumber: asset.plantNumber || '',
         registration: asset.registration || '',
         assetType: vehicleMode ? 'vehicle' : (asset.assetType || ''),
@@ -2212,17 +2419,22 @@
         checklist: CHECK_ITEMS.map(item => ({ item, status: form.get(`check:${item}`) || 'Good' })),
         filterParts: collectFilterRows()
       };
+      const finishSave = beginPlantSave(els.serviceForm);
+      let confirmed = false;
       try {
-        const result = await api('/plant/service-events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!result?.event?.id) {
-          throw new Error('Entry was not confirmed by the server. Please try again before leaving this page.');
+        const result = await submitPlantWrite('service', '/plant/service-events', 'POST', payload);
+        if (result?.ok !== true || typeof result.event?.id !== 'string' || !result.event.id.trim()
+          || result.event.assetId !== assetId || result.event.date !== payload.date) {
+          throw new Error('Entry was not confirmed for this plant item. Keep the form and check history before retrying.');
         }
+        confirmed = true;
         appendLocalEvent(result.event);
+        if (state.selectedId !== assetId || plantRecordGeneration !== selectionGeneration) {
+          toast(`Entry saved for ${asset.displayName || assetId}. Current form kept.`);
+          return;
+        }
         serviceField('workDone').value = '';
+        markPlantFormClean(els.serviceForm);
         serviceField('anomalies').value = '';
         serviceField('hours').value = '';
         serviceField('serviceType').value = 'Full service';
@@ -2235,17 +2447,23 @@
         updateNextDueDateFromServiceDate(true);
         els.filterEditList.innerHTML = '';
         addFilterEditRow();
-        await loadRecord(state.selectedId);
+        await loadRecord(assetId);
         renderAll();
-        toast('Entry saved and synced.');
+        toast('Entry saved.');
       } catch (error) {
-        toast(error.message);
+        toast(confirmed ? 'Entry saved, but the view could not refresh. Check history before adding it again.'
+          : (error.message || 'Save could not be confirmed. Keep the form and check history before retrying.'));
+      } finally {
+        finishSave();
       }
     }
 
     async function saveAsset(event) {
       event.preventDefault();
+      if (els.assetForm.dataset.saving === 'true') return;
       if (!state.workerOnline) return toast('Worker is not available. Item not saved.');
+      const selectedBeforeSave = state.selectedId;
+      const selectionGeneration = plantRecordGeneration;
       const form = new FormData(els.assetForm);
       const payload = {
         plantNumber: form.get('plantNumber'),
@@ -2257,25 +2475,59 @@
         site: form.get('site'),
         createdBy: 'Tony'
       };
+      const finishSave = beginPlantSave(els.assetForm);
+      let confirmed = false;
       try {
-        const result = await api('/plant/assets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        const result = await submitPlantWrite('asset', '/plant/assets', 'POST', payload);
+        if (result?.ok !== true || typeof result.asset?.id !== 'string' || !result.asset.id.trim()) {
+          throw new Error('Item was not confirmed by the server. Keep the form and check the plant list before retrying.');
+        }
+        confirmed = true;
+        if (state.selectedId !== selectedBeforeSave || plantRecordGeneration !== selectionGeneration) {
+          const existingIndex = state.assets.findIndex(asset => asset.id === result.asset.id);
+          if (existingIndex >= 0) state.assets[existingIndex] = { ...state.assets[existingIndex], ...result.asset };
+          else state.assets.push(result.asset);
+          // Full refresh rehydrates identity fields and would erase the newer draft.
+          renderAssetList();
+          toast(`Plant item saved: ${result.asset.displayName || result.asset.id}. Current selection and form kept.`);
+          return;
+        }
         els.assetForm.reset();
+        markPlantFormClean(els.assetForm);
         state.selectedId = result.asset.id;
         await loadData();
         toast('Plant item saved.');
       } catch (error) {
-        toast(error.message);
+        toast(confirmed ? 'Plant item saved, but the view could not refresh. Check the list before adding it again.'
+          : (error.message || 'Save could not be confirmed. Keep the form and check the plant list before retrying.'));
+      } finally {
+        finishSave();
       }
+    }
+
+    function normalisePlantIdentityText(value, limit) {
+      return value == null ? '' : String(value).replace(/\s+/g, ' ').trim().slice(0, limit);
+    }
+
+    function plantIdentityAcknowledged(asset, payload, assetId) {
+      if (!asset || asset.id !== assetId) return false;
+      // Mirror the existing PATCH /plant/assets/{id} response normalization.
+      // An ID alone does not confirm that the requested editable fields were saved.
+      const limits = { displayName: 180, plantNumber: 80, machineType: 180,
+        serialNumber: 180, year: 20, site: 180, assetType: 40, sharePointEvidencePath: 300 };
+      if (!Object.entries(limits).every(([field, limit]) => typeof asset[field] === 'string'
+        && asset[field] === normalisePlantIdentityText(payload[field], limit))) return false;
+      const registration = normalisePlantIdentityText(payload.registration, 80).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return typeof asset.registration === 'string' && asset.registration === registration;
     }
 
     async function saveIdentity(event) {
       event.preventDefault();
-      if (!state.selectedId || !state.record?.asset) return toast('Select a plant item first.');
+      if (els.identityForm.dataset.saving === 'true') return;
+      if (!state.selectedId || state.record?.asset?.id !== state.selectedId) return toast('Select a plant item and wait for its record first.');
       if (!state.workerOnline) return toast('Worker is not available. Details not saved.');
+      const assetId = state.selectedId;
+      const selectionGeneration = plantRecordGeneration;
       const form = new FormData(els.identityForm);
       const payload = {
         displayName: form.get('displayName'),
@@ -2289,22 +2541,32 @@
         sharePointEvidencePath: state.record.asset.sharePointEvidencePath || '',
         updatedBy: 'Tony'
       };
+      const finishSave = beginPlantSave(els.identityForm);
+      let confirmed = false;
       try {
-      const result = await api(`/plant/assets/${encodeURIComponent(state.selectedId)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const current = state.assets.find(asset => asset.id === state.selectedId) || {};
-        const merged = { ...current, ...(result.asset || payload), id: state.selectedId };
+        const result = await submitPlantWrite('identity', `/plant/assets/${encodeURIComponent(assetId)}`, 'PATCH', payload);
+        if (result?.ok !== true || !plantIdentityAcknowledged(result.asset, payload, assetId)) {
+          throw new Error('Plant details were not confirmed for this item. Keep the form and reload the record before retrying.');
+        }
+        confirmed = true;
+        const current = state.assets.find(asset => asset.id === assetId) || {};
+        const merged = { ...current, ...result.asset };
         const due = dueStatus(merged);
         Object.assign(merged, { dueStatus: due.state, dueLabel: due.label, dueMeta: due, plantGroup: plantGroupKey(merged), plantGroupLabel: plantGroupLabel(merged) });
-        state.assets = state.assets.map(asset => asset.id === state.selectedId ? merged : asset);
-        state.record = { ...(state.record || {}), asset: merged };
-        renderAll();
-        toast('Plant details saved.');
+        state.assets = state.assets.map(asset => asset.id === assetId ? merged : asset);
+        if (state.selectedId === assetId && plantRecordGeneration === selectionGeneration) {
+          markPlantFormClean(els.identityForm);
+          state.record = { ...(state.record || {}), asset: merged };
+          renderAll();
+          toast('Plant details saved.');
+        } else {
+          toast(`Details saved for ${merged.displayName || assetId}. Current selection kept.`);
+        }
       } catch (error) {
-        toast(error.message);
+        toast(confirmed ? 'Plant details saved, but the view could not refresh. Reload the record before editing again.'
+          : (error.message || 'Details could not be confirmed. Keep the form and reload the record before retrying.'));
+      } finally {
+        finishSave();
       }
     }
 
@@ -2318,6 +2580,8 @@
     function appendLocalEvent(event) {
       if (!event) return;
       state.historyByAsset[event.assetId] = state.historyByAsset[event.assetId] || [];
+      if (state.historyByAsset[event.assetId].some(item => item.id === event.id)
+        || (state.record?.asset?.id === event.assetId && state.record.history?.some(item => item.id === event.id))) return;
       state.historyByAsset[event.assetId].unshift(event);
       if (event.filterParts?.length) {
         state.filterParts[event.assetId] = [...(state.filterParts[event.assetId] || []), ...event.filterParts];

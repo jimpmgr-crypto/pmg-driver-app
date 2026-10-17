@@ -33,8 +33,8 @@ assert(
   'failed writebacks must keep the sync banner/dot in an attention state'
 );
 assert(
-  syncUi.includes('Something did not send. Your work is saved'),
-  'drivers should see a clear plain-English failed-writeback warning'
+  syncUi.includes('Something did not send. Keep any proof open'),
+  'drivers should see a failure warning without claiming unsaved proof is protected'
 );
 
 console.log('writeback failure visibility regression checks passed');

@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261013-chipper-145';
+const WORKER_BUILD_ID = '20261017-safe-app-storage';
 const WORKER_RUNTIME_PATCH_ID = '20261007-day-sheet-pricing-r7';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -780,6 +780,40 @@ function findCustomerMatch(customers, customerName) {
   return best;
 }
 
+function resolveDriverAddedCustomer(customers, body, customerName) {
+  const selectedId = body.customerId;
+  if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
+    if (typeof selectedId !== 'string' || !selectedId.trim() || selectedId.length > 80) {
+      return { error: 'invalid_customer_selection', status: 400 };
+    }
+    const key = selectedId.trim().toLowerCase();
+    const matches = safeArray(customers).filter(c =>
+      typeof c?.id === 'string' && c.id.trim().toLowerCase() === key);
+    if (matches.length !== 1 || matches[0].active !== true) {
+      return { error: 'customer_selection_unavailable', message: 'Refresh customers and select the account again', status: 409 };
+    }
+    const customer = matches[0];
+    const name = cleanText(customer.name || customer.companyName, 240);
+    const labels = [name, customer.code, ...(Array.isArray(customer.aliases) ? customer.aliases : [])]
+      .map(normalisedLookupText).filter(Boolean);
+    if (!name || !labels.includes(normalisedLookupText(customerName))) {
+      return { error: 'customer_selection_conflict', message: 'Customer name no longer matches the selected account; select it again', status: 409 };
+    }
+    return { customerLookup: { customer: { ...customer, name, id: customer.id.trim() }, score: 1 }, useA1Fallback: false };
+  }
+  // Unselected typed names retain the existing office-review/A1 policy.
+  let customerLookup = findCustomerMatch(customers, customerName);
+  let useA1Fallback = false;
+  if (!customerLookup.customer || customerLookup.score < 0.75) {
+    customerLookup = findCustomerMatch(customers, 'A1');
+    if (!customerLookup.customer || customerLookup.score < 0.75) {
+      return { error: 'customer_not_found', message: `Could not match customer ${customerName}`, status: 400 };
+    }
+    useA1Fallback = true;
+  }
+  return { customerLookup, useA1Fallback };
+}
+
 function firstConsignment(job) {
   return safeArray(job?.consignments || job?.Consignments)[0] || {};
 }
@@ -901,16 +935,9 @@ async function buildDriverAddedHaultechPayload(env, body) {
   }
 
   const customers = await getKvJson(env, HAULTECH_CUSTOMERS_KEY, []);
-  let customerLookup = findCustomerMatch(customers, customerName);
-  let useA1Fallback = false;
-  if (!customerLookup.customer || customerLookup.score < 0.75) {
-    const a1Lookup = findCustomerMatch(customers, 'A1');
-    if (!a1Lookup.customer || a1Lookup.score < 0.75) {
-      return { error: 'customer_not_found', message: `Could not match customer ${customerName}`, status: 400 };
-    }
-    customerLookup = a1Lookup;
-    useA1Fallback = true;
-  }
+  const selection = resolveDriverAddedCustomer(customers, body, customerName);
+  if (selection.error) return selection;
+  const { customerLookup, useA1Fallback } = selection;
 
   const dt = new Date(date + 'T00:00:00Z');
   const epoch = Math.floor(dt.getTime() / 1000) + 43200;
@@ -1946,13 +1973,10 @@ async function listStoredTickets(env) {
   const tickets = [];
   let cursor;
   do {
-    const list = await env.PMG_DATA.list({ prefix: 'ticket:', cursor });
-    const page = await Promise.all(list.keys.map(async ({ name }) => {
-      const val = await env.PMG_DATA.get(name);
-      return safeJsonParse(val);
-    }));
-    tickets.push(...page.filter(Boolean));
+    const list = await env.PMG_DATA.list({ prefix: 'ticket:', cursor, limit: 1000 });
+    tickets.push(...await bulkTicketRows(env, list.keys.map(({ name }) => name)));
     cursor = list.list_complete ? undefined : list.cursor;
+    if (!list.list_complete && !cursor) throw new Error('ticket_page_incomplete');
   } while (cursor);
   return tickets;
 }
@@ -2200,7 +2224,9 @@ async function htFetch(env, apiPath, opts = {}) {
 }
 
 async function mergeJobStatusOverrides(env, date, jobs) {
-  const statusIndex = safeObject(await getKvJson(env, jobStatusIndexKey(date), {}));
+  const statusResponse = await jobStoreRequest(env, date, 'GET', null, '/statuses');
+  if (!statusResponse.ok) throw new Error('job_status_verification_unavailable');
+  const statusIndex = safeObject(await statusResponse.json());
   return jobs.map((job) => {
     const c = (job.consignments || [])[0] || null;
     const ids = [job.id, job._id, c?.id, job.jobId, c?.consignmentId]
@@ -2427,15 +2453,10 @@ function updateStoredDriverJobPaymentPayload(payload, jobId, paymentStatus) {
 }
 
 async function updateStoredDriverJobPaymentStatus(env, date, jobId, paymentStatus) {
-  const key = `jobs:${date}`;
-  const raw = await env.PMG_DATA.get(key);
-  if (!raw) return { found: false, updated: false };
-  const payload = safeJsonParse(raw);
-  if (!payload) return { found: false, updated: false, error: 'bad_jobs_data' };
-  const result = updateStoredDriverJobPaymentPayload(payload, jobId, paymentStatus);
-  if (!result.found) return { found: false, updated: false };
-  await env.PMG_DATA.put(key, JSON.stringify(result.payload));
-  return { found: true, updated: true, paymentStatus: result.paymentStatus };
+  if (!env.PMG_APP_STORE) return { found: false, updated: false, error: 'transactional_storage_unavailable' };
+  const response = await jobStoreRequest(env, date, 'POST', { jobId, paymentStatus }, '/payment');
+  const result = await response.json();
+  return result;
 }
 
 function applyTypedCustomerToDriverAddedReference(job, typedCustomerName, originalReference) {
@@ -3394,8 +3415,75 @@ async function mergeDriverNotesIntoHaultechJob(env, jobId, dateOrDates, driverNo
   return applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates, { driverNotes });
 }
 
-export default {
-  async fetch(request, env) {
+// Protected completion proof: the audit event is intent; only the worker can
+// certify custody after checking all declared assets against that exact event.
+function proofKinds(event) {
+  if (event?.type !== 'proof_complete' || typeof event.eventId !== 'string' || !event.eventId
+    || typeof event.jobId !== 'string' || !event.jobId || !/^\d{4}-\d{2}-\d{2}$/.test(String(event.date || ''))) return [];
+  return ['photo', 'signature'].filter(kind => event.payload?.[kind === 'photo' ? 'hasPhoto' : 'hasSignature'] === true);
+}
+
+function protectedProofMatchesEvent(receipt, event) {
+  const kinds = proofKinds(event);
+  return !!(kinds.length && receipt?.version === 1 && receipt.protected === true
+    && receipt.eventId === event.eventId && receipt.jobId === event.jobId && receipt.date === event.date
+    && Array.isArray(receipt.assets) && receipt.assets.length === kinds.length
+    && kinds.every(kind => receipt.assets.filter(asset => asset.kind === kind
+      && asset.assetId === `proof-${event.eventId}-${kind}` && Number.isInteger(asset.bytes) && asset.bytes > 0
+      && /^[a-f0-9]{64}$/.test(asset.sha256 || '')).length === 1));
+}
+
+async function proofBytesHash(bytes) {
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(hash)].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+async function deriveProtectedProofReceipt(env, metadata) {
+  const event = safeJsonParse(await env.PMG_DATA.get(`ticket:trial-${metadata.eventId}`));
+  const kinds = proofKinds(event);
+  if (!kinds.length || metadata.jobId !== event.jobId || metadata.date !== event.date) throw new Error('proof_event_identity_mismatch');
+  if (!Array.isArray(metadata.proofAssets) || metadata.proofAssets.length !== kinds.length) throw new Error('proof_assets_incomplete');
+  const assets = [];
+  for (const kind of kinds) {
+    const matches = metadata.proofAssets.filter(asset => asset?.kind === kind && asset.assetId === `proof-${event.eventId}-${kind}`);
+    if (matches.length !== 1) throw new Error('proof_asset_identity_mismatch');
+    const assetId = matches[0].assetId;
+    const body = await env.PMG_DATA.get(`photo:${assetId}`, { type: 'arrayBuffer' });
+    if (!body || !body.byteLength) throw new Error('proof_asset_missing_or_empty');
+    assets.push({ kind, assetId, bytes: body.byteLength, sha256: await proofBytesHash(body) });
+  }
+  const receipt = { version: 1, protected: true, eventId: event.eventId, jobId: event.jobId, date: event.date,
+    assets, verifiedAt: new Date().toISOString() };
+  const existing = safeJsonParse(await env.PMG_DATA.get(`protected-proof:${event.eventId}`));
+  if (existing) {
+    if (!protectedProofMatchesEvent(existing, event) || JSON.stringify(existing.assets) !== JSON.stringify(assets)) throw new Error('proof_receipt_conflict');
+    return existing;
+  }
+  return receipt;
+}
+
+async function ticketsWithProtectedProof(env, requestedDate = '') {
+  const tickets = requestedDate ? await readDateTickets(env, requestedDate) : await listStoredTickets(env);
+  const cancelled = new Set(tickets.filter(event => ['job_cancelled', 'day_review_cancelled', 'job_postponed'].includes(event?.type))
+    .map(event => `${event.date}:${event.jobId}`));
+  return Promise.all(tickets.filter(event => !requestedDate || event?.date === requestedDate).map(async event => {
+    if (event?.type !== 'proof_complete') return event;
+    const receipt = event.eventId ? safeJsonParse(await env.PMG_DATA.get(`protected-proof:${event.eventId}`)) : null;
+    // Never echo a client-supplied protectedProof flag as a server receipt.
+    let protectedNow = !cancelled.has(`${event.date}:${event.jobId}`) && protectedProofMatchesEvent(receipt, event);
+    if (protectedNow) {
+      // Recheck actual bytes: KV has no compare-and-swap, and a stale receipt
+      // must never certify an asset that disappeared or changed afterwards.
+      for (const asset of receipt.assets) {
+        const body = await env.PMG_DATA.get(`photo:${asset.assetId}`, { type: 'arrayBuffer' });
+        if (!body || body.byteLength !== asset.bytes || await proofBytesHash(body) !== asset.sha256) { protectedNow = false; break; }
+      }
+    }
+    return { ...event, protectedProof: protectedNow ? receipt : null };
+  }));
+}
+
+async function handleDriverRequest(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -3430,6 +3518,14 @@ export default {
       return unauthorized();
     }
     const isAuth = true;
+    if (env.PMG_APP_STORE_READ_ONLY === 'true' && !['GET','HEAD'].includes(request.method)) return corsResponse(JSON.stringify({ error: 'maintenance_read_only_retry_original' }), 503);
+    // All Plant document mutations/readers share one atomic coordinator.
+    if (path.startsWith('/plant/') && !env.__PMG_STORE) {
+      if (!env.PMG_APP_STORE) return corsResponse(JSON.stringify({ error: 'transactional_storage_unavailable' }), 503);
+      const response = await env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('plant:v1')).fetch(request);
+      return withStoreCors(response);
+    }
+
 
     // Geoapify stays server-side: the browser never receives the API key.
     // Search is UK-only, bounded, and falls back cleanly if the free service
@@ -3622,6 +3718,7 @@ export default {
         paymentStatus,
         unchanged: !!paymentResult.unchanged,
         storedUpdated: !!stored.updated,
+        storedError: stored.error || null,
       }));
     }
 
@@ -4376,30 +4473,29 @@ export default {
       return corsResponse(JSON.stringify({ ok: true }));
     }
 
-    // GET /jobs/{date}
+    // GET/PUT /jobs/{date}: a coherent array read; per-movement atomic writes.
     const jobsMatch = path.match(/^\/jobs\/(\d{4}-\d{2}-\d{2})$/);
-    if (jobsMatch && request.method === 'GET') {
-      const val = await env.PMG_DATA.get(`jobs:${jobsMatch[1]}`);
-      return corsResponse(val ?? '{}');
-    }
-
-    // PUT /jobs/{date}
-    if (jobsMatch && request.method === 'PUT') {
-      const body = await request.text();
-      await env.PMG_DATA.put(`jobs:${jobsMatch[1]}`, body);
-      return corsResponse(JSON.stringify({ ok: true }));
+    if (jobsMatch && ['GET', 'PUT'].includes(request.method)) {
+      if (!isValidIsoDate(jobsMatch[1])) return corsResponse(JSON.stringify({ error: 'bad_date' }), 400);
+      if (!env.PMG_APP_STORE) return corsResponse(JSON.stringify({ error: 'transactional_storage_unavailable' }), 503);
+      // Migration/history audit contains proposals; existing admin gate applies.
+      if (url.searchParams.has('audit') && !hasAdminKey(request, env)) return corsResponse(JSON.stringify({ error: 'admin_key_required' }), 403);
+      const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('jobs:' + jobsMatch[1]));
+      return withStoreCors(await stub.fetch(request));
     }
 
     // GET /export/{date}
     const exportMatch = path.match(/^\/export\/(\d{4}-\d{2}-\d{2})$/);
     if (exportMatch && request.method === 'GET') {
       const date = exportMatch[1];
-      const val = await env.PMG_DATA.get(`jobs:${date}`);
-      const jobs = val ? safeJsonParse(val) : {};
-      if (!jobs) return badStoredData('jobs');
+      if (!isValidIsoDate(date)) return corsResponse(JSON.stringify({ error: 'bad_date' }), 400);
+      const storedResponse = await jobStoreRequest(env, date, 'GET');
+      if (!storedResponse.ok) return withStoreCors(storedResponse);
+      const jobs = await storedResponse.json();
       const rows = ['Driver,Customer,Material,From,To,Quantity,Price,Notes,Status'];
-      for (const [driver, driverJobs] of Object.entries(jobs)) {
-        for (const job of driverJobs) {
+      for (const job of jobs) {
+        const driver = job.driver || job.addedBy || "";
+        {
           const esc = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
           rows.push([esc(driver), esc(job.customer), esc(job.material), esc(job.from), esc(job.to), esc(job.quantity), esc(job.price), esc(job.notes), esc(job.status)].join(','));
         }
@@ -4416,8 +4512,14 @@ export default {
       const photoId = safePathParam(photoMatch[1]);
       if (!photoId) return corsResponse(JSON.stringify({ error: 'bad_photo_id' }), 400);
       const body = await request.arrayBuffer();
+      if (!body.byteLength) return corsResponse(JSON.stringify({ error: 'photo_asset_empty' }), 400);
+      const sha256 = await proofBytesHash(body);
+      if (photoId.startsWith('proof-')) {
+        const existing = await env.PMG_DATA.get(`photo:${photoId}`, { type: 'arrayBuffer' });
+        if (existing && await proofBytesHash(existing) !== await proofBytesHash(body)) return corsResponse(JSON.stringify({ error: 'proof_asset_conflict' }), 409);
+      }
       await env.PMG_DATA.put(`photo:${photoId}`, body);
-      return corsResponse(JSON.stringify({ ok: true }));
+      return corsResponse(JSON.stringify({ ok: true, id: photoId, byteLength: body.byteLength, sha256 }));
     }
 
     // GET /photos/{id}
@@ -4435,73 +4537,51 @@ export default {
       const ticketId = safePathParam(ticketMatch[1]);
       if (!ticketId) return corsResponse(JSON.stringify({ error: 'bad_ticket_id' }), 400);
       const body = await request.text();
-      await env.PMG_DATA.put(`ticket:${ticketId}`, body);
       const event = safeJsonParse(body);
-      const proof = event?.payload && typeof event.payload === 'object' ? event.payload : {};
-      if (
-        event?.type === 'proof_complete'
-        && /^\d{4}-\d{2}-\d{2}$/.test(String(event?.date || ''))
-        && (proof.hasSignature === true || proof.hasPhoto === true)
-      ) {
-        const indexKey = `proof-completions:${event.date}`;
-        const existing = safeJsonParse(await env.PMG_DATA.get(indexKey), { date: event.date, jobIds: [] });
-        const jobIds = new Set(safeArray(existing?.jobIds).map(value => cleanText(value, 120)).filter(Boolean));
-        const value = cleanText(event.jobId || event.jobNumber, 120);
-        if (value) jobIds.add(value);
-        await env.PMG_DATA.put(indexKey, JSON.stringify({ date: event.date, jobIds: [...jobIds] }));
+      let proofReceipt = null;
+      if (ticketId.startsWith('pod-') && event?.eventId) {
+        try { proofReceipt = await deriveProtectedProofReceipt(env, event); }
+        catch (error) { return corsResponse(JSON.stringify({ error: error.message || 'proof_not_protected' }), 409); }
       }
-      return corsResponse(JSON.stringify({ ok: true }));
+      await env.PMG_DATA.put(`ticket:${ticketId}`, body);
+      if (proofReceipt) await env.PMG_DATA.put(`protected-proof:${proofReceipt.eventId}`, JSON.stringify(proofReceipt));
+      try { await recordTicketIndex(env, ticketId, event); }
+      catch { return corsResponse(JSON.stringify({ error: 'ticket_index_write_unconfirmed' }), 503); }
+      return corsResponse(JSON.stringify({ ok: true, ...(proofReceipt ? { proofReceipt } : {}) }));
+    }
+
+    // Bounded authenticated migration: one 100-row page and persisted progress.
+    if (path === '/admin/ticket-index' && ['GET','POST'].includes(request.method)) {
+      if (!hasAdminKey(request, env)) return corsResponse(JSON.stringify({ error: 'admin_key_required' }), 403);
+      const suffix = request.method === 'GET' ? '/status' : '/backfill';
+      const target = new Request('https://store/__ticket_index' + suffix, { method: request.method, ...(request.method === 'POST' ? { body: await request.text() } : {}) });
+      return withStoreCors(await ticketIndexStub(env).fetch(target));
     }
 
     // GET /tickets
     if (path === '/tickets' && request.method === 'GET') {
-      const tickets = [];
-      let cursor;
-      do {
-        const list = await env.PMG_DATA.list({ prefix: 'ticket:', cursor });
-        const page = await Promise.all(list.keys.map(async ({ name }) => {
-          const val = await env.PMG_DATA.get(name);
-          return safeJsonParse(val);
-        }));
-        tickets.push(...page.filter(Boolean));
-        cursor = list.list_complete ? undefined : list.cursor;
-      } while (cursor);
-      return corsResponse(JSON.stringify(tickets.filter(Boolean)));
+      const requestedDate = new URL(request.url).searchParams.get('date') || '';
+      if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) return corsResponse(JSON.stringify({ error: 'bad_date' }), 400);
+      // Legacy all-ticket consumers need the original array, not an unbounded
+      // rehash of every historic proof asset. Custody verification is date scoped.
+      try {
+        const tickets = requestedDate ? await ticketsWithProtectedProof(env, requestedDate) : (await listStoredTickets(env)).map(event => event?.type === 'proof_complete' ? { ...event, protectedProof: null } : event);
+        return corsResponse(JSON.stringify(tickets), 200, { 'Cache-Control': 'no-store' });
+      } catch { return corsResponse(JSON.stringify({ error: 'ticket_evidence_unavailable_backfill_or_retry_required' }), 503); }
     }
 
     // GET /proof-completions/YYYY-MM-DD
-    // Narrow watchdog read: avoid returning the ever-growing full ticket archive.
+    // Narrow output for the watchdog. Legacy flag-only indexes are deliberately
+    // ignored; eligibility is rebuilt from exact server-owned custody receipts.
     const proofCompletionsMatch = path.match(/^\/proof-completions\/(\d{4}-\d{2}-\d{2})$/);
     if (proofCompletionsMatch && request.method === 'GET') {
       const date = proofCompletionsMatch[1];
-      const indexKey = `proof-completions:${date}`;
-      const cached = safeJsonParse(await env.PMG_DATA.get(indexKey));
-      if (cached && Array.isArray(cached.jobIds)) {
-        return corsResponse(JSON.stringify({ date, jobIds: cached.jobIds }), 200, { 'Cache-Control': 'no-store' });
-      }
-      const jobIds = new Set();
-      let cursor;
-      do {
-        const list = await env.PMG_DATA.list({ prefix: 'ticket:', cursor });
-        const page = await Promise.all(list.keys.map(async ({ name }) => {
-          const val = await env.PMG_DATA.get(name);
-          return safeJsonParse(val);
-        }));
-        for (const event of page.filter(Boolean)) {
-          const proof = event?.payload && typeof event.payload === 'object' ? event.payload : {};
-          if (
-            event?.type === 'proof_complete'
-            && event?.date === date
-            && (proof.hasSignature === true || proof.hasPhoto === true)
-          ) {
-            const value = cleanText(event.jobId || event.jobNumber, 120);
-            if (value) jobIds.add(value);
-          }
-        }
-        cursor = list.list_complete ? undefined : list.cursor;
-      } while (cursor);
-      const result = { date, jobIds: [...jobIds] };
-      await env.PMG_DATA.put(indexKey, JSON.stringify(result));
+      let tickets;
+      try { tickets = await ticketsWithProtectedProof(env, date); }
+      catch { return corsResponse(JSON.stringify({ error: 'ticket_evidence_unavailable_backfill_or_retry_required' }), 503); }
+      const jobIds = new Set(tickets.filter(event => event.date === date && event.protectedProof?.protected === true)
+        .map(event => event.jobId));
+      const result = { date, jobIds: [...jobIds], receiptVersion: 1 };
       return corsResponse(JSON.stringify(result), 200, { 'Cache-Control': 'no-store' });
     }
 
@@ -4527,6 +4607,8 @@ export default {
       const { status, driver, date } = body;
       if (!status || typeof status !== 'string') return corsResponse(JSON.stringify({ error: 'status required' }), 400);
       if (!isValidIsoDate(date)) return corsResponse(JSON.stringify({ error: 'bad_date' }), 400);
+      const backup = await jobStoreRequest(env, date, 'POST', { jobId, movementId: cleanText(body.movementId, 200), status, date, driver: cleanText(body.driver, 120), reason: cleanText(body.reason, 500), note: cleanText(body.note, 500) }, '/status');
+      if (!backup.ok) return withStoreCors(backup);
       const statusData = {
         status,
         driver: cleanText(driver, 120),
@@ -4535,12 +4617,8 @@ export default {
         note: cleanText(body.note, 500),
         updatedAt: new Date().toISOString(),
       };
-      const statusIndex = safeObject(await getKvJson(env, jobStatusIndexKey(date), {}));
-      statusIndex[jobId] = statusData;
-      await Promise.all([
-        putKvJson(env, jobStatusIndexKey(date), statusIndex),
-        env.PMG_DATA.put(`job-status:${date}:${jobId}`, JSON.stringify(statusData)),
-      ]);
+      // Compatibility evidence only. SQL is the shared status authority.
+      await env.PMG_DATA.put(`job-status:${date}:${jobId}`, JSON.stringify(statusData));
       return corsResponse(JSON.stringify({ ok: true }));
     }
 
@@ -4556,16 +4634,57 @@ export default {
     }
 
     return notFound();
-  },
+}
 
+export default {
+  fetch: handleDriverRequest,
   scheduled(event, env, ctx) {
+    if (env.PMG_APP_STORE_READ_ONLY === 'true') return;
     if (event?.cron === PLANT_PUSH_CRON) {
-      ctx.waitUntil(runScheduledPlantPushAlerts(env, event));
+      ctx.waitUntil(runTransactionalPlantSchedule(env, event));
       return;
     }
     ctx.waitUntil(runScheduledHaultechRefresh(env, event));
     ctx.waitUntil(runAgreedPricingSweep(env, event));
     ctx.waitUntil(refreshHaultechCustomers(env, event));
-    ctx.waitUntil(runScheduledPlantPushAlerts(env, event));
+    ctx.waitUntil(runTransactionalPlantSchedule(env, event));
   },
 };
+
+
+import { JobStorage } from './job-storage.js';
+import { handlePlantTransaction } from './plant-transaction.js';
+import { bulkTicketRows, recordTicketIndex, readDateTickets, ticketIndexStub, handleTicketIndex } from './ticket-index.js';
+
+function withStoreCors(response) {
+  return new Response(response.body, { status: response.status, headers: { ...Object.fromEntries(response.headers), ...CORS_HEADERS, 'Cache-Control': 'no-store' } });
+}
+function jobStoreRequest(env, date, method, body, suffix = '') {
+  if (!env.PMG_APP_STORE) return Promise.resolve(corsResponse(JSON.stringify({ error: 'transactional_storage_unavailable' }), 503));
+  const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('jobs:' + date));
+  return stub.fetch(new Request('https://store/jobs/' + date + suffix, { method, ...(body ? { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } } : {}) }));
+}
+async function runTransactionalPlantSchedule(env, event) {
+  if (!env.PMG_APP_STORE) throw new Error('transactional_storage_unavailable');
+  const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('plant:v1'));
+  const response = await stub.fetch(new Request('https://store/__plant_schedule', { method: 'POST', body: JSON.stringify({ cron: event?.cron || '' }) }));
+  if (!response.ok) throw new Error('plant_schedule_not_confirmed');
+  return response.json();
+}
+export class PmgAppStore {
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/__ticket_index/')) return handleTicketIndex(this.ctx, this.env, request);
+    if (url.pathname.startsWith('/plant/') || url.pathname.startsWith('/__plant_')) {
+      return handlePlantTransaction(this.ctx, this.env, request, async (req, env) => {
+        if (new URL(req.url).pathname === '/__plant_schedule') return new Response(JSON.stringify(await runScheduledPlantPushAlerts(env, await req.json())), { headers: { 'Content-Type': 'application/json' } });
+        return handleDriverRequest(req, { ...env, __PMG_STORE: true });
+      });
+    }
+    const match = url.pathname.match(/^\/jobs\/(\d{4}-\d{2}-\d{2})(?:\/(?:payment|status|statuses))?$/);
+    if (!match || !isValidIsoDate(match[1])) return new Response('Invalid store route', { status: 400 });
+    this.jobs ||= new JobStorage(this.ctx, this.env);
+    return this.jobs.handle(request, match[1], updateStoredDriverJobPaymentPayload);
+  }
+}

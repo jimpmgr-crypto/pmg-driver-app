@@ -109,7 +109,7 @@ const sandbox = {
 };
 
 vm.runInNewContext(
-  workerSource.replace('export default {', 'globalThis.__worker = {'),
+  workerSource.replace(/^import .+;$/gm, '').replace('export class PmgAppStore', 'class PmgAppStore').replace('export default {', 'globalThis.__worker = {'),
   sandbox
 );
 
@@ -123,7 +123,17 @@ function env(adminKey = 'admin-key') {
       { id: 'a1', name: 'A1', defaultServiceLevelId: 'svc-a1' },
     ])],
   ]);
+  const statusOverrides = new Map();
   return {
+    PMG_APP_STORE: { idFromName: n => n, get: name => ({ fetch: async request => {
+      const url = new URL(request.url);
+      const date = name.replace('jobs:', '');
+      if (request.method === 'GET') return new Response(JSON.stringify({...JSON.parse(store.get('job-status-index:' + date) || '{}'),...Object.fromEntries(statusOverrides)}));
+      const body = await request.json();
+      statusOverrides.set(body.jobId,body);
+      return new Response(JSON.stringify({ok:true,found:false,updated:false}));
+    } }) },
+    __PMG_STORE: true, // Existing route-body tests; coordinator is exercised with real workerd separately.
     PMG_DRIVER_SYNC_ADMIN_KEY: adminKey,
     GEOAPIFY_API_KEY: 'test-geoapify-key',
     CONCRETE_PRICE_SERVICE: {
@@ -892,6 +902,19 @@ async function completeJobFixture(job, quantity, extras = {}) {
   sandbox.__haultechJobs = [];
 
   const paymentEnv = env();
+  // Route fixture: the backend is now a Durable Object. Its atomic/restart
+  // behaviour is exercised by test_transactional_job_storage, while this test
+  // continues to verify HaulTech-first payment content and the exact adapter.
+  paymentEnv.PMG_APP_STORE = {
+    idFromName: name => name,
+    get: name => ({ fetch: async request => {
+      const body = await request.json();
+      paymentEnv.__canonicalRows ||= JSON.parse(paymentEnv.__store.get(name));
+      const result = sandbox.updateStoredDriverJobPaymentPayload(paymentEnv.__canonicalRows, body.jobId, body.paymentStatus);
+      paymentEnv.__canonicalRows = result.payload;
+      return new Response(JSON.stringify({ok:true, found:result.found, updated:result.found, paymentStatus:result.paymentStatus}));
+    } }),
+  };
   paymentEnv.__store.set('jobs:2026-07-20', JSON.stringify([
     {
       id: '8549ee7f-4def-466e-84d3-3267d2b9fe5c',
@@ -932,7 +955,7 @@ async function completeJobFixture(job, quantity, extras = {}) {
   const paymentPayload = JSON.parse(paymentUpsert.options.body);
   assert.strictEqual(paymentPayload.trafficNotes, 'Paid | 10mm no fines Paid £355 cash', 'free text containing Paid must be preserved');
   assert((paymentPayload.accountNotes || '').includes('A1 payment: Paid'));
-  const storedPaymentRows = JSON.parse(paymentEnv.__store.get('jobs:2026-07-20'));
+  const storedPaymentRows = paymentEnv.__canonicalRows;
   assert.strictEqual(storedPaymentRows[0].paymentStatus, 'paid');
   assert.strictEqual(storedPaymentRows[0].a1PaymentStatus, 'paid');
   assert.strictEqual(storedPaymentRows[0].notes, 'Paid | 10mm no fines Paid £355 cash');

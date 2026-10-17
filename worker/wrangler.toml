@@ -12,3 +12,12 @@ id = "8620f47859fb4bf1b874754ed4d9b631"
 [[services]]
 binding = "CONCRETE_PRICE_SERVICE"
 service = "pmg-concrete-price"
+
+# SQLite is required: no KV read/merge/write fallback is safe for shared rows.
+[[durable_objects.bindings]]
+name = "PMG_APP_STORE"
+class_name = "PmgAppStore"
+
+[[migrations]]
+tag = "v1-transactional-app-store"
+new_sqlite_classes = ["PmgAppStore"]

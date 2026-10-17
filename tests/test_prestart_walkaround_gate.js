@@ -44,7 +44,8 @@ assert(index.includes('const signatureBlob = signatureData ? dataURLToBlob(signa
 assert(index.includes('missing.push(`${slot.label} photo`)'), 'walkaround completion must block on every missing required camera photo');
 assert(!index.includes("missing.push('driver signature')"), 'walkaround completion must not block on missing signature');
 assert(!index.includes('No wheel-off torque re-check is open for this wagon.'), 'driver app must not show wheel torque wording when no live re-check exists');
-assert(index.includes("writeCachedTorqueTasks(vehicleRef, []);"), 'failed live torque checks must clear stale cached torque tasks instead of blocking drivers');
+assert(!index.includes("writeCachedTorqueTasks(vehicleRef, []);"), 'failed live torque checks must not erase known due tasks');
+assert(index.includes('Wheel torque verification unavailable'), 'unknown torque state must be visible and held for verification');
 assert(index.includes('function closeConfirmedFleetTorqueTasks'), 'confirmed driver torque checks must close the Fleet Live torque record');
 assert(index.includes("driver-complete"), 'driver torque close must call the Fleet Live driver-complete endpoint');
 assert(index.includes("Tick confirmed at"), 'wheel torque row must give drivers a clear tick/confirm action');

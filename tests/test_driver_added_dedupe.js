@@ -26,8 +26,8 @@ const mergeEnd = indexHtml.indexOf('// ═════════════�
 assert(mergeStart > 0 && mergeEnd > mergeStart, 'mergeWithLocal function not found');
 const mergeWithLocal = indexHtml.slice(mergeStart, mergeEnd);
 assert(
-  mergeWithLocal.includes('cloudDriverMatches') && mergeWithLocal.includes('sameDriverAddedMovement'),
-  'mergeWithLocal must use durable movement identity before legacy semantic matching'
+  mergeWithLocal.includes('getHaultechJobId(j) || driverMovementId(j)') && mergeWithLocal.includes('sameDriverAddedMovement'),
+  'mergeWithLocal must use exact live or movement identity, not a shared reference'
 );
 assert(
   mergeWithLocal.includes('clearMatchedDriverWritebackQueue(localJobs, cloudJobs)'),
@@ -35,7 +35,7 @@ assert(
 );
 
 const fallbackStart = indexHtml.indexOf('async function loadJobsFallback');
-const fallbackEnd = indexHtml.indexOf('jobs = mergeWithLocal(date, jobs);', fallbackStart);
+const fallbackEnd = indexHtml.indexOf('jobs = mergeWithLocal(date, jobs, { allowOfficialCached: true });', fallbackStart);
 assert(fallbackStart > 0 && fallbackEnd > fallbackStart, 'loadJobsFallback saved-job merge block not found');
 const fallbackBlock = indexHtml.slice(fallbackStart, fallbackEnd);
 assert(
