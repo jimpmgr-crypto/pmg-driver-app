@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261017-driver-safe-storage';
+const APP_BUILD_ID = '20261021-driver-unit-switch';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1750,6 +1750,7 @@ let walkaroundCameraStream = null;
 let walkaroundCameraSlotId = '';
 let walkaroundCameraStarting = false;
 let walkaroundInlineCameraUnavailable = false;
+let walkaroundUnitSelectorsOpen = false;
 let torqueCheckState = {
   vehicle: '',
   loading: false,
@@ -4134,8 +4135,8 @@ function walkaroundAssetId(recordId, kind) {
 
 function walkaroundStorageKeyFor(record = {}) {
   const driver = record.driverId || record.driver || currentUser?.driverId || currentUser?.name || 'unknown';
-  const vehicle = record.vehicle || getSelectedDriverVehicle() || 'no-vehicle';
-  const trailer = record.trailer || getSelectedDriverTrailer() || 'no-trailer';
+  const vehicle = (record.vehicle ?? getSelectedDriverVehicle()) || 'no-vehicle';
+  const trailer = (record.trailer ?? getSelectedDriverTrailer()) || 'no-trailer';
   const date = record.date || todayISO();
   return `pmg_walkaround_${date}_${safeIdPart(driver)}_${safeIdPart(vehicle)}_${safeIdPart(trailer)}`;
 }
@@ -4146,7 +4147,11 @@ function walkaroundStorageKey(date = todayISO()) {
 
 function getLocalWalkaroundRecord() {
   if (!currentUser || !getSelectedDriverVehicle()) return null;
-  return readJSON(walkaroundStorageKey(), null);
+  const record = readJSON(walkaroundStorageKey(), null);
+  if (!record || record.date !== todayISO()
+    || normaliseVehicleRef(record.vehicle) !== normaliseVehicleRef(getSelectedDriverVehicle())
+    || normaliseVehicleRef(record.trailer) !== normaliseVehicleRef(getSelectedDriverTrailer())) return null;
+  return record;
 }
 
 function setLocalWalkaroundRecord(record) {
@@ -4413,11 +4418,37 @@ function walkaroundDraftMatches(draft, identity = walkaroundDraftIdentity()) {
     && (draft.trailer || '') === (identity.trailer || '');
 }
 
+function walkaroundDraftStorageKey(identity = walkaroundDraftIdentity()) {
+  return `${WALKAROUND_DRAFT_KEY}:${JSON.stringify([identity.date, identity.driverId, identity.vehicle, identity.trailer || ''])}`;
+}
+
+function migrateLegacyWalkaroundDraft() {
+  const legacy = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+  if (!legacy) return;
+  const key = walkaroundDraftStorageKey(legacy);
+  if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(legacy));
+  localStorage.removeItem(WALKAROUND_DRAFT_KEY);
+}
+
+function getSelectedWalkaroundDraft() {
+  try {
+    migrateLegacyWalkaroundDraft();
+    return JSON.parse(localStorage.getItem(walkaroundDraftStorageKey()) || 'null');
+  } catch {
+    // A full phone must retain the legacy copy even if migration cannot fit.
+    try {
+      const legacy = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+      return walkaroundDraftMatches(legacy) ? legacy : null;
+    } catch { return null; }
+  }
+}
+
 function saveWalkaroundDraft() {
   if (!walkaroundState) return;
   try {
     const identity = walkaroundDraftIdentity();
-    localStorage.setItem(WALKAROUND_DRAFT_KEY, JSON.stringify({
+    migrateLegacyWalkaroundDraft();
+    localStorage.setItem(walkaroundDraftStorageKey(identity), JSON.stringify({
       ...identity,
       active: true,
       checks: walkaroundState.checks || {},
@@ -4433,13 +4464,19 @@ function saveWalkaroundDraft() {
   } catch {}
 }
 
-function clearWalkaroundDraft() {
-  try { localStorage.removeItem(WALKAROUND_DRAFT_KEY); } catch {}
+function clearWalkaroundDraft(identity = walkaroundDraftIdentity()) {
+  try {
+    const key = walkaroundDraftStorageKey(identity);
+    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+    if (!identity.startedAt || saved?.startedAt === identity.startedAt) localStorage.removeItem(key);
+    const legacy = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+    if (walkaroundDraftMatches(legacy, identity) && (!identity.startedAt || legacy.startedAt === identity.startedAt)) localStorage.removeItem(WALKAROUND_DRAFT_KEY);
+  } catch {}
 }
 
 function restoreWalkaroundDraftIfMatching() {
   try {
-    const draft = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
+    const draft = getSelectedWalkaroundDraft();
     if (!walkaroundDraftMatches(draft)) return false;
     walkaroundState.checks = { ...defaultWalkaroundChecks(), ...(draft.checks || {}) };
     walkaroundState.torqueConfirmations = { ...walkaroundState.torqueConfirmations, ...(draft.torqueConfirmations || {}) };
@@ -4483,8 +4520,8 @@ function renderWalkaroundPanel(options = {}) {
   const detail = fullyClear
     ? 'Pre-start walkaround is saved against this selected unit for today.'
     : 'Jobs stay visible, but Start / In Transit and job completion are held here until the selected wagon pre-start is complete.';
-  const selectorRows = fullyClear ? '' : `
-      <div class="form-row ${vehicle ? 'hidden' : ''}" id="walkaround-unit-selectors">
+  const selectorRows = `
+      <div class="form-row ${vehicle && !walkaroundUnitSelectorsOpen ? 'hidden' : ''}" id="walkaround-unit-selectors">
         <div class="form-group">
           <label>Truck / Wagon</label>
           <select class="driver-vehicle-select" data-source="walkaround">${vehicleOptionsHTML(vehicle)}</select>
@@ -4504,7 +4541,7 @@ function renderWalkaroundPanel(options = {}) {
       ${selectorRows}
       <div class="walkaround-actions">
         <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${fullyClear ? 'Review / do another walkaround' : (vehicle ? 'Yes — start pre-start' : 'Start pre-start')}</button>
-        ${!fullyClear && vehicle ? '<button class="btn btn-secondary" id="change-walkaround-vehicle-btn" type="button">Change wagon / trailer</button>' : ''}
+        ${vehicle ? `<button class="btn btn-secondary" id="change-walkaround-vehicle-btn" type="button" aria-expanded="${walkaroundUnitSelectorsOpen}">${walkaroundUnitSelectorsOpen ? 'Close wagon / trailer selection' : 'Change wagon / trailer'}</button>` : ''}
       </div>
     </div>`;
 }
@@ -4512,8 +4549,8 @@ function renderWalkaroundPanel(options = {}) {
 function attachWalkaroundPanelListeners(container) {
   container.querySelector('#start-walkaround-btn')?.addEventListener('click', () => showWalkaroundScreen());
   container.querySelector('#change-walkaround-vehicle-btn')?.addEventListener('click', () => {
-    container.querySelector('#walkaround-unit-selectors')?.classList.remove('hidden');
-    container.querySelector('#change-walkaround-vehicle-btn')?.classList.add('hidden');
+    walkaroundUnitSelectorsOpen = !walkaroundUnitSelectorsOpen;
+    renderJobs();
   });
   container.querySelectorAll('.driver-trailer-select').forEach(select => {
     select.addEventListener('change', e => {
@@ -4526,6 +4563,7 @@ function attachWalkaroundPanelListeners(container) {
 
 function showWalkaroundScreen() {
   if (!isWalkaroundVisible()) return;
+  walkaroundUnitSelectorsOpen = false;
   const vehicle = getSelectedDriverVehicle();
   if (!vehicle) {
     toast('Select truck / wagon first');
@@ -5112,7 +5150,8 @@ function validateWalkaroundBeforeComplete() {
 }
 
 async function completeWalkaround() {
-  if (!walkaroundState) return;
+  if (!walkaroundState || $('walkaround-complete-btn')?.disabled) return;
+  const savingState = walkaroundState;
   const missing = validateWalkaroundBeforeComplete();
   if (missing.length) {
     toast(`Missing: ${missing.slice(0, 2).join(', ')}${missing.length > 2 ? '...' : ''}`);
@@ -5205,16 +5244,17 @@ async function completeWalkaround() {
     localRecord.torqueCloseResults = torqueCloseResults;
     const closeFailures = torqueCloseResults.filter(result => !result.closed);
     if (!closeFailures.length) {
-      torqueCheckState = { vehicle: normaliseVehicleRef(vehicle), loading: false, error: '', tasks: [], checkedAt: new Date().toISOString(), loadedAt: Date.now() };
-      writeCachedTorqueTasks(vehicle, []);
+      // Re-read Fleet rather than clearing tasks that may have arrived during save.
+      ensureTorqueChecksForSelectedVehicle({ force: true });
     } else {
       localRecord.syncError = [localRecord.syncError, `Fleet torque close failed for ${closeFailures.length} item(s)`].filter(Boolean).join('; ');
     }
   }
   setLocalWalkaroundRecord(localRecord);
-  clearWalkaroundDraft();
+  clearWalkaroundDraft(baseRecord);
   if (syncState === 'ticket_pending') queueWalkaroundTicket(localRecord);
   toast(syncState === 'saved_to_worker' ? '✓ Walkaround complete' : 'Walkaround proof saved - office sync pending');
+  if (walkaroundState !== savingState || !walkaroundDraftMatches(baseRecord) || currentScreen !== 'walkaround') return;
   showJobList();
   renderJobs();
   window.scrollTo({ top: 0, behavior: 'auto' });
@@ -7182,11 +7222,11 @@ function requestSafeAppReload(reason = 'update') {
 
 function resumeWalkaroundDraftAfterEnter() {
   try {
-    const draft = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
-    if (!draft?.active || draft.date !== todayISO() || draft.driverId !== (currentUser?.driverId || '')) return;
-    if (draft.vehicle) setSelectedDriverVehicle(draft.vehicle);
-    if (draft.trailer !== undefined) setSelectedDriverTrailer(draft.trailer || '');
-    setTimeout(() => showWalkaroundScreen(), 350);
+    const draft = getSelectedWalkaroundDraft();
+    if (!draft?.active || !walkaroundDraftMatches(draft)) return;
+    setTimeout(() => {
+      if (currentScreen === 'jobs' && walkaroundDraftMatches(draft)) showWalkaroundScreen();
+    }, 350);
   } catch {}
 }
 

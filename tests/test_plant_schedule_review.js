@@ -10,13 +10,19 @@ const exportIndex = workerSource.indexOf('export default');
 
 assert(exportIndex > 0, 'worker export default block not found');
 
+// Fixed scenario clock: future due dates must not expire as this test ages.
+let scenarioNow = '2026-06-15T12:00:00Z';
+class ScenarioDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [scenarioNow])); }
+  static now() { return new Date(scenarioNow).getTime(); }
+}
 const sandbox = {
   TextEncoder,
   TextDecoder,
   btoa: value => Buffer.from(value, 'binary').toString('base64'),
   atob: value => Buffer.from(value, 'base64').toString('binary'),
   console,
-  Date,
+  Date: ScenarioDate,
   URL,
   URLSearchParams,
 };
@@ -102,6 +108,12 @@ assert.strictEqual(scheduleReview.nextServiceDueDate, '2026-10-19');
 assert.strictEqual(scheduleReview.nextServiceDueBasis, 'manual');
 assert.strictEqual(scheduleReview.nextServiceDueHours, 2988);
 assert.notStrictEqual(scheduleReview.dueStatus, 'overdue');
+scenarioNow = '2026-10-21T12:00:00Z';
+assert.strictEqual(mergedPlant({
+  assetId: 'plant-79', category: 'inspection', serviceType: 'Service schedule review',
+  date: '2026-06-08', hours: 2660, nextDueDate: '2026-10-19', nextDueDateBasis: 'manual', nextDueHours: 2988,
+}).dueStatus, 'overdue', 'the revised date still becomes overdue after it passes');
+scenarioNow = '2026-06-15T12:00:00Z';
 
 const ordinaryInspection = mergedPlant({
   id: 'manual-test-inspection',
