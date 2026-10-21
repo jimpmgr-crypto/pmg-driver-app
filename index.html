@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261021-driver-unit-switch';
+const APP_BUILD_ID = '20261021-driver-unit-switch-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2569,9 +2569,16 @@ function renderQueueSummary(options = {}) {
   const pills = states.map(state => `<span class="queue-pill">${esc(labels[state])}: ${counts[state] || 0}</span>`).join('');
   const waiting = (counts['pending Haultech'] || 0) + (counts['saved locally'] || 0);
   const failed = counts.failed || 0;
-  const summary = failed
-    ? `${failed} item${failed === 1 ? '' : 's'} need office help`
-    : (waiting ? `${waiting} item${waiting === 1 ? '' : 's'} saved and waiting to send` : 'Everything sent');
+  const backups = getRetryQueue();
+  let backupProblem = '';
+  try { backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO()) || ''; }
+  catch { backupProblem = 'Backup status unavailable'; }
+  const otherPending = backups.length > 0 || getPendingWalkaroundTickets().length > 0;
+  const summary = backupProblem || backups.some(entry => entry?.date !== todayISO())
+    ? 'Saved work needs an office check'
+    : (failed ? `${failed} item${failed === 1 ? '' : 's'} need office help`
+      : (waiting ? `${waiting} item${waiting === 1 ? '' : 's'} saved and waiting to send`
+        : (otherPending ? 'Work saved and waiting to send' : 'Everything sent')));
   const note = options.technical
     ? 'Completed jobs write to Haultech after proof is protected. Local backups remain available for retry.'
     : 'Pending day-sheet rows retry when connected. Other unconfirmed items need an office check; keep any unsaved proof open.';

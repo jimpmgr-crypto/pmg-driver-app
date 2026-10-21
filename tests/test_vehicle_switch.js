@@ -77,6 +77,14 @@ test('late completion clears only its original unit draft and preserves a newer 
  c.setSelectedDriverVehicle('YJ13GRF');c.walkaroundState.startedAt='attempt-yj';c.saveWalkaroundDraft();c.clearWalkaroundDraft(identity);assert.equal(c.getSelectedWalkaroundDraft().startedAt,'attempt-yj');
  c.setSelectedDriverVehicle('LL21HJJ');assert.equal(c.getSelectedWalkaroundDraft(),null);c.walkaroundState.startedAt='attempt-2';c.saveWalkaroundDraft();c.clearWalkaroundDraft(identity);assert.equal(c.getSelectedWalkaroundDraft().startedAt,'attempt-2');
 });
+test('sync summary cannot claim everything sent while any retained work needs attention',()=>{
+ const {c,data}=setup();vm.runInContext(fn('renderQueueSummary'),c);c.queueCounts=()=>({});c.getRetryQueue=()=>[];c.getPendingWalkaroundTickets=()=>[];
+ assert(c.renderQueueSummary().includes('Everything sent'));
+ data.set('pmg_backup_problem_2026-10-21','Retained conflict');assert(c.renderQueueSummary().includes('Saved work needs an office check'));
+ data.delete('pmg_backup_problem_2026-10-21');c.getRetryQueue=()=>[{date:'2026-10-20'}];assert(c.renderQueueSummary().includes('Saved work needs an office check'));
+ c.getRetryQueue=()=>[{date:'2026-10-21'}];assert(c.renderQueueSummary().includes('Work saved and waiting to send'));
+ c.getRetryQueue=()=>[];c.getPendingWalkaroundTickets=()=>[{recordId:'pending'}];assert(c.renderQueueSummary().includes('Work saved and waiting to send'));
+});
 test('driver identities isolate drafts and records',()=>{
  const {c}=setup();c.setLocalWalkaroundRecord(record);c.saveWalkaroundDraft();c.currentUser={driverId:'paul-test'};c.setSelectedDriverVehicle('LL21HJJ');assert.equal(c.getSelectedWalkaroundDraft(),null);assert(!c.hasSelectedWalkaroundComplete());
 });
