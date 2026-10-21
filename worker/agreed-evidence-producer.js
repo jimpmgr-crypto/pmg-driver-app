@@ -1,6 +1,36 @@
 function agreedJobSnapshot(job, quantity) {
   const stable=value=>{if(Array.isArray(value))return value.map(stable);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).filter(k=>!['_etag','_ts','quotedPrice','totalPrice','price','consignmentPrice','useQuotedPrice'].includes(k)).sort().map(k=>[k,stable(value[k])]));return value;};
-  return JSON.stringify(stable({id:job.id,customerId:jobCustomerId(job),goods:jobGoodsDescription(job),reference:jobCustomerReference(job),quantity:Number(quantity),date:job.deliveryDate||job.collectionDate,consignments:job.consignments,deliveryLoadId:job.deliveryLoadId,collectionLoadId:job.collectionLoadId,deliveryVehicleId:job.deliveryVehicleId,collectionVehicleId:job.collectionVehicleId}));
+  return JSON.stringify(stable({id:job.id,driverMovement:driverDeliveryMovement(job),customerId:jobCustomerId(job),goods:jobGoodsDescription(job),reference:jobCustomerReference(job),quantity:Number(quantity),date:job.deliveryDate||job.collectionDate,consignments:job.consignments,deliveryLoadId:job.deliveryLoadId,collectionLoadId:job.collectionLoadId,deliveryVehicleId:job.deliveryVehicleId,collectionVehicleId:job.collectionVehicleId}));
+}
+// Driver wording is normalized only for exact, single-material delivery descriptions.
+function pricedDeliveryMaterial(goods) {
+  const plain=normalisedLookupText(goods).replace(/ (?:tipped|delivered)$/, '');
+  return ({'rec mot':'40mm Recycled MOT','recycled mot':'40mm Recycled MOT','rec 40mm':'40mm Recycled MOT','rec 40mm mot':'40mm Recycled MOT'})[plain] || plain;
+}
+function driverDeliveryMovement(job) {
+  const notes=String(job.accountNotes||'');
+  if(!notes.includes('Driver app source:'))return null;
+  const matches=[...notes.matchAll(/(?:^|\|)\s*Driver movement:\s*(driver-\d+)(?=\s*(?:\||$))/g)];
+  return matches.length===1?matches[0][1]:null;
+}
+function separateDriverDelivery(job, rows) {
+  const movement=driverDeliveryMovement(job);
+  if(!movement)return false;
+  const active=rows.filter(j=>j.active!==false&&!j.cancelled);
+  // A shared movement is a duplicate/split, never a second charge.
+  if(active.filter(j=>driverDeliveryMovement(j)===movement).length!==1)return false;
+  // A separate collection row may deliver to the yard, so do not group solely by destination.
+  if(active.some(j=>jobCustomerId(j)===jobCustomerId(job)&&/grab|away/i.test(jobGoodsDescription(j))))return false;
+  const destination=j=>{const x=firstConsignment(j);return normalisedLookupText([1,2,3,4,5].map(i=>x['deliveryAddressLine'+i]).join(' ')+' '+(x.deliveryPostcode||''));};
+  const peers=active.filter(j=>jobCustomerId(j)===jobCustomerId(job)&&destination(j)===destination(job));
+  // Other same-site records must also be distinct explicit delivery movements.
+  // Mixed services/combined grabs and unstructured rows keep the review hold.
+  return peers.every(j=>{
+    const id=driverDeliveryMovement(j),g=pricedDeliveryMaterial(jobGoodsDescription(j));
+    return id&&active.filter(x=>driverDeliveryMovement(x)===id).length===1&&j.consignments?.length===1
+      &&! /grab|away|\band\b|\bplus\b|[+]/i.test(jobGoodsDescription(j))
+      &&AGREED_CATALOGUE.materials.some(m=>normalisedLookupText(m.name)===normalisedLookupText(AGREED_COMPLETION_POLICY.material_aliases?.[g]||g)&&m.tonnage===true&&m.active!==false);
+  });
 }
 async function deriveAgreedEvidence(job, quantity, env) {
   const c=firstConsignment(job), qty=Number(quantity), customerId=jobCustomerId(job);
@@ -33,7 +63,8 @@ async function deriveAgreedEvidence(job, quantity, env) {
   const topsoil=AGREED_COMPLETION_POLICY.outgoing_topsoil_rule;
   const origin=normalisedLookupText(c.collectionAddressLine1||'');
   const outgoingSoil=topsoil?.enabled && topsoil.aliases.includes(normalisedLookupText(goods)) && (origin.startsWith('pm groundworks')||origin==='pmg yard');
-  const mappedGoods=outgoingSoil?topsoil.material:(AGREED_COMPLETION_POLICY.material_aliases?.[goods]||goods);
+  const deliveryGoods=pricedDeliveryMaterial(goods);
+  const mappedGoods=outgoingSoil?topsoil.material:(AGREED_COMPLETION_POLICY.material_aliases?.[deliveryGoods]||deliveryGoods);
   const part=AGREED_CATALOGUE.materials.find(m=>normalisedLookupText(m.name)===normalisedLookupText(mappedGoods) && m.active!==false && !['TIPPING','CONCRETE','OTHER'].includes(m.group));
   if(!crush && !spoil && !part) return null;
   const side=spoil?'collection':'delivery';
@@ -79,7 +110,12 @@ async function deriveAgreedEvidence(job, quantity, env) {
     const jobs=await fetchHaultechJobsByDate(env,date);
     if(!jobs.ok || jobs.jobs.length>=200) return null;
     const load=job.deliveryLoadId||job.collectionLoadId;
-    if(!load || jobs.jobs.filter(j=>(j.deliveryLoadId===load||j.collectionLoadId===load)&&j.active!==false&&!j.cancelled).length!==1) return null;
+    if(!load)return null;
+    const diaryPeers=jobs.jobs.filter(j=>(j.deliveryLoadId===load||j.collectionLoadId===load)&&j.active!==false&&!j.cancelled);
+    if(diaryPeers.length!==1) {
+      if(!separateDriverDelivery(job,jobs.jobs))return null;
+      facts.loadId=driverDeliveryMovement(job);
+    }
   }
   return {policyVersion:AGREED_COMPLETION_POLICY.version,reviewed:true,source:'live HaulTech exact structured fields + approved canonical policy',snapshot:agreedJobSnapshot(job,qty),facts};
 }
