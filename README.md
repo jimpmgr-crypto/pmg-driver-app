@@ -69,7 +69,8 @@ previously captured dates but cannot discover new work. Do not clear phone data.
 
 Operational checks: `node tests/test_diary_snapshot.js` and
 `node tests/test_diary_store.js` test failure preservation and real SQLite restart.
-Cloud metadata is live; OpenCore/Tom detail writeback is **manual**: read the four
-stored date routes and record date/state/last successful source time/job count/
-source error in the canonical task/evidence ledger. Do not infer empty from
-unavailable. No additional local daemon or credentials were introduced.
+Cloud metadata is live. The existing runtime checker writes today's date/state,
+last successful source time, checked time, source error and job count (null when
+unavailable) into its existing OpenCore runtime-health ledger on each run.
+Upcoming-date inspection is manual via the stored date routes. No additional
+local daemon or credentials were introduced. Never infer empty from unavailable.

@@ -21,7 +21,7 @@ DRIVERS = ("john", "andrew", "neil", "ian", "richard", "paul")
 STATE = Path("/Users/bill/.openclaw/workspace/OPENCORE/state/pmg-driver-app-runtime-health")
 PROJECT_INDEX = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/index.html")
 LOCAL_APP_VERSION = Path("/Users/bill/.openclaw/workspace/projects/pmg-driver-app/app-version.json")
-REQUIRED_RUNTIME_PATCH_ID = "20261007-day-sheet-pricing-r7"
+REQUIRED_RUNTIME_PATCH_ID = "20261021-distinct-trip-pricing-r1"
 
 
 def expected_worker_build(live_version: dict[str, Any], local_version: dict[str, Any]) -> tuple[str, str]:
@@ -90,7 +90,7 @@ def check() -> dict[str, Any]:
         if expected_contract and worker_health.get("driverApiContract") != expected_contract:
             errors.append("frontend/worker API contract mismatch")
         if worker_health.get("runtimePatchId") != REQUIRED_RUNTIME_PATCH_ID:
-            errors.append("reviewed concrete-pour runtime patch missing")
+            errors.append("reviewed pricing runtime patch missing")
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 404) and not expected_worker:
             warnings.append("legacy live build has no worker compatibility endpoint")
@@ -118,6 +118,14 @@ def check() -> dict[str, Any]:
         except Exception as exc:
             errors.append(f"Haultech auth status failed: {exc}")
         today = datetime.now().date().isoformat()
+        try:
+            plan = json.loads(fetch(f"{WORKER}/driver-diary/{today}?stored=true", headers)[0])
+            authenticated["savedPlan"] = {key: plan.get(key) for key in ("date", "state", "complete", "savedAt", "checkedAt", "error")}
+            authenticated["savedPlan"]["jobCount"] = len(plan.get("jobs", [])) if plan.get("complete") else None
+            if not plan.get("complete"):
+                warnings.append("No verified shared plan available for today; allocation count unknown")
+        except Exception as exc:
+            warnings.append(f"saved-plan status unavailable: {exc}")
         try:
             jobs = json.loads(fetch(f"{WORKER}/ht/jobs?date={today}", headers)[0])
             rows = jobs if isinstance(jobs, list) else (jobs.get("items") or jobs.get("data") or [])
