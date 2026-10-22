@@ -3830,15 +3830,15 @@ function getJobSiteContact(job) {
 }
 
 function getDeliveryWindow(job) {
-  if (job._cached) return '';
-  const start = job.deliveryStartTime || '';
-  const end = job.deliveryEndTime || '';
+  const source = driverDetails(job) || job;
+  const start = source.deliveryStartTime || '';
+  const end = source.deliveryEndTime || '';
   if (!start && !end) return '';
   const fmt = t => {
     if (!t) return '';
     if (t.includes('T')) {
       const d = new Date(t);
-      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString('en-GB', { timeZone:'Europe/London', hour: '2-digit', minute: '2-digit' });
     }
     return t;
   };
