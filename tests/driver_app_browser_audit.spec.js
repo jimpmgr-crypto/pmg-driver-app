@@ -30,11 +30,18 @@ async function installInlineCameraStub(page) {
   });
 }
 
-async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null, jobs = null, driverAddFailures = 0 } = {}) {
-  const effectiveJobs = Array.isArray(jobs) ? jobs : haultechJobs;
+async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], captured = null, jobs = null, driverAddFailures = 0, diaryOverride = null, rejectProof = false } = {}) {
+  const effectiveJobs = structuredClone(Array.isArray(jobs) ? jobs : haultechJobs);
+  const initialDiaryJobs = structuredClone(effectiveJobs);
+  const uploadedAssets = new Map();
+  const backupRows = new Map();
+  const backupReceipts = new Map();
   let remainingDriverAddFailures = driverAddFailures;
   await page.route(`${WORKER_URL}/**`, async route => {
     const url = route.request().url();
+    const pathname = new URL(url).pathname;
+    const method = route.request().method();
+    const json = value => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) });
     if (captured) {
       captured.workerRequests.push({ method: route.request().method(), url });
       if (url.includes('/photos/')) captured.photoUploads.push(url);
@@ -64,6 +71,52 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
           body: JSON.parse(route.request().postData() || '{}'),
         });
       }
+    }
+    if (pathname.startsWith('/driver-diary/')) {
+      const date = pathname.split('/').pop();
+      return json(diaryOverride || { date, state: 'live', complete: true, savedAt: new Date().toISOString(), jobs: initialDiaryJobs });
+    }
+    if (pathname.startsWith('/haultech-jobs/')) return json([]);
+    if (pathname.startsWith('/photos/') && method === 'PUT') {
+      uploadedAssets.set(pathname.split('/').pop(), route.request().postDataBuffer());
+      return json({ ok: true });
+    }
+    if (pathname.startsWith('/ticket/pod-') && method === 'PUT') {
+      const metadata = route.request().postDataJSON();
+      if (rejectProof) return json({ ok: true }); // HTTP success alone is not proof custody.
+      const assets = (metadata.proofAssets || []).map(asset => {
+        const bytes = uploadedAssets.get(asset.assetId);
+        expect(bytes?.length, 'proof must be uploaded before a receipt is issued').toBeGreaterThan(0);
+        return { kind: asset.kind, assetId: asset.assetId, bytes: bytes.length,
+          sha256: require('crypto').createHash('sha256').update(bytes).digest('hex') };
+      });
+      return json({ ok: true, proofReceipt: { version: 1, protected: true,
+        eventId: metadata.eventId, jobId: metadata.jobId, date: metadata.date, assets,
+        verifiedAt: new Date().toISOString() } });
+    }
+    if (pathname.startsWith('/jobs/')) {
+      if (method === 'GET') return json([...backupRows.values()]);
+      const payload = route.request().postDataJSON();
+      expect(payload.protocol).toBe('pmg-jobs-v3');
+      const receipts = payload.operations.map(op => {
+        if (!backupReceipts.has(op.operationId)) {
+          const revision = op.expectedRevision + 1;
+          backupRows.set(op.movementId, { ...op.row, _backupRevision: revision });
+          backupReceipts.set(op.operationId, { operationId: op.operationId, movementId: op.movementId, revision });
+        }
+        return backupReceipts.get(op.operationId);
+      });
+      return json({ ok: true, protocol: payload.protocol, receipts });
+    }
+    if (pathname.startsWith('/ht/complete/') && method === 'PATCH') {
+      const jobId = decodeURIComponent(pathname.split('/').pop());
+      const job = effectiveJobs.find(job => String(job.id) === jobId);
+      expect(job, 'completion must refer to a known fixture job').toBeTruthy();
+      job.deliveryStatus = 'Complete';
+      const diaryJob = initialDiaryJobs.find(row => row.id === job.id);
+      if (diaryJob) { diaryJob.deliveryStatus = 'Complete'; (diaryJob.consignments || []).forEach(c => { c.deliveryDriverStatus = 'Complete'; }); }
+      (job.consignments || []).forEach(consignment => { consignment.deliveryDriverStatus = 'Complete'; });
+      return json({ ok: true });
     }
     if (url.includes('/address/autocomplete')) {
       return route.fulfill({
@@ -112,11 +165,16 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
           body: JSON.stringify({ error: 'temporary_android_network_loss' }),
         });
       }
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ok: true, ref: 'Phil Smith', jobId: 'Phil Smith' }),
-      });
+      const input = route.request().postDataJSON();
+      if (!effectiveJobs.some(job => job.id === '33333333-3333-4333-8333-333333333333')) effectiveJobs.push({ id: '33333333-3333-4333-8333-333333333333',
+        movementId: input.movementId, jobNumber: 99999, deliveryStatus: 'Scheduled',
+        deliveryDriverId: '42374caa-5cf2-446e-823e-a40e9d2a2d28', driver: input.driver,
+        deliveryDate: input.date, customerName: input.customer, reference: input.reference,
+        accountNotes: `Added by ${input.driver} / ${input.vehicle} | Driver movement: ${input.movementId}`,
+        consignments: [{ id: '44444444-4444-4444-8444-444444444444', goodsDescription: input.material,
+          weight: input.quantity, deliveryAddressLine1: input.to, collectionAddressLine1: input.from,
+          deliveryDriverStatus: 'Scheduled' }] });
+      return json({ ok: true, ref: '33333333-3333-4333-8333-333333333333', jobId: '33333333-3333-4333-8333-333333333333' });
     }
     if (url.includes('/ht/payment/')) {
       const paymentStatus = JSON.parse(route.request().postData() || '{}').paymentStatus || 'not_paid';
@@ -126,10 +184,8 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
         body: JSON.stringify({ ok: true, paymentStatus, storedUpdated: true }),
       });
     }
-    if (url.includes('/jobs/')) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
-    }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    if (/^\/(ticket|job-status|ht\/note|ht\/mpod)\//.test(pathname)) return json({ ok: true });
+    throw new Error(`Unmocked driver API: ${method} ${pathname}`);
   });
 
   await page.route(`${FLEET_URL}/**`, async route => {
@@ -445,16 +501,16 @@ test.describe('driver app route audit', () => {
     await page.locator('#f-from').fill('Yard');
     await page.locator('#f-to').fill('Nottend');
     await page.locator('#f-qty').fill('2');
-    await page.locator('#f-ref').fill('Phil Smith');
+    await page.locator('#f-ref').fill('33333333-3333-4333-8333-333333333333');
     await page.locator('#f-notes').fill('Leave cones by the gate');
     await page.locator('#add-job-submit').click();
 
     await expect(page.locator('#job-confirm-modal')).toBeVisible();
-    await expect(page.locator('#job-confirm-details')).toContainText('Phil Smith');
+    await expect(page.locator('#job-confirm-details')).toContainText('33333333-3333-4333-8333-333333333333');
     await expect(page.locator('#job-confirm-details')).toContainText('Paid');
     expect(captured.driverAddRequests).toHaveLength(1);
     expect(captured.driverAddRequests[0].body.customer).toBe('A1');
-    expect(captured.driverAddRequests[0].body.reference).toBe('Phil Smith');
+    expect(captured.driverAddRequests[0].body.reference).toBe('33333333-3333-4333-8333-333333333333');
     expect(captured.driverAddRequests[0].body.a1PaymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.paymentStatus).toBe('paid');
     expect(captured.driverAddRequests[0].body.notes).toBe('Leave cones by the gate');
@@ -478,18 +534,15 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests).toHaveLength(1);
     const originalMovementId = captured.driverAddRequests[0].body.movementId;
     expect(originalMovementId).toMatch(/^driver-/);
-    const beforeRestart = await page.evaluate(() => {
-      const key = Object.keys(localStorage).find(name => name.startsWith('pmg_local_jobs_'));
-      const jobs = JSON.parse(localStorage.getItem(key) || '[]');
-      const saved = jobs.find(job => job.movementId);
-      saved.status = 'complete';
-      localStorage.setItem(key, JSON.stringify(jobs));
-      const queue = JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]');
-      const queued = queue.flatMap(entry => entry.jobs || []).find(job => job.movementId === saved.movementId);
-      queued.status = 'complete';
-      localStorage.setItem('pmg_retry_queue', JSON.stringify(queue));
-      return saved;
-    });
+    await page.getByRole('button', { name: '✓ Got it', exact: true }).click();
+    await page.evaluate(() => { isManager = true; });
+    await page.locator('.quick-proof').click();
+    await page.locator('#sign-photo-input').setInputFiles({ name: 'proof.png', mimeType: 'image/png', buffer: TEST_PNG });
+    await page.locator('#sign-save-main-btn').click();
+    await expect(page.locator('#sign-screen')).toBeHidden();
+    const beforeRestart = await page.evaluate(() => localGetJobs(todayISO()).find(job => job.movementId));
+    expect(beforeRestart.status).toBe('complete');
+    expect(beforeRestart.proofReceipt.protected).toBe(true);
     expect(beforeRestart.haultechWriteState).toBe('pending Haultech');
 
     await page.reload();
@@ -497,12 +550,14 @@ test.describe('driver app route audit', () => {
     expect(captured.driverAddRequests[1].body.movementId).toBe(originalMovementId);
     await expect.poll(() => (captured.completionRequests || []).length).toBe(1);
     expect(captured.completionRequests[0].body.originalReference).toBe('Simon Ward');
+    await expect.poll(() => page.evaluate(() => !!flushRetryQueue.running)).toBe(false);
+    await expect.poll(() => page.evaluate(() => localGetJobs(todayISO()).find(job => job.movementId)?.haultechWriteState)).toBe('written');
     const afterRestart = await page.evaluate(() => {
       const key = Object.keys(localStorage).find(name => name.startsWith('pmg_local_jobs_'));
       return JSON.parse(localStorage.getItem(key) || '[]').find(job => job.movementId);
     });
     expect(afterRestart.haultechWriteState).toBe('written');
-    expect(afterRestart.haultechJobId).toBe('Phil Smith');
+    expect(afterRestart.haultechJobId).toBe('33333333-3333-4333-8333-333333333333');
   });
 
   test('concrete row selects a full address and sends postcode pricing inputs', async ({ page }) => {
@@ -575,6 +630,9 @@ test.describe('driver app route audit', () => {
     await expect.poll(() => captured.completionRequests.length).toBe(1);
     expect(captured.completionRequests[0].body.concreteType).toBe('quarried');
     expect(captured.completionRequests[0].body.pourMinutes).toBe(90);
+    await expect(page.locator('#sign-screen')).toBeHidden();
+    const proof = captured.ticketSaves.find(request => request.url.includes('/ticket/pod-')).body;
+    expect(proof.proofAssets[0].kind).toBe('photo');
   });
 
   test('driver can change a saved driver row between Paid and Not paid', async ({ page }) => {
@@ -704,4 +762,66 @@ test('offline backup keeps concrete fields and two loads sharing a reference', a
     {id:'driver-offline-one',source:'recycled',unit:'m3',minutes:0},
     {id:'driver-offline-two',source:'recycled',unit:'m3',minutes:0}
   ]);
+});
+
+function signoffJob() {
+  return { id: '55555555-5555-4555-8555-555555555555', jobNumber: 99998,
+    customerName: 'Fixture Customer', deliveryDriverId: '201938f2-da93-4987-bd42-32342fcce78f',
+    deliveryDate: new Date().toISOString(), deliveryStatus: 'Scheduled',
+    consignments: [{ id: '66666666-6666-4666-8666-666666666666', goodsDescription: '6F2', weight: 20,
+      deliveryAddressLine1: 'Fixture Site', deliveryDriverStatus: 'Scheduled' }] };
+}
+
+for (const rejectProof of [false, true]) {
+  test(`driver sign-off ${rejectProof ? 'keeps form and notes when receipt is missing' : 'protects the named statement before completion and survives reload'}`, async ({ page }) => {
+    const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [], completionRequests: [] };
+    await stubExternalApis(page, { captured, jobs: [signoffJob()], rejectProof });
+    await page.goto(`${APP_URL}/?driver=richard`);
+    await page.evaluate(() => { isManager = true; });
+    await page.locator('.quick-proof').click();
+    await expect(page.locator('#sign-driver-signoff')).not.toBeChecked();
+    await page.locator('#sign-notes').fill('Customer away; tipped in agreed place.');
+    await page.locator('#sign-save-main-btn').click();
+    await expect(page.locator('#toast')).toContainText('Add a photo, customer signature or driver sign-off');
+    expect(captured.completionRequests).toHaveLength(0);
+    expect(captured.ticketSaves.filter(request => request.body.type === 'proof_complete')).toHaveLength(0);
+    await page.getByLabel('Signed off by driver', { exact: true }).check();
+    await page.locator('#sign-save-main-btn').click();
+    if (rejectProof) {
+      await expect(page.locator('#toast')).toContainText('Protected proof receipt not confirmed');
+      await expect(page.locator('#sign-screen')).toBeVisible();
+      await expect(page.locator('#sign-driver-signoff')).toBeChecked();
+      await expect(page.locator('#sign-notes')).toHaveValue('Customer away; tipped in agreed place.');
+      expect(captured.completionRequests).toHaveLength(0);
+      expect(await page.evaluate(() => activeJob.trafficNotes || '')).not.toContain('Signed off by driver');
+      return;
+    }
+    await expect(page.locator('#sign-screen')).toBeHidden();
+    expect(captured.completionRequests).toHaveLength(1);
+    const audit = captured.ticketSaves.find(request => request.body.type === 'proof_complete').body;
+    expect(audit.payload.hasDriverSignoff).toBe(true);
+    expect(audit.payload.notes.match(/Customer away; tipped in agreed place/g)).toHaveLength(1);
+    expect(captured.ticketSaves.filter(request => request.body.type === 'proof_complete')).toHaveLength(1);
+    await expect(page.locator('#sync-banner')).not.toContainText('Something did not send');
+    expect(audit.payload.hasSignature).toBe(false);
+    expect(audit.payload.hasPhoto).toBe(false);
+    expect(audit.payload.driverSignoff.driver).toBe(audit.driver);
+    expect(Number.isFinite(Date.parse(audit.payload.driverSignoff.signedAt))).toBe(true);
+    expect(captured.completionRequests[0].body.driverNotes).toContain('Signed off by driver:');
+    expect(captured.completionRequests[0].body.driverNotes).toContain('Customer away; tipped in agreed place.');
+    const proofIndex = captured.workerRequests.findIndex(r => r.url.includes('/ticket/pod-'));
+    const completionIndex = captured.workerRequests.findIndex(r => r.url.includes('/ht/complete/'));
+    expect(proofIndex).toBeGreaterThan(-1);
+    expect(completionIndex).toBeGreaterThan(proofIndex);
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => getJobStatus(allJobs.find(job => job.id === '55555555-5555-4555-8555-555555555555')))).toBe('complete');
+    expect(captured.completionRequests).toHaveLength(1);
+  });
+}
+
+test('malformed diary response is unavailable rather than an empty checked plan', async ({ page }) => {
+  await stubExternalApis(page, { diaryOverride: { ok: true } });
+  await page.goto(`${APP_URL}/?driver=john`);
+  await expect.poll(() => page.evaluate(() => diaryReadState.state)).toBe('unavailable');
+  await expect(page.getByText('No jobs allocated in the checked plan', { exact: true })).toHaveCount(0);
 });

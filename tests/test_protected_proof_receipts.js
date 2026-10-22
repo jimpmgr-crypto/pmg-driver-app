@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const source = fs.readFileSync(path.join(__dirname, '../worker/index.js'), 'utf8');
-const ctx = vm.createContext({ console, Date, Set, Map, Promise, Uint8Array, URL, crypto: require('crypto').webcrypto,
+const ctx = vm.createContext({ console, Date, Set, Map, Promise, Uint8Array, TextDecoder, URL, crypto: require('crypto').webcrypto,
   corsResponse: (body, status = 200, headers = {}) => new Response(body, { status, headers }),
   safeJsonParse: text => { try { return JSON.parse(text); } catch { return null; } },
   safePathParam: value => /^[a-zA-Z0-9_-]+$/.test(value) ? value : '',
@@ -122,6 +122,32 @@ async function check(name, run) { await run(); count++; console.log('PASS ' + na
     assert.deepEqual((await call('/tickets')).body.find(x => x.jobId === actual.jobId), actual);
     assert((await call('/tickets?date=2026-10-17')).body.every(x => x.date === '2026-10-17'));
     assert.equal((await call('/tickets?date=invalid')).status, 400);
+  });
+  await check('driver sign-off needs stored statement and exact driver/date/job receipt', async () => {
+    const signoff = { version: 1, kind: 'driver-signoff', driver: 'Test Driver', signedAt: '2026-10-22T16:00:00Z', notes: 'Customer absent. Tipped in agreed place.' };
+    const signedEvent = { type: 'proof_complete', eventId: 'driver-signoff-fixture', jobId: 'signoff-job', date: '2026-10-22', driver: signoff.driver,
+      payload: { hasDriverSignoff: true, hasPhoto: false, hasSignature: false, driverSignoff: signoff } };
+    const statementId = `proof-${signedEvent.eventId}-driver-signoff`;
+    const meta = { eventId: signedEvent.eventId, jobId: signedEvent.jobId, date: signedEvent.date, proofAssets: [{ kind: 'driver-signoff', assetId: statementId }] };
+    await call('/ticket/trial-' + signedEvent.eventId, 'PUT', signedEvent);
+    assert.equal((await call('/ticket/pod-signoff', 'PUT', meta)).status, 409);
+    const statement = { ...signoff, eventId: signedEvent.eventId, jobId: signedEvent.jobId, date: signedEvent.date };
+    const bytes = new TextEncoder().encode(JSON.stringify(statement));
+    await call('/photos/' + statementId, 'PUT', bytes);
+    const result = await call('/ticket/pod-signoff', 'PUT', meta);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.proofReceipt.driverSignoff, signoff);
+    assert.deepEqual(result.body.proofReceipt.assets.map(a => a.kind), ['driver-signoff']);
+    assert.deepEqual((await call('/proof-completions/' + signedEvent.date)).body.jobIds, [signedEvent.jobId]);
+    await call('/ticket/trial-' + signedEvent.eventId, 'PUT', { ...signedEvent, payload: { ...signedEvent.payload, driverSignoff: { ...signoff, notes: 'Changed' } } });
+    assert.equal((await call('/proof-completions/' + signedEvent.date)).body.jobIds.length, 0);
+    assert.equal((await call('/ticket/pod-signoff', 'PUT', meta)).status, 409);
+    await call('/ticket/trial-' + signedEvent.eventId, 'PUT', signedEvent);
+    store.set('photo:' + statementId, new TextEncoder().encode(JSON.stringify({ ...statement, driver: 'Someone else' })).buffer);
+    assert.equal((await call('/proof-completions/' + signedEvent.date)).body.jobIds.length, 0);
+    assert.equal((await call('/ticket/pod-signoff', 'PUT', meta)).status, 409);
+    store.set('photo:' + statementId, bytes.buffer);
+    assert.equal((await call('/proof-completions/' + signedEvent.date)).body.jobIds.length, 1);
   });
   console.log(`${count}/${count} protected-proof worker cases passed; no live writes`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

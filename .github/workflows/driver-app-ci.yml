@@ -22,3 +22,11 @@ jobs:
       - run: node --check sw.js
       - run: npx wrangler deploy --dry-run --cwd worker
       - run: npm run test:browser
+      - name: Retain failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

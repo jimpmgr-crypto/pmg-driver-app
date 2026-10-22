@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261022-driver-full-details';
+const WORKER_BUILD_ID = '20261022-driver-signoff-r1';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -3527,13 +3527,19 @@ async function mergeDriverNotesIntoHaultechJob(env, jobId, dateOrDates, driverNo
 function proofKinds(event) {
   if (event?.type !== 'proof_complete' || typeof event.eventId !== 'string' || !event.eventId
     || typeof event.jobId !== 'string' || !event.jobId || !/^\d{4}-\d{2}-\d{2}$/.test(String(event.date || ''))) return [];
-  return ['photo', 'signature'].filter(kind => event.payload?.[kind === 'photo' ? 'hasPhoto' : 'hasSignature'] === true);
+  const flags = { photo: 'hasPhoto', signature: 'hasSignature', 'driver-signoff': 'hasDriverSignoff' };
+  return Object.keys(flags).filter(kind => event.payload?.[flags[kind]] === true);
 }
 
 function protectedProofMatchesEvent(receipt, event) {
   const kinds = proofKinds(event);
   return !!(kinds.length && receipt?.version === 1 && receipt.protected === true
     && receipt.eventId === event.eventId && receipt.jobId === event.jobId && receipt.date === event.date
+    && (!kinds.includes('driver-signoff') || (receipt.driverSignoff?.version === 1
+      && receipt.driverSignoff.kind === 'driver-signoff' && receipt.driverSignoff.driver === event.driver
+      && typeof event.driver === 'string' && !!event.driver.trim()
+      && Number.isFinite(Date.parse(receipt.driverSignoff.signedAt))
+      && JSON.stringify(receipt.driverSignoff) === JSON.stringify(event.payload?.driverSignoff)))
     && Array.isArray(receipt.assets) && receipt.assets.length === kinds.length
     && kinds.every(kind => receipt.assets.filter(asset => asset.kind === kind
       && asset.assetId === `proof-${event.eventId}-${kind}` && Number.isInteger(asset.bytes) && asset.bytes > 0
@@ -3557,10 +3563,20 @@ async function deriveProtectedProofReceipt(env, metadata) {
     const assetId = matches[0].assetId;
     const body = await env.PMG_DATA.get(`photo:${assetId}`, { type: 'arrayBuffer' });
     if (!body || !body.byteLength) throw new Error('proof_asset_missing_or_empty');
+    if (kind === 'driver-signoff') {
+      const signoff = safeJsonParse(new TextDecoder().decode(body));
+      const declared = event.payload?.driverSignoff;
+      if (!signoff || signoff.version !== 1 || signoff.kind !== kind
+        || signoff.eventId !== event.eventId || signoff.jobId !== event.jobId || signoff.date !== event.date
+        || typeof event.driver !== 'string' || !event.driver.trim() || signoff.driver !== event.driver
+        || !declared || declared.version !== 1 || declared.kind !== kind || signoff.driver !== declared.driver || signoff.signedAt !== declared.signedAt
+        || !Number.isFinite(Date.parse(signoff.signedAt)) || typeof signoff.notes !== 'string'
+        || signoff.notes !== declared.notes) throw new Error('driver_signoff_identity_mismatch');
+    }
     assets.push({ kind, assetId, bytes: body.byteLength, sha256: await proofBytesHash(body) });
   }
   const receipt = { version: 1, protected: true, eventId: event.eventId, jobId: event.jobId, date: event.date,
-    assets, verifiedAt: new Date().toISOString() };
+    assets, ...(kinds.includes('driver-signoff') ? { driverSignoff: event.payload.driverSignoff } : {}), verifiedAt: new Date().toISOString() };
   const existing = safeJsonParse(await env.PMG_DATA.get(`protected-proof:${event.eventId}`));
   if (existing) {
     if (!protectedProofMatchesEvent(existing, event) || JSON.stringify(existing.assets) !== JSON.stringify(assets)) throw new Error('proof_receipt_conflict');

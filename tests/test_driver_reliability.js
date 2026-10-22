@@ -76,6 +76,39 @@ test('day review cancellation preserves a failed note write despite successful s
   assert.equal(states.at(-1)[1], 'failed');
 });
 
+test('retry accepts only the receipt revision for unchanged queued content', async () => {
+  const row = { id: 'driver-one', movementId: 'driver-one', status: 'scheduled', haultechWriteState: 'pending Haultech', notes: 'Original' };
+  let queue = [{ date: '2026-10-17', jobs: [{ ...row }] }];
+  let local = JSON.stringify([{ ...row, _backupRevision: 3 }]);
+  let uploaded;
+  const ctx = context({ todayISO: () => '2026-10-17', getRetryQueue: () => JSON.parse(JSON.stringify(queue)),
+    setRetryQueue: q => { queue = q; }, submitDriverAddedRow: async () => ({ jobId: 'real-job' }),
+    cloudPutJobs: async (date, jobs) => { uploaded = jobs; },
+    localStorage: { getItem: () => local, setItem: (key, value) => { local = value; } },
+    toast() {}, updateSyncUI() {} }, ['pruneRetryQueue', 'flushRetryQueue']);
+  await ctx.flushRetryQueue();
+  assert.equal(JSON.parse(local)[0].haultechWriteState, 'written');
+  assert.equal(JSON.parse(local)[0]._backupRevision, 3);
+  assert.equal(uploaded[0]._backupRevision, 3);
+  assert.equal(queue.length, 0);
+});
+
+test('concurrent refresh waits for the existing retry receipt without a second submission', async () => {
+  let queue = [{ date: '2026-10-17', jobs: [{ id: 'driver-one', status: 'scheduled' }] }];
+  let finish, writes = 0, joined = false;
+  const ctx = context({ todayISO: () => '2026-10-17', getRetryQueue: () => JSON.parse(JSON.stringify(queue)),
+    setRetryQueue: q => { queue = q; }, cloudPutJobs: () => { writes++; return new Promise(resolve => { finish = resolve; }); },
+    localStorage: { getItem: () => JSON.stringify(queue[0]?.jobs || []), setItem() {} },
+    toast() {}, updateSyncUI() {} }, ['pruneRetryQueue', 'flushRetryQueue']);
+  const first = ctx.flushRetryQueue();
+  while (!finish) await tick();
+  const second = ctx.flushRetryQueue().then(() => { joined = true; });
+  await tick();
+  assert.equal(joined, false);
+  finish(); await Promise.all([first, second]);
+  assert.equal(writes, 1); assert.equal(joined, true);
+});
+
 test('pending retry additions survive an older in-flight flush', async () => {
   let queue = [{ date: '2026-10-17', savedAt: 'first', jobs: [{ id: 'driver-one', status: 'scheduled' }] }];
   const local = new Map([['pmg_local_jobs_2026-10-17', JSON.stringify(queue[0].jobs)]]);

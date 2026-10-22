@@ -14,7 +14,7 @@ module.exports = defineConfig({
   webServer: {
     command: 'npx wrangler pages dev . --port 4179 --ip 127.0.0.1 --compatibility-date=2026-06-24',
     url: 'http://127.0.0.1:4179',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
 });

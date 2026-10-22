@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261022-driver-full-details-r2';
+const APP_BUILD_ID = '20261022-driver-signoff-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2621,7 +2621,9 @@ async function submitDriverAddedRow(job, date) {
 }
 
 async function flushRetryQueue() {
-  if (flushRetryQueue.running) return;
+  if (flushRetryQueue.running) return flushRetryQueue.pending;
+  let settle;
+  flushRetryQueue.pending = new Promise(resolve => { settle = resolve; });
   flushRetryQueue.running = true;
   try {
   const q = pruneRetryQueue();
@@ -2630,8 +2632,17 @@ async function flushRetryQueue() {
   for (const entry of q) {
     if (!entry || entry.date !== todayISO() || !Array.isArray(entry.jobs) || !entry.jobs.length) continue;
     const original = JSON.stringify(entry);
-    const originalJobs = JSON.stringify(entry.jobs);
+    let originalJobs = JSON.stringify(entry.jobs);
     try {
+      // A confirmed backup can add only a revision after the retry was queued.
+      // Reuse that receipt only for the exact same row contents, never a newer edit.
+      const currentJson = localStorage.getItem('pmg_local_jobs_' + entry.date);
+      const currentRows = JSON.parse(currentJson || 'null');
+      const content = rows => JSON.stringify(rows, (key, value) => key === '_backupRevision' ? undefined : value);
+      if (Array.isArray(currentRows) && content(currentRows) === content(entry.jobs)) {
+        entry.jobs = currentRows;
+        originalJobs = currentJson;
+      }
       let liveWritePending = false;
       for (const job of entry.jobs) {
         if (!job?.movementId || job.haultechWriteState !== 'pending Haultech') continue;
@@ -2686,7 +2697,7 @@ async function flushRetryQueue() {
     toast('✓ Jobs synced to cloud');
   }
   updateSyncUI();
-  } finally { flushRetryQueue.running = false; }
+  } finally { flushRetryQueue.running = false; settle(); }
 }
 
 function needsWritebackAttention(item) {
@@ -3251,6 +3262,8 @@ async function loadJobs(options = {}) {
   showError(null);
 
   try {
+    // Finish pending row receipts before a plan refresh can re-save their local snapshots.
+    await flushRetryQueue();
     if (!customers.length) loadCustomers().catch(() => {});
     const resp = await api(`/driver-diary/${date}`);
     if (!resp.ok) {
@@ -5809,9 +5822,7 @@ function renderSignScreen(job) {
   $('sign-content').innerHTML = `
     <div class="trial-banner">
       <strong>Proof and complete</strong><br>
-      ${LIVE_WRITE
-        ? 'For live Haultech jobs this will complete the consignment and attempt photo/signature upload to Haultech. Any proof fallback will be shown clearly.'
-        : 'Take a photo if needed, get a signature if available, add a short note only if useful, then tap Complete job.'}
+      Add a customer signature or photo. If the customer cannot sign, choose Signed off by driver. Record any issues below, then complete the job.
     </div>
     <div class="sign-delivery-info">
       <div class="sign-del-icon">
@@ -5828,7 +5839,7 @@ function renderSignScreen(job) {
     <hr class="sign-divider">
 
     <div class="sign-field">
-      <div class="sign-field-label">Consignee Name:</div>
+      <div class="sign-field-label">Customer name:</div>
       <div class="sign-input-row">
         <input type="text" id="sign-consignee" placeholder="Enter Name">
         <button class="sign-contact-btn">👤</button>
@@ -5836,8 +5847,8 @@ function renderSignScreen(job) {
     </div>
 
     <div class="sign-field">
-      <div class="sign-field-label">Driver Notes:</div>
-      <textarea class="sign-textarea" id="sign-notes" placeholder="Enter Notes..."></textarea>
+      <label class="sign-field-label" for="sign-notes">Any issues or comments?</label>
+      <textarea class="sign-textarea" id="sign-notes" placeholder="Record any customer concerns or delivery issues"></textarea>
     </div>
 
     ${concreteSourceRequired ? `
@@ -5857,7 +5868,7 @@ function renderSignScreen(job) {
     </div>` : ''}
 
     <div class="sign-field">
-      <div class="sign-field-label">Signature:</div>
+      <div class="sign-field-label">Customer signature:</div>
       <div class="sign-sig-wrap">
         <canvas id="sign-sig-canvas"></canvas>
         <div class="sign-sig-indicator">▶</div>
@@ -5866,9 +5877,17 @@ function renderSignScreen(job) {
       </div>
     </div>
 
+    <div class="sign-field">
+      <div class="sign-field-label">Customer unable to sign?</div>
+      <label style="display:flex;align-items:center;gap:12px;padding:14px;background:#f3f4f6;border-radius:10px;font-weight:700">
+        <input type="checkbox" id="sign-driver-signoff" style="width:24px;height:24px">
+        Signed off by driver
+      </label>
+    </div>
+
     <div class="sign-primary-actions">
       <button class="sign-primary-complete" id="sign-save-main-btn">Complete job</button>
-      <div class="sign-complete-help">Photo or signature required for live Haultech completion. Quantity can be checked below before completing.</div>
+      <div class="sign-complete-help">Add a photo, customer signature or driver sign-off. Check the quantity before completing.</div>
     </div>
   `;
 
@@ -5955,6 +5974,13 @@ async function saveWorkerProofAsset(assetId, body, contentType = 'application/oc
   });
   await requireWorkerAcknowledgement(response, 'Proof upload');
   return { assetId, protected: true };
+}
+
+async function saveDriverSignoff(event, signoff) {
+  const assetId = `proof-${event.eventId}-driver-signoff`;
+  const body = JSON.stringify({ ...signoff, eventId: event.eventId, jobId: event.jobId, date: event.date });
+  await saveWorkerProofAsset(assetId, body, 'application/json');
+  return { kind: 'driver-signoff', assetId, protected: true, fallbackSaved: true, haultechSubmitted: false };
 }
 
 async function saveProofMetadata(storageKey, metadata) {
@@ -6140,15 +6166,23 @@ async function handleSignComplete() {
   setSignCompleteBusy(true);
 
   const consignee = $('sign-consignee')?.value?.trim() || '';
-  const notes = $('sign-notes')?.value?.trim() || '';
+  const enteredNotes = $('sign-notes')?.value?.trim() || '';
+  const driverSignoff = $('sign-driver-signoff')?.checked ? {
+    version: 1, kind: 'driver-signoff', driver: currentUser.name,
+    signedAt: new Date().toISOString(), notes: enteredNotes,
+  } : null;
+  const notes = driverSignoff
+    ? [enteredNotes, `Signed off by driver: ${driverSignoff.driver} (${driverSignoff.signedAt})`].filter(Boolean).join('\n')
+    : enteredNotes;
   const weight = $('sign-weight')?.value || '0';
   const haultechDriverNote = composeDriverHaultechNote({ note: notes, consignee });
-  const mergedNotes = applyDriverCompletionNote(job, haultechDriverNote || notes);
+  const mergedNotes = applyDriverCompletionNote({ ...job }, haultechDriverNote || notes);
   const sigData = getSignSigData();
   const wtn = getJobWasteTransferNote(job);
   let proofEvent = null;
 
   try {
+    if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
     proofEvent = queueTrialEvent('proof_complete', job, {
       consigneeName: consignee,
       driverNotes: notes,
@@ -6158,17 +6192,19 @@ async function handleSignComplete() {
       wasteTransferNote: wtn,
       hasSignature: !!sigData,
       hasPhoto: !!signPhotoFile,
+      hasDriverSignoff: !!driverSignoff,
+      driverSignoff,
       concreteType,
       pourMinutes,
       state: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
       haultechWriteState: LIVE_WRITE ? 'pending Haultech' : 'saved locally',
     }, { deferPersist: true });
-    if (!signPhotoFile && !sigData) throw new Error('Add a photo or signature before completing');
     if (!await persistTrialEventToWorker(proofEvent)) throw new Error('Proof audit not confirmed — keep this form open and retry');
 
     if (LIVE_WRITE && !isDriverAdded) {
       const proofResults = [];
-      if (!signPhotoFile && !sigData) {
+      if (driverSignoff) proofResults.push(await saveDriverSignoff(proofEvent, driverSignoff));
+      if (!signPhotoFile && !sigData && !driverSignoff) {
         setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
         toast('⚠️ Add a photo or signature, then tap Complete job');
         return;
@@ -6231,6 +6267,7 @@ async function handleSignComplete() {
       const completionCheck = await verifyHaultechCompletion(haultechCompleteJob, haultechJobId);
       if (!completionCheck.ok) throw new Error('Completion was submitted but not verified in Haultech. Proof is protected; office check required. ' + completionCheck.reason);
 
+      applyDriverCompletionNote(job, haultechDriverNote || notes);
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
@@ -6249,6 +6286,7 @@ async function handleSignComplete() {
       // Unmapped/local rows still need protected proof and acknowledged status.
       // Do not dismiss the form or destroy its only photo on an upload failure.
       const proofAssets = [];
+      if (driverSignoff) proofAssets.push(await saveDriverSignoff(proofEvent, driverSignoff));
       if (sigData) {
         const sigBlob = await (await fetch(sigData)).arrayBuffer();
         proofAssets.push({ kind: 'signature', ...await saveWorkerProofAsset(`proof-${proofEvent.eventId}-signature`, sigBlob, 'image/png') });
@@ -6271,6 +6309,7 @@ async function handleSignComplete() {
       await requireWorkerAcknowledgement(statusResponse, 'Completion status');
       job.proofReceipt = protectedReceipt;
 
+      applyDriverCompletionNote(job, haultechDriverNote || notes);
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
