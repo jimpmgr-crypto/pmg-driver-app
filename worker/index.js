@@ -3607,6 +3607,7 @@ async function handleDriverRequest(request, env) {
         service: 'pmg-driver-sync',
         workerBuildId: WORKER_BUILD_ID,
         runtimePatchId: WORKER_RUNTIME_PATCH_ID,
+        diarySnapshotVersion: '20261022-driver-saved-plan',
         pricingPolicyVersion: AGREED_COMPLETION_POLICY.version,
         driverApiContract: DRIVER_API_CONTRACT,
       }), 200, { 'Cache-Control': 'no-store' });
@@ -3674,6 +3675,19 @@ async function handleDriverRequest(request, env) {
       });
       if (newToken) return corsResponse(JSON.stringify({ ok: true, refreshed: true }));
       return corsResponse(JSON.stringify({ error: 'refresh_failed' }), 500);
+    }
+
+    // Independent official schedule; never an authority for completion or pricing writes.
+    const diaryMatch = path.match(/^\/driver-diary\/(\d{4}-\d{2}-\d{2})$/);
+    if (diaryMatch && request.method === 'GET') {
+      const date = diaryMatch[1];
+      if (!isValidIsoDate(date) || new Date(date+'T12:00:00Z').toISOString().slice(0,10) !== date) return corsResponse(JSON.stringify({error:'bad_date'}),400);
+      if (!env.PMG_APP_STORE) return corsResponse(JSON.stringify({error:'schedule_storage_unavailable'}),503);
+      const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('diary:'+date));
+      const result = await stub.fetch(new Request('https://store/__diary_snapshot/'+date, {method: env.PMG_APP_STORE_READ_ONLY === 'true' || url.searchParams.get('stored') === 'true' ? 'GET' : 'POST'}));
+      const data = await result.json();
+      if (data.complete) data.jobs = await mergeJobStatusOverrides(env, date, visibleHaultechJobsForDate(data.jobs,date));
+      return corsResponse(JSON.stringify(data),200,{'Cache-Control':'no-store'});
     }
 
     // GET /ht/jobs?date=YYYY-MM-DD — fetch live jobs from Haultech
@@ -4771,6 +4785,10 @@ export default {
   fetch: handleDriverRequest,
   scheduled(event, env, ctx) {
     if (env.PMG_APP_STORE_READ_ONLY === 'true') return;
+    if (event?.cron === DIARY_CRON) {
+      ctx.waitUntil(refreshUpcomingDiaries(env));
+      return;
+    }
     if (event?.cron === PLANT_PUSH_CRON) {
       ctx.waitUntil(runTransactionalPlantSchedule(env, event));
       return;
@@ -4783,6 +4801,7 @@ export default {
 };
 
 
+import { DIARY_CRON, diaryDates, validateDiary, refreshDiary, diaryReply } from './diary-snapshot.js';
 import { JobStorage } from './job-storage.js';
 import { handlePlantTransaction } from './plant-transaction.js';
 import { bulkTicketRows, recordTicketIndex, readDateTickets, ticketIndexStub, handleTicketIndex } from './ticket-index.js';
@@ -4807,10 +4826,35 @@ async function runTransactionalPlantSchedule(env, event) {
   if (!response.ok) throw new Error('plant_schedule_not_confirmed');
   return response.json();
 }
+async function fetchDiarySource(env, date) {
+  const auth = await getHaultechAuth(env);
+  if (!auth || !auth.token) throw new Error('no_haultech_auth');
+  const response = await fetch(HT_BASE + queryPath('/api/Display/GetJobsByDatePaginated', {
+    selectFromDate:date, selectToDate:date, take:'1000',
+  }), {headers:{Authorization:`Bearer ${auth.token}`, oauthTmsId:auth.tmsId || DEFAULT_TMS, Accept:'application/json'}, signal:AbortSignal.timeout(12000)});
+  if (!response.ok) throw new Error('haultech_http_'+response.status);
+  let payload; try { payload = await response.json(); } catch { throw new Error('invalid_diary_json'); }
+  return validateDiary(payload, response.headers.get('continuationtoken') || '');
+}
+async function refreshUpcomingDiaries(env) {
+  for (const date of diaryDates()) {
+    const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('diary:'+date));
+    const response = await stub.fetch(new Request('https://store/__diary_snapshot/'+date,{method:'POST'}));
+    if (!response.ok) throw new Error('diary_store_failed');
+  }
+}
+
 export class PmgAppStore {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(request) {
     const url = new URL(request.url);
+    const diary = url.pathname.match(/^\/__diary_snapshot\/(\d{4}-\d{2}-\d{2})$/);
+    if (diary && isValidIsoDate(diary[1])) {
+      const data = request.method === 'POST'
+        ? await refreshDiary(this.ctx.storage,diary[1],date => fetchDiarySource(this.env,date))
+        : diaryReply(await this.ctx.storage.get('diary'),diary[1]);
+      return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
+    }
     if (url.pathname.startsWith('/__ticket_index/')) return handleTicketIndex(this.ctx, this.env, request);
     if (url.pathname.startsWith('/plant/') || url.pathname.startsWith('/__plant_')) {
       return handlePlantTransaction(this.ctx, this.env, request, async (req, env) => {

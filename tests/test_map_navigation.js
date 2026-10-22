@@ -83,7 +83,7 @@ Object.assign(ctx, {
   cloudPutJobs: async () => {}, addToRetryQueue: () => {}, renderJobs: () => {},
   driverReviewBackupJobs: jobs => jobs, getHaultechJobId: j => j.haultechJobId || j._haultechJobId || '',
 });
-for (const name of ['cachedDriverFields', 'jobToLocal', 'mergeWithLocal', 'loadJobsFallback']) vm.runInContext(fn(name), ctx);
+for (const name of ['getJobNumber', 'cachedDriverFields', 'jobToLocal', 'mergeWithLocal', 'loadJobsFallback']) vm.runInContext(fn(name), ctx);
 const cached = ctx.jobToLocal(live);
 assert.equal(cached.id, live.id, 'cache keeps job identity');
 ctx.localGetJobs = () => [cached];

@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261021-driver-unit-switch-r2';
+const APP_BUILD_ID = '20261022-driver-saved-plan';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1741,6 +1741,7 @@ let selectedProblemReason = '';
 let selectedFeedbackTags = [];
 let dayReviewOpen = false;
 let lastJobsUpdatedAt = null;
+let diaryReadState = {state:"unknown", savedAt:"", complete:false};
 let walkaroundState = null;
 let walkaroundSigCtx = null;
 let walkaroundSigDrawing = false;
@@ -2256,6 +2257,7 @@ function jobToLocal(j) {
   const driver = getJobDriver(j) || addedBy;
   return {
     id: j.id || j.jobId,
+    jobNumber: getJobNumber(j),
     _backupRevision: j._backupRevision,
     movementId: driverMovementId(j),
     haultechJobId: j.haultechJobId || j._haultechJobId || '',
@@ -2304,6 +2306,7 @@ function jobToLocal(j) {
 
 function cachedDriverFields(row) {
   return {
+    jobNumber: row.jobNumber || row.ticketNo || row.id,
     _backupRevision: row._backupRevision,
     _customerId: row.customerId || row._customerId || '',
     _priceMode: row.priceMode || row._priceMode || '',
@@ -2720,7 +2723,8 @@ function updateSyncDot(state) {
   const updatedLabel = lastJobsUpdatedAt
     ? `Updated ${lastJobsUpdatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
     : 'Ready';
-  const labels = { green: updatedLabel, red: 'Needs help', grey: 'Waiting to send' };
+  const planLabel = diaryReadState.state === 'cached' ? 'Saved plan' : (!diaryReadState.complete ? 'Plan not checked' : updatedLabel);
+  const labels = { green: planLabel, red: 'Needs help', grey: 'Waiting to send' };
   document.querySelectorAll('.sync-dot').forEach(dot => {
     const colors = { green: '#10b981', red: '#ef4444', grey: '#6b7280' };
     dot.style.background = colors[state] || '#6b7280';
@@ -2911,7 +2915,7 @@ function mergeWithLocal(date, cloudJobs, options = {}) {
       sameDriverAddedMovement(lj, j) &&
       findMatchingLiveDriverJob(lj, cloudJobs) === j
     );
-    const retained = semanticLocal ? { ...cachedDriverFields(semanticLocal), ...j, _backupRevision: semanticLocal._backupRevision } : j;
+    const retained = semanticLocal ? { ...cachedDriverFields(semanticLocal), ...j, jobNumber: getJobNumber(j), _backupRevision: semanticLocal._backupRevision } : j;
     if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return retained;
     const liveStatus = getJobStatus(j);
     if (liveStatus === 'complete') return retained;
@@ -2945,7 +2949,7 @@ function mergeWithLocal(date, cloudJobs, options = {}) {
       _movementId: lj.movementId || '',
       _haultechJobId: lj.haultechJobId || '',
       _haultechWriteState: lj.haultechWriteState || '',
-      _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
+      _addedBy: lj.addedBy || lj.createdBy || (isLocalDriverTempJob(lj) ? lj.driver : '') || '',
       _reference: lj.reference || lj.ticketNo || '',
       _notes: lj.notes || '',
       _wtn: lj.wtn || lj.wasteTransferNote || null,
@@ -3245,8 +3249,8 @@ async function loadJobs(options = {}) {
   showError(null);
 
   try {
-    if (!customers.length) await loadCustomers();
-    const resp = await api(`/ht/jobs?date=${date}`);
+    if (!customers.length) loadCustomers().catch(() => {});
+    const resp = await api(`/driver-diary/${date}`);
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       if (err.error === 'no_haultech_auth') {
@@ -3256,8 +3260,11 @@ async function loadJobs(options = {}) {
       throw new Error(err.error || `HTTP ${resp.status}`);
     }
     const data = await resp.json();
+    if (!data || data.date !== date || data.complete !== true || !['live','cached'].includes(data.state) || !Number.isFinite(Date.parse(data.savedAt)) || !Array.isArray(data.jobs)) throw new Error('Schedule not available');
+    diaryReadState = {state:data.state, savedAt:data.savedAt, complete:true};
+    if (data.state !== 'live') showError('HaulTech unavailable. Showing the saved plan from ' + new Date(data.savedAt).toLocaleString('en-GB') + '. Later office changes may be missing.');
     const now = new Date().toISOString();
-    let jobs = Array.isArray(data) ? data : (data?.items || data?.data);
+    let jobs = data.jobs;
     if (!Array.isArray(jobs) || jobs.some(j => !j || typeof j !== 'object')) throw new Error('Invalid Haultech diary response');
     // Haultech returns diary jobs in the order arranged inside each load.
     // Keep that source sequence: hidden timestamps are creation/update times,
@@ -3267,15 +3274,17 @@ async function loadJobs(options = {}) {
       _haultechOrder: haultechOrder,
       savedAt: j.savedAt || now,
     }));
-    jobs = await hydrateBackupRevisions(date, jobs);
+    jobs = await hydrateBackupRevisions(date, jobs).catch(() => jobs); // A backup outage must not hide a verified plan. No revision is guessed.
     jobs = mergeWithLocal(date, jobs);
     allJobs = jobs;
-    lastJobsUpdatedAt = new Date();
+    lastJobsUpdatedAt = new Date(data.savedAt);
     renderJobs();
     saveJobsToCloud(date, allJobs).catch(error => showError('Phone backup failed: ' + error.message));
   } catch (e) {
     console.error('Load jobs error:', e);
-    showError('Could not reach Haultech. Showing cached data.');
+    diaryReadState = {state:'unavailable',savedAt:'',complete:false};
+    updateSyncUI();
+    showError('The current work plan could not be checked. Showing any saved work; contact the office for missing allocations.');
     return loadJobsFallback(date);
   }
 }
@@ -3315,9 +3324,9 @@ async function loadJobsFallback(date) {
         if (key && existingKeys.has(key)) continue;
         if (isLocalDriverTempJob(lj) && findMatchingLiveDriverJob(lj, jobs)) continue;
         jobs.push({
-          jobId: lj.id, _cached: true, _driverAdded: true,
+          jobId: lj.id, _cached: true, _driverAdded: isLocalDriverTempJob(lj),
           _driver: lj.driver, _customer: lj.customer,
-          _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
+          _addedBy: lj.addedBy || lj.createdBy || (isLocalDriverTempJob(lj) ? lj.driver : '') || '',
           _material: lj.material, _from: lj.from, _to: lj.to,
           ...cachedDriverFields(lj),
       _collectionAddress: getCollectionAddress(lj),
@@ -3354,7 +3363,7 @@ async function loadJobsFallback(date) {
     allJobs = localJobs.map(lj => ({
       jobId: lj.id, _cached: true, _driverAdded: isLocalDriverTempJob(lj),
       _driver: lj.driver, _customer: lj.customer,
-      _addedBy: lj.addedBy || lj.createdBy || lj.driver || '',
+      _addedBy: lj.addedBy || lj.createdBy || (isLocalDriverTempJob(lj) ? lj.driver : '') || '',
       _material: lj.material, _from: lj.from, _to: lj.to,
       ...cachedDriverFields(lj),
       _collectionAddress: getCollectionAddress(lj),
@@ -3913,7 +3922,7 @@ function renderDriverView(container) {
   const walkaroundPanel = renderWalkaroundPanel({ dayClosed: canFinishDay });
   const trialBanner = trialMode ? `
     <div class="trial-banner">
-      <strong>${esc(currentUser.name)} — jobs connected to the office</strong><br>
+      <strong>${esc(currentUser.name)} — ${diaryReadState.state === 'live' ? 'work plan checked' : 'saved work / office check needed'}</strong><br>
       ${LIVE_WRITE
         ? 'Saved day-sheet rows are retained on this phone. Keep any unsent photo or signature form open. Pending rows retry when connected; other unconfirmed work needs an office check.'
         : 'Your jobs are visible and anything you enter is saved safely for the office.'}
@@ -3924,7 +3933,7 @@ function renderDriverView(container) {
     <div class="driver-summary">
       <h2>${esc(currentUser.name)}</h2>
       <div class="driver-summary-meta">
-        <span>${jobs.length} jobs today</span>
+        <span>${jobs.length} ${diaryReadState.state === 'live' ? 'jobs today' : 'saved jobs shown — total unconfirmed'}</span>
         <span>${openJobs.length} still to review</span>
         <span>${selectedVehicle ? `Truck / wagon ${esc(selectedVehicle)}` : 'Truck / wagon not selected'}</span>
         <span>${finished ? 'Finished for the day' : (canFinishDay ? 'Ready to finish day' : 'Day still open')}</span>
@@ -3939,7 +3948,7 @@ function renderDriverView(container) {
       </div>
       ${finished ? `<div class="driver-day-finished">Finished for the day saved at ${esc(new Date(finished.finishedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}. Saved-local items do not stop this day being finished.</div>` : ''}
     </div>
-    <div class="driver-update">Office changes appear automatically. Last successful update is shown at the top.</div>
+    <div class="driver-update">${diaryReadState.state === 'live' ? 'Office changes appear automatically.' : 'Saved plan may not include later office changes.'} Last plan saved: ${diaryReadState.savedAt ? esc(new Date(diaryReadState.savedAt).toLocaleString('en-GB')) : 'not confirmed'}.</div>
     ${renderDayReviewPanel(jobs)}
     ${queue}`;
   if (jobs.length === 0) {
@@ -3947,8 +3956,8 @@ function renderDriverView(container) {
       ${summary}
       <div class="empty-state">
         <div class="icon">🚛</div>
-        <h3>No jobs today</h3>
-        <p>Your jobs from Haultech will appear here.<br>Tap "Add day-sheet row" to add work done.</p>
+        <h3>${diaryReadState.state === 'live' ? 'No jobs allocated in the checked plan' : 'Work plan unavailable'}</h3>
+        <p>${diaryReadState.state === 'live' ? 'Ask the office if you expected an allocation.' : 'This does not mean there is no work. Contact the office for today’s plan; it will reload automatically when available.'}</p>
       </div>`;
     attachDayReviewListeners(container, jobs);
     attachDriverVehicleSelector(container);

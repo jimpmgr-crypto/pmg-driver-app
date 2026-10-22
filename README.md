@@ -47,3 +47,29 @@ Safety remains: worker KV/local queue capture stays on as an audit trail and fal
 ## Truck and trailer switching (21 October 2026)
 
 All named driver routes and the ordinary driver view share the pre-start panel. Change wagon / trailer remains available after completion; its selectors stay open across job/torque refreshes until closed or a check starts. Clearance is specific to date, driver, truck and trailer; delayed no-trailer retries cannot populate an attached-trailer key. Unfinished drafts are held per unit and legacy drafts migrate without restoring an old selected truck. Late saves clear only their original attempt and leave a newer screen alone. Run `node tests/test_vehicle_switch.js` alongside the normal release checks. The frontend update uses the existing online idle update route; active forms/camera defer reload and offline phones require reconnection.
+
+### Saved driver plans (22 October 2026)
+The existing sync Worker copies the complete HaulTech allocation response for the
+London date and the following three days every five minutes, independently of
+phones opening the app. Driver reads also refresh it (success throttled two
+minutes, failures one minute). `/driver-diary/YYYY-MM-DD` uses the existing PMG
+key and returns date, jobs, complete, state, savedAt, checkedAt and source error.
+`?stored=true` reads metadata without contacting HaulTech. Separate per-date
+Durable Objects preserve the last good response on outages, malformed/partial
+results and late concurrent replies. A verified empty response replaces old
+allocations. The existing driver filter and status overlays still apply.
+
+Saved plans show their source time and may miss subsequent office changes.
+Unavailable data is not a zero-work allocation. No successful source copy means
+no recoverable shared plan; existing phone/legacy backups are still attempted.
+This feature does not make HaulTech completion or billing writes work offline.
+It never fabricates allocations from load numbers or modifies HaulTech jobs.
+Today plus three days covers Friday's upcoming Monday; longer outages retain
+previously captured dates but cannot discover new work. Do not clear phone data.
+
+Operational checks: `node tests/test_diary_snapshot.js` and
+`node tests/test_diary_store.js` test failure preservation and real SQLite restart.
+Cloud metadata is live; OpenCore/Tom detail writeback is **manual**: read the four
+stored date routes and record date/state/last successful source time/job count/
+source error in the canonical task/evidence ledger. Do not infer empty from
+unavailable. No additional local daemon or credentials were introduced.

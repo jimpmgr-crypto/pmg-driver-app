@@ -1,0 +1,22 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+(async () => {
+ const source=fs.readFileSync('worker/diary-snapshot.js','utf8');
+ const {validateDiary,refreshDiary,diaryDates}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+ const row={id:'guid-a',jobId:11734,driverName:'John Bowman',status:'Scheduled'};
+ const storage={value:null,async get(){return this.value;},async put(k,v){this.value=v;},async transaction(fn){return fn(this);}};
+ const time=n=>new Date(Date.UTC(2026,9,22,6,n));
+ const first=await refreshDiary(storage,'2026-10-22',async()=>validateDiary([row]),time(0));assert.equal(first.state,'live');
+ const failed=await refreshDiary(storage,'2026-10-22',async()=>{throw Error('haultech_http_500')},time(5));assert.equal(failed.state,'cached');assert.deepEqual(failed.jobs,[row]);assert.equal(failed.savedAt,first.savedAt);
+ for(const bad of [{},null,[{}],{items:[row],totalCount:2},[row,row]])assert.throws(()=>validateDiary(bad));
+ assert.throws(()=>validateDiary([row],'next'));
+ const malformed=await refreshDiary(storage,'2026-10-22',async()=>validateDiary({}),time(7));assert.deepEqual(malformed.jobs,[row]);
+ const moved=await refreshDiary(storage,'2026-10-22',async()=>validateDiary([{...row,driverName:'Neil Antony',status:'Cancelled'}]),time(10));assert.equal(moved.jobs[0].driverName,'Neil Antony');assert.equal(moved.jobs[0].status,'Cancelled');
+ const empty=await refreshDiary(storage,'2026-10-22',async()=>validateDiary([]),time(15));assert.equal(empty.complete,true);assert.equal(empty.jobs.length,0);
+ const missing={...storage,value:null};const absent=await refreshDiary(missing,'2026-10-23',async()=>{throw Error('down')},time(15));assert.equal(absent.complete,false);assert.equal(absent.state,'unavailable');
+ let calls=0;await refreshDiary(storage,'2026-10-22',async()=>{calls++;return []},time(16));assert.equal(calls,0);
+ let release;const old=refreshDiary(storage,'2026-10-22',()=>new Promise(r=>release=r),time(20));await new Promise(r=>setImmediate(r));
+ await refreshDiary(storage,'2026-10-22',async()=>[{...row,id:'guid-new'}],time(21));release([row]);await old;assert.equal(storage.value.snapshot.jobs[0].id,'guid-new');
+ assert.deepEqual(diaryDates(new Date('2026-10-23T23:30:00Z')),['2026-10-24','2026-10-25','2026-10-26','2026-10-27']);
+ console.log('Diary snapshot: live, outage, malformed/partial, reassignment/cancellation, empty, absent, throttle, stale concurrent reply and UK date tests passed');
+})().catch(e=>{console.error(e);process.exit(1)});

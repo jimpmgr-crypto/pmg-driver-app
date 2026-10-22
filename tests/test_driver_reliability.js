@@ -175,7 +175,7 @@ test('authoritative refresh cannot resurrect removed official jobs as driver-cre
 test('malformed successful diary response preserves the fallback route', async () => {
   let fellBack = false, saved = false;
   const ctx = context({ document: { hidden: false }, todayISO: () => '2026-10-17', $: () => ({}), showError() {},
-    customers: [1], api: async () => ({ ok: true, json: async () => ({ error: 'bad upstream payload' }) }),
+    updateSyncUI() {}, customers: [1], api: async () => ({ ok: true, json: async () => ({ error: 'bad upstream payload' }) }),
     mergeWithLocal: (date, rows) => rows, renderJobs() {}, saveJobsToCloud: async () => { saved = true; },
     loadJobsFallback: async () => { fellBack = true; }, console: { error() {} } }, ['loadJobs']);
   await ctx.loadJobs();
