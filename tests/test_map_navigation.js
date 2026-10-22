@@ -14,7 +14,7 @@ function fn(name) {
 
 const ctx = { console, URL, Map, Set, allJobs: [] };
 vm.createContext(ctx);
-for (const name of ['esc', 'getJobConsignment', 'getJobFrom', 'getJobTo',
+for (const name of ['esc', 'driverDetails', 'driverDetailConsignments', 'renderDriverDetails', 'getJobConsignment', 'getJobFrom', 'getJobTo',
   'jobAddressParts', 'getJobAddress', 'getDeliveryAddress', 'getCollectionAddress',
   'jobMapQuery', 'mapUrlForQuery', 'mapChoiceLinks', 'openJobMap']) {
   // The baseline lacks the shared helpers; still prove its actual omission.

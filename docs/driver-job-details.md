@@ -1,0 +1,13 @@
+# Driver operational details — 22 October 2026
+
+Source: HaulTech full Job/GetJobById records, joined by exact hidden job ID to the existing dated driver diary. The summary endpoint omits contacts. Never treat summary absence as proof that HaulTech has no contact.
+
+worker/driver-job-details.js projects only operational fields into driverDetails. Original status/allocation/quantity/price/consignments remain untouched for writeback. Both leg addresses (five lines/postcode/country), contact names/telephone/mobile/email, references, booking phone, time windows, restricted access, consignment notes and note1/note2 are retained. Account notes and prices are deliberately outside this projection. Arbitrary custom fields require separately identified meaning; they are not automatically exposed.
+
+Existing diary refresh enriches with four parallel reads and an eight-second detail budget, no new schedule. Failures are per job, never drop diary jobs or claim source completeness. The snapshot store retains a previous same-ID detail with state cached on failed refresh. Fresh empty fields clear previous values. Detail savedAt is independent from plan savedAt. Local/cloud serializers preserve the projection; legacy backups without it show unavailable. Raw HaulTech/pricing/proof paths are unchanged. Existing refresh cadence remains; old installed apps require the reviewed Pages release before this display exists.
+
+Shared collection/delivery tabs show separate contact numbers, labelled references, traffic notes AND special instructions, multiline notes, multiple consignments, tap-to-call for single telephone values. Stale/unavailable information is labelled. Missing information must be checked with the office. An eight-second budget can leave large/slow diaries partially refreshed; never claim every detail current merely because the plan is live.
+
+Checks: npm run test:unit; existing tests/test_*.cjs; node tests/test_driver_job_details.js; node tests/test_map_navigation.js; Worker wrangler deploy --dry-run; app lane guard. Preserve unrelated pending plant-seed.json. Deployment requires the normal clean-source/release guard, CUA release evidence and immutable/stable host verification. Do not bypass or overwrite the current durable storage. Rollback to the prior frontend is compatible; worker rollback must preserve transactional storage.
+
+OpenCore: one-off build evidence is in the canonical task packet and linked report. Runtime detail freshness is queryable from driver-diary jobs[].driverDetails.state/savedAt; no parallel contact directory or business-fact ledger. Context publication pending until existing context publisher reconciles this topic.

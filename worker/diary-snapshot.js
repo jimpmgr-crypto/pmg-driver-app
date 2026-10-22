@@ -27,6 +27,14 @@ export async function refreshDiary(storage, date, fetchSource, now = new Date())
     const current = await tx.get('diary');
     // A slow older request may never replace a newer read or health result.
     if (current?.checkedAt >= startedAt) return diaryReply(current, date);
+    if (!error) {
+      const previous = new Map((current?.snapshot?.jobs || []).map(j => [j.id,j.driverDetails]));
+      jobs = jobs.map(job => {
+        const saved = previous.get(job.id);
+        return job.driverDetails?.state === 'unavailable' && saved?.savedAt
+          ? {...job, driverDetails:{...saved,state:'cached'}} : job;
+      });
+    }
     const next = { date, checkedAt: startedAt, error, snapshot: error ? current?.snapshot : { jobs, savedAt: startedAt } };
     await tx.put('diary', next);
     return diaryReply(next, date);

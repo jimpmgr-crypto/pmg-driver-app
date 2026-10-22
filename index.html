@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261022-driver-saved-plan';
+const APP_BUILD_ID = '20261022-driver-full-details';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2274,6 +2274,7 @@ function jobToLocal(j) {
     material: getJobMaterial(j),
     from: getJobFrom(j),
     to: getJobTo(j),
+    driverDetails: j.driverDetails || j._driverDetails || null,
     collectionAddress: getCollectionAddress(j),
     deliveryAddress: getDeliveryAddress(j),
     quantity: getJobWeight(j),
@@ -2306,6 +2307,7 @@ function jobToLocal(j) {
 
 function cachedDriverFields(row) {
   return {
+    _driverDetails: (row.driverDetails || row._driverDetails) ? {...(row.driverDetails || row._driverDetails), state:'cached'} : null,
     jobNumber: row.jobNumber || row.ticketNo || row.id,
     _backupRevision: row._backupRevision,
     _customerId: row.customerId || row._customerId || '',
@@ -3705,9 +3707,54 @@ async function verifyHaultechCompletion(job, consId) {
   }
 }
 
+function driverDetails(job) {
+  return job?.driverDetails || job?._driverDetails || null;
+}
+
+function driverDetailConsignments(job) {
+  return driverDetails(job)?.consignments || job?.consignments || [];
+}
+
+function renderDriverDetails(job, leg) {
+  const details = driverDetails(job);
+  const source = details?.consignments ? details : job;
+  const rows = [];
+  const add = (label, value, phone = false) => {
+    if (value === null || value === undefined || String(value).trim() === '') return;
+    const text = String(value).trim();
+    const dial = text.replace(/[^+\d*#]/g, '');
+    const content = phone && /^[+\d\s().-]+$/.test(text) && /\d{3}/.test(dial) ? `<a href="tel:${esc(dial)}">${esc(text)}</a>` : esc(text);
+    rows.push(`<div class="detail-label">${esc(label)}</div><div class="detail-value" style="white-space:pre-wrap;overflow-wrap:anywhere">${content}</div>`);
+  };
+  const stale = job?._cached || details?.state === 'cached' || (typeof diaryReadState !== 'undefined' && diaryReadState.state !== 'live');
+  const status = !details?.savedAt ? 'Full HaulTech details unavailable — contact the office if anything is missing.'
+    : `${stale ? 'Saved details — later office changes may be missing.' : 'HaulTech details checked.'} ${new Date(details.savedAt).toLocaleString('en-GB')}`;
+  add('Job information',status);
+  for (const [key,label] of [['customerReference','Customer reference'],['jobReference','Job reference'],['collectionReference','Collection reference'],['deliveryReference','Delivery reference'],['bookingReference','Booking reference']]) add(label, source?.[key] ?? (key === 'customerReference' ? getJobRef(job) : ''));
+  add('Booking telephone',source?.bookingTelephone,true);
+  add(leg === 'collection' ? 'Collection window' : 'Delivery window', [source?.[leg+'StartTime'], source?.[leg+'EndTime']].filter(Boolean).join(' – '));
+  const consignments = driverDetailConsignments(job);
+  consignments.forEach((c,index) => {
+    const prefix = consignments.length > 1 ? `Consignment ${index+1} · ` : '';
+    if (index > 0) add(prefix + (leg === 'collection' ? 'Collection address' : 'Delivery address'), [...[1,2,3,4,5].map(n => c[leg+'AddressLine'+n]),c[leg+'Postcode']].filter(Boolean).join('\n'));
+    add(prefix+'Contact name',c[leg+'ContactName']);
+    for (const [field,label] of [['ContactTelephone','Telephone'],['ContactMobile','Mobile'],['ContactNumber','Contact number']]) add(prefix+label,c[leg+field],true);
+    add(prefix+'Contact email',c[leg+'ContactEmailAddress'] || c[leg+'EmailAddress']);
+    add(prefix+'Consignment reference',c.consignmentReference);
+    add(prefix+'Consignment note',c[leg+'ConsignmentNote']);
+    add(prefix+'Note 1',c.note1); add(prefix+'Note 2',c.note2);
+    if (c[leg+'RestrictedAccess']) add(prefix+'Restricted access',c[leg+'RestrictedAccess'] === true ? 'Yes — check access instructions' : c[leg+'RestrictedAccess']);
+  });
+  add('Traffic notes', source?.trafficNotes ?? getJobNotes(job));
+  add('Special instructions',source?.specialInstructions);
+  return rows.join('');
+}
+
 function getJobNotes(job) {
-  if (job._cached) return job._notes || '';
-  return job.trafficNotes || job.specialInstructions || '';
+  const details = driverDetails(job);
+  if (details?.consignments) return [...new Set([details.trafficNotes,details.specialInstructions].filter(Boolean))].join('\n');
+  if (job._cached) return job._notes || job.notes || '';
+  return [...new Set([job.trafficNotes,job.specialInstructions].filter(Boolean))].join('\n');
 }
 
 function normaliseNoteText(value) {
@@ -3745,7 +3792,7 @@ function jobAddressParts(address) {
 
 function getJobAddress(job, mode) {
   const leg = mode === 'collection' ? 'collection' : 'delivery';
-  const c = job ? getJobConsignment(job) : null;
+  const c = driverDetails(job)?.consignments?.[0] || (job ? getJobConsignment(job) : null);
   const saved = job?.[`_${leg}Address`] || job?.[`${leg}Address`];
   const stored = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
   // Live consignment fields remain authoritative. Cached/driver-added rows
@@ -3771,15 +3818,12 @@ function getCollectionAddress(job) {
 }
 
 function getJobContact(job) {
-  if (job._cached) return '';
-  const c = getJobConsignment(job);
-  return c?.deliveryContactNumber || c?.deliveryContactName || job.contactNumber || '';
+  const c = driverDetailConsignments(job)[0];
+  return c?.deliveryContactTelephone || c?.deliveryContactMobile || c?.deliveryContactNumber || job.contactNumber || '';
 }
 
 function getJobSiteContact(job) {
-  if (job._cached) return '';
-  const c = getJobConsignment(job);
-  return c?.deliveryContactName || '';
+  return driverDetailConsignments(job)[0]?.deliveryContactName || '';
 }
 
 function getDeliveryWindow(job) {
@@ -5517,12 +5561,9 @@ function attachPaymentStatusListeners(container, job) {
 function renderDeliveryTab(container, job) {
   const customer = getJobCustomer(job);
   const addr = getDeliveryAddress(job);
-  const contact = getJobContact(job);
-  const siteContact = getJobSiteContact(job);
   const window = getDeliveryWindow(job);
   const material = getJobMaterial(job);
   const weight = getJobWeight(job);
-  const notes = getJobNotes(job);
   const terminal = isTerminalJobStatus(getJobStatus(job));
 
   const addrParts = jobAddressParts(addr);
@@ -5546,15 +5587,6 @@ function renderDeliveryTab(container, job) {
           ${addrParts.map(p => esc(p)).join('<br>')}
         </div>
 
-        <div class="detail-label">Contact Number</div>
-        <div class="detail-value">
-          ${contact
-            ? `<a href="tel:${esc(contact)}">${esc(contact)}</a>`
-            : '<span style="color:var(--muted)">N/A</span>'}
-        </div>
-
-        <div class="detail-label">Site Contact</div>
-        <div class="detail-value">${esc(siteContact || 'N/A')}</div>
       </div>
     </div>
 
@@ -5576,8 +5608,7 @@ function renderDeliveryTab(container, job) {
       <button class="weight-save-btn" id="detail-weight-save" ${terminal ? 'disabled' : ''}>💾</button>
     </div>
 
-    <div class="instructions-heading">Special Instructions</div>
-    <div class="instructions-text">${esc(notes) || '<span style="color:var(--muted)">None</span>'}</div>
+    ${renderDriverDetails(job, 'delivery')}
 
     ${renderPaymentStatusPanel(job)}
 
@@ -5650,6 +5681,7 @@ function renderCollectionTab(container, job) {
         <div class="detail-value">${weight ? esc(String(weight)) : 'N/A'}</div>
       </div>
     </div>
+    ${renderDriverDetails(job, 'collection')}
     ${renderPaymentStatusPanel(job)}
     ${renderWasteTransferPanel(job)}
     <div class="action-row">

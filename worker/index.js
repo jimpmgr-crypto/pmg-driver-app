@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261017-invoice-price-boundary-r4';
+const WORKER_BUILD_ID = '20261022-driver-full-details';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -4801,6 +4801,7 @@ export default {
 };
 
 
+import { enrichDriverDetails } from './driver-job-details.js';
 import { DIARY_CRON, diaryDates, validateDiary, refreshDiary, diaryReply } from './diary-snapshot.js';
 import { JobStorage } from './job-storage.js';
 import { handlePlantTransaction } from './plant-transaction.js';
@@ -4834,7 +4835,17 @@ async function fetchDiarySource(env, date) {
   }), {headers:{Authorization:`Bearer ${auth.token}`, oauthTmsId:auth.tmsId || DEFAULT_TMS, Accept:'application/json'}, signal:AbortSignal.timeout(12000)});
   if (!response.ok) throw new Error('haultech_http_'+response.status);
   let payload; try { payload = await response.json(); } catch { throw new Error('invalid_diary_json'); }
-  return validateDiary(payload, response.headers.get('continuationtoken') || '');
+  const jobs = validateDiary(payload, response.headers.get('continuationtoken') || '');
+  const detailDeadline = Date.now() + 8000;
+  return enrichDriverDetails(jobs, async id => {
+    if (Date.now() >= detailDeadline) throw new Error('detail_refresh_budget');
+    const detail = await fetch(HT_BASE + '/api/Job/GetJobById/' + encodeURIComponent(id), {
+      headers:{Authorization:`Bearer ${auth.token}`, oauthTmsId:auth.tmsId || DEFAULT_TMS, Accept:'application/json'},
+      signal:AbortSignal.timeout(Math.max(1, detailDeadline - Date.now())),
+    });
+    if (!detail.ok) throw new Error('detail_unavailable');
+    return detail.json();
+  });
 }
 async function refreshUpcomingDiaries(env) {
   for (const date of diaryDates()) {

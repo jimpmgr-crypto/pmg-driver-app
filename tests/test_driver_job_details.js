@@ -1,0 +1,34 @@
+const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),path=require('path');
+const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+function fn(name){const start=html.indexOf('function '+name+'(');assert(start>=0,name);const end=html.slice(start+1).search(/\n(?:async )?function /);return html.slice(start,end<0?undefined:start+1+end).split('\n// ═')[0];}
+const ctx={console,Date,Set,diaryReadState:{state:'live'}};vm.createContext(ctx);
+for(const n of ['esc','driverDetails','driverDetailConsignments','getJobNotes','getJobRef','getJobConsignment','jobAddressParts','getJobAddress','getCollectionAddress','getDeliveryAddress','getJobContact','getJobSiteContact','renderDriverDetails','cachedDriverFields'])vm.runInContext(fn(n),ctx);
+(async()=>{
+ const source=fs.readFileSync(path.join(root,'worker/driver-job-details.js'),'utf8');
+ const {projectDriverDetails,enrichDriverDetails}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+ const job={id:'abc',jobId:1,status:'Scheduled',trafficNotes:'summary',consignments:[{id:'c',deliveryAddressLine1:'Old address'}]};
+ const detail={id:'abc',status:'Completed',quotedPrice:999,accountNotes:'PRIVATE',customerReference:'customer ref',jobReference:'job ref',collectionReference:'collect ref',deliveryReference:'deliver ref',bookingReference:'book ref',bookingTelephone:'01234 567890',trafficNotes:'Gate 2\nCall on arrival',specialInstructions:'No reversing <script>',consignments:[{id:'c',deliveryAddressLine1:'Full address',deliveryAddressLine5:'County',deliveryPostcode:'AB1 2CD',collectionContactName:'Quarry contact',collectionContactTelephone:'01234 123456',deliveryContactName:'Site contact',deliveryContactTelephone:'01234 234567',deliveryContactMobile:'07700 900123',note1:'Keep gate clear',note2:'Report to cabin',consignmentReference:'consign ref',deliveryConsignmentNote:'Use east gate'}, {id:'c2',deliveryAddressLine1:'Second address',deliveryContactName:'Second contact',deliveryContactMobile:'07700 900124'}]};
+ const enriched=(await enrichDriverDetails([job],async()=>detail))[0];
+ assert.equal(enriched.status,'Scheduled');assert.equal(enriched.driverDetails.accountNotes,undefined);assert.equal(enriched.driverDetails.quotedPrice,undefined);
+ assert.throws(()=>projectDriverDetails(job,{...detail,id:'other'}));assert.throws(()=>projectDriverDetails(job,{...detail,consignments:null}));
+ assert.equal((await enrichDriverDetails([job],async()=>{throw Error()}))[0].driverDetails.state,'unavailable');
+ assert.equal(ctx.getJobContact(enriched),'01234 234567');assert.equal(ctx.getJobSiteContact(enriched),'Site contact');assert.equal(ctx.getDeliveryAddress(enriched).line5,'County');
+ let rendered=ctx.renderDriverDetails(enriched,'delivery');
+ for(const text of ['Site contact','01234 234567','07700 900123','Second contact','Second address','customer ref','job ref','collect ref','deliver ref','book ref','consign ref','Keep gate clear','Report to cabin','Use east gate','Gate 2\nCall on arrival','No reversing &lt;script&gt;'])assert(rendered.includes(text),text);
+ assert(!rendered.includes('PRIVATE'));assert(!rendered.includes('<script>'));assert(rendered.includes('tel:07700900123'));
+ assert(ctx.renderDriverDetails(enriched,'collection').includes('Quarry contact'));
+ assert.equal(ctx.getJobContact({consignments:[{deliveryContactName:'Name only'}]}),'');
+ assert(ctx.getJobNotes(enriched).includes('No reversing'));
+ const cached={_cached:true,...ctx.cachedDriverFields({driverDetails:enriched.driverDetails})};
+ assert.equal(ctx.getJobContact(cached),'01234 234567');assert.equal(ctx.getDeliveryAddress(cached).line1,'Full address');assert(ctx.renderDriverDetails(cached,'delivery').includes('Saved details'));
+ const cleared={...job,driverDetails:projectDriverDetails(job,{id:'abc',consignments:[{id:'c',deliveryContactTelephone:'',deliveryAddressLine1:''}]})};
+ assert.equal(ctx.getJobContact(cleared),'');assert.equal(ctx.getDeliveryAddress(cleared).line1,'');
+ const {refreshDiary}=await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync(path.join(root,'worker/diary-snapshot.js'),'utf8')).toString('base64'));
+ const storage={value:null,async get(){return this.value},async put(k,v){this.value=v},async transaction(f){return f(this)}};
+ await refreshDiary(storage,'2026-10-22',async()=>[enriched],new Date('2026-10-22T10:00:00Z'));
+ const failed=await refreshDiary(storage,'2026-10-22',async()=>[{...job,driverDetails:{state:'unavailable'}}],new Date('2026-10-22T10:05:00Z'));
+ assert.equal(failed.jobs[0].driverDetails.state,'cached');assert.equal(ctx.getJobContact(failed.jobs[0]),'01234 234567');
+ const fresh=await refreshDiary(storage,'2026-10-22',async()=>[cleared],new Date('2026-10-22T10:10:00Z'));assert.equal(ctx.getJobContact(fresh.jobs[0]),'');
+ for(const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))new vm.Script(script[1]);
+ console.log('PASS full-job projection, identity, read-only status, both contact legs, multi-consignment, refs/notes, escaping, cache, failure retention and authoritative clears');
+})().catch(e=>{console.error(e);process.exit(1)});
