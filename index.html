@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261022-driver-full-details';
+const APP_BUILD_ID = '20261022-driver-full-details-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -3732,7 +3732,10 @@ function renderDriverDetails(job, leg) {
   add('Job information',status);
   for (const [key,label] of [['customerReference','Customer reference'],['jobReference','Job reference'],['collectionReference','Collection reference'],['deliveryReference','Delivery reference'],['bookingReference','Booking reference']]) add(label, source?.[key] ?? (key === 'customerReference' ? getJobRef(job) : ''));
   add('Booking telephone',source?.bookingTelephone,true);
-  add(leg === 'collection' ? 'Collection window' : 'Delivery window', [source?.[leg+'StartTime'], source?.[leg+'EndTime']].filter(Boolean).join(' – '));
+  const windowTimes = [source?.[leg+'StartTime'], source?.[leg+'EndTime']].filter(Boolean).map(value =>
+    String(value).includes('T') && Number.isFinite(Date.parse(value))
+      ? new Date(value).toLocaleTimeString('en-GB', {timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'}) : String(value));
+  add(leg === 'collection' ? 'Collection window' : 'Delivery window', windowTimes.join(' – '));
   const consignments = driverDetailConsignments(job);
   consignments.forEach((c,index) => {
     const prefix = consignments.length > 1 ? `Consignment ${index+1} · ` : '';

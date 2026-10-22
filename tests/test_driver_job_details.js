@@ -8,6 +8,7 @@ for(const n of ['esc','driverDetails','driverDetailConsignments','getJobNotes','
  const {projectDriverDetails,enrichDriverDetails}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
  const job={id:'abc',jobId:1,status:'Scheduled',trafficNotes:'summary',consignments:[{id:'c',deliveryAddressLine1:'Old address'}]};
  const detail={id:'abc',status:'Completed',quotedPrice:999,accountNotes:'PRIVATE',customerReference:'customer ref',jobReference:'job ref',collectionReference:'collect ref',deliveryReference:'deliver ref',bookingReference:'book ref',bookingTelephone:'01234 567890',trafficNotes:'Gate 2\nCall on arrival',specialInstructions:'No reversing <script>',consignments:[{id:'c',deliveryAddressLine1:'Full address',deliveryAddressLine5:'County',deliveryPostcode:'AB1 2CD',collectionContactName:'Quarry contact',collectionContactTelephone:'01234 123456',deliveryContactName:'Site contact',deliveryContactTelephone:'01234 234567',deliveryContactMobile:'07700 900123',note1:'Keep gate clear',note2:'Report to cabin',consignmentReference:'consign ref',deliveryConsignmentNote:'Use east gate'}, {id:'c2',deliveryAddressLine1:'Second address',deliveryContactName:'Second contact',deliveryContactMobile:'07700 900124'}]};
+ detail.deliveryStartTime='2026-10-22T07:00:09.000Z'; detail.deliveryEndTime='2026-10-22T15:00:09.000Z';
  const enriched=(await enrichDriverDetails([job],async()=>detail))[0];
  assert.equal(enriched.status,'Scheduled');assert.equal(enriched.driverDetails.accountNotes,undefined);assert.equal(enriched.driverDetails.quotedPrice,undefined);
  assert.throws(()=>projectDriverDetails(job,{...detail,id:'other'}));assert.throws(()=>projectDriverDetails(job,{...detail,consignments:null}));
@@ -15,6 +16,7 @@ for(const n of ['esc','driverDetails','driverDetailConsignments','getJobNotes','
  assert.equal(ctx.getJobContact(enriched),'01234 234567');assert.equal(ctx.getJobSiteContact(enriched),'Site contact');assert.equal(ctx.getDeliveryAddress(enriched).line5,'County');
  let rendered=ctx.renderDriverDetails(enriched,'delivery');
  for(const text of ['Site contact','01234 234567','07700 900123','Second contact','Second address','customer ref','job ref','collect ref','deliver ref','book ref','consign ref','Keep gate clear','Report to cabin','Use east gate','Gate 2\nCall on arrival','No reversing &lt;script&gt;'])assert(rendered.includes(text),text);
+ assert(rendered.includes('08:00 – 16:00'));assert(!rendered.includes('T07:00'));
  assert(!rendered.includes('PRIVATE'));assert(!rendered.includes('<script>'));assert(rendered.includes('tel:07700900123'));
  assert(ctx.renderDriverDetails(enriched,'collection').includes('Quarry contact'));
  assert.equal(ctx.getJobContact({consignments:[{deliveryContactName:'Name only'}]}),'');
