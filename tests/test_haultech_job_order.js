@@ -37,7 +37,7 @@ function plannedJob(jobId, apiOrder, hiddenSeconds) {
   };
 }
 
-// Live evidence from Paul Locket's 10 August load: the Haultech API returns
+// Historical all-zero fallback evidence from Paul Locket's 10 August load: the Haultech API returns
 // Richard's planned order, while the hidden timestamps run in the opposite
 // direction and must not reshuffle the driver's work.
 const paulLoad = [
@@ -82,3 +82,27 @@ for (const required of [
 }
 
 console.log('Haultech planned job order regression checks passed');
+
+// 27 October live loads: API positions run opposite to persisted drop order.
+function deliveryJob(jobId, load, route, apiOrder) {
+  return {jobId,deliveryLoadNumber:load,_haultechOrder:apiOrder,
+    consignments:[{delivery:true,collection:false,deliveryDropNumber:route,collectionDropNumber:0}]};
+}
+const october = [deliveryJob(11834,2414,4,0),deliveryJob(11838,2414,3,4),deliveryJob(11839,2414,2,5),deliveryJob(11840,2414,1,6),deliveryJob(11841,2414,0,7)];
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver(october),j=>j.jobId),[11841,11840,11839,11838,11834]);
+const secondLoad = [deliveryJob(11835,2415,3,1),deliveryJob(11836,2415,2,2),deliveryJob(11837,2415,1,3),deliveryJob(11842,2415,0,8)];
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver(secondLoad),j=>j.jobId),[11842,11837,11836,11835]);
+const refreshed = october.map(j=>({...j,consignments:j.consignments.map(c=>({...c,deliveryDropNumber:4-c.deliveryDropNumber}))}));
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver(refreshed),j=>j.jobId),[11834,11838,11839,11840,11841], 'new saved office drops must replace old order');
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver([...secondLoad,...october]),j=>j.jobId),[11841,11840,11839,11838,11834,11842,11837,11836,11835]);
+const cached = october.map(j=>JSON.parse(JSON.stringify({jobId:j.jobId,_cached:true,_loadNumber:sandbox.getJobLoadNumber(j),_routeOrder:sandbox.getJobRouteOrder(j),_haultechOrder:j._haultechOrder})));
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver(cached),j=>j.jobId),[11841,11840,11839,11838,11834]);
+for (const val of [null,undefined,'',false,-1,0.5]) assert.equal(sandbox.getJobRouteOrder({_cached:true,_routeOrder:val}),Infinity,'invalid cached drops must not become zero');
+assert.equal(sandbox.getJobRouteOrder({_cached:true,_routeOrder:0}),0);
+const collection = [2,0,1].map((n,i)=>({jobId:n,collectionLoadNumber:10,_haultechOrder:i,consignments:[{collection:true,delivery:false,collectionDropNumber:n,deliveryDropNumber:0}]}));
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver(collection),j=>j.jobId),[0,1,2],'unused delivery zero must not override collection sequence');
+assert.equal(sandbox.getJobRouteOrder({deliveryLoadNumber:1,consignments:[{delivery:true,deliveryDropNumber:3},{delivery:true,deliveryDropNumber:1}]}),1,'multi-consignment earliest active drop');
+assert.deepStrictEqual(Array.from(sandbox.sortJobsForDriver([{jobId:99,_driverAdded:true},...october]),j=>j.jobId),[11841,11840,11839,11838,11834,99]);
+assert(indexHtml.includes('_routeOrder: row.routeOrder ?? row._routeOrder'),'every cached projection must keep drop including zero');
+assert(indexHtml.includes('_loadNumber: row.loadNumber ?? row._loadNumber'),'every cached projection must keep load');
+console.log('PASS live 27 October reverse sequences, zero first, refresh, cache, invalid values, collection-only, multiple loads/consignments and driver-added rows');

@@ -1688,7 +1688,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261022-driver-signoff-r1';
+const APP_BUILD_ID = '20261027-driver-drop-order-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2307,6 +2307,8 @@ function jobToLocal(j) {
 
 function cachedDriverFields(row) {
   return {
+    _routeOrder: row.routeOrder ?? row._routeOrder,
+    _loadNumber: row.loadNumber ?? row._loadNumber,
     _driverDetails: (row.driverDetails || row._driverDetails) ? {...(row.driverDetails || row._driverDetails), state:'cached'} : null,
     jobNumber: row.jobNumber || row.ticketNo || row.id,
     _backupRevision: row._backupRevision,
@@ -3281,9 +3283,8 @@ async function loadJobs(options = {}) {
     const now = new Date().toISOString();
     let jobs = data.jobs;
     if (!Array.isArray(jobs) || jobs.some(j => !j || typeof j !== 'object')) throw new Error('Invalid Haultech diary response');
-    // Haultech returns diary jobs in the order arranged inside each load.
-    // Keep that source sequence: hidden timestamps are creation/update times,
-    // not the driver's planned order of work.
+    // Retain source position only as a tie-breaker for equal/unset drops.
+    // sortJobsForDriver applies saved Load Diary drop numbers first.
     jobs = jobs.map((j, haultechOrder) => ({
       ...j,
       _haultechOrder: haultechOrder,
@@ -3512,12 +3513,21 @@ function numberOrInfinity(value) {
 }
 
 function getJobRouteOrder(job) {
-  if (job._cached) return numberOrInfinity(job._routeOrder);
-  const c = getJobConsignment(job);
-  return Math.min(
-    numberOrInfinity(c?.deliveryDropNumber),
-    numberOrInfinity(c?.collectionDropNumber)
-  );
+  // Drops are zero-based. Ignore null/blank values and the unused leg's zero.
+  const drop = value => {
+    if (value === null || value === undefined || value === '' || typeof value === 'boolean') return Number.POSITIVE_INFINITY;
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 ? n : Number.POSITIVE_INFINITY;
+  };
+  if (job._cached) return drop(job._routeOrder);
+  const delivery = Number(job.deliveryLoadNumber) > 0 || !!job.deliveryLoadId;
+  const collection = Number(job.collectionLoadNumber) > 0 || !!job.collectionLoadId;
+  const consignments = job.consignments || [];
+  const leg = delivery ? 'delivery' : collection ? 'collection'
+    : consignments.some(c => c.delivery === true) ? 'delivery'
+    : consignments.some(c => c.collection === true) ? 'collection' : '';
+  if (!leg) return Number.POSITIVE_INFINITY;
+  return Math.min(...consignments.filter(c => c[leg] !== false).map(c => drop(c[leg + 'DropNumber'])));
 }
 
 function getJobLoadNumber(job) {
@@ -3549,13 +3559,8 @@ function sortJobsForDriver(jobs) {
     const bAdded = !!(b._driverAdded || (b.id && String(b.id).startsWith('driver-')));
     if (aAdded !== bAdded) return aAdded ? 1 : -1;
 
-    // The live Haultech response order mirrors the manual row order within
-    // Richard's load, so it is the authoritative driver sequence. Phone-added
-    // rows have no source order and continue through the stable fallback below.
-    const aHaultechOrder = getJobHaultechOrder(a);
-    const bHaultechOrder = getJobHaultechOrder(b);
-    if (aHaultechOrder !== bHaultechOrder) return aHaultechOrder - bHaultechOrder;
-
+    // The diary response is not the Load Diary's saved drop sequence.
+    // Keep each load together, then honour its zero-based active-leg drops.
     const aLoad = numberOrInfinity(getJobLoadNumber(a));
     const bLoad = numberOrInfinity(getJobLoadNumber(b));
     if (aLoad !== bLoad) return aLoad - bLoad;
@@ -3563,6 +3568,12 @@ function sortJobsForDriver(jobs) {
     const aRoute = getJobRouteOrder(a);
     const bRoute = getJobRouteOrder(b);
     if (aRoute !== bRoute) return aRoute - bRoute;
+
+    // Equal/unset drops (including all-zero legacy loads) retain source order.
+    // Hidden timestamp seconds must never override an office drop number.
+    const aHaultechOrder = getJobHaultechOrder(a);
+    const bHaultechOrder = getJobHaultechOrder(b);
+    if (aHaultechOrder !== bHaultechOrder) return aHaultechOrder - bHaultechOrder;
 
     const aTime = getJobSortTime(a);
     const bTime = getJobSortTime(b);
