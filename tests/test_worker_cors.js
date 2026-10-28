@@ -1,5 +1,5 @@
 // Actual workerd top-level requests: response header names are case-insensitive.
-const {Miniflare}=require('miniflare');
+const {Miniflare}=require('./miniflare_compat.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const key=fs.readFileSync(path.join(root,'worker/index.js'),'utf8').match(/const API_KEY = '([^']+)'/)[1];

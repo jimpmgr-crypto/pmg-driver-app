@@ -1,5 +1,5 @@
 // Real workerd/SQLite persistence, no production calls.
-const {Miniflare}=require('miniflare');
+const {Miniflare}=require('./miniflare_compat.cjs');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),dir=fs.mkdtempSync(path.join(os.tmpdir(),'pmg-diary-'));
 const source=fs.readFileSync(path.join(root,'worker/index.js'),'utf8');

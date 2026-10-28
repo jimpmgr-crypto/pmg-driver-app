@@ -1,4 +1,4 @@
-const {Miniflare}=require('miniflare'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {Miniflare}=require('./miniflare_compat.cjs'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(root,'worker/index.js'),'utf8'),key=source.match(/const API_KEY = '([^']+)'/)[1];
 let count=0;const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:path.join(root,'worker/index.js'),compatibilityDate:'2024-01-01',bindings:{PMG_DRIVER_SYNC_ADMIN_KEY:'fixture-admin'},kvNamespaces:['PMG_DATA'],durableObjects:{PMG_APP_STORE:{className:'PmgAppStore',useSQLite:true}}});
 async function request(route,method='GET',body,admin=false){const r=await mf.dispatchFetch('https://fixture'+route,{method,headers:{'X-PMG-Key':key,...(admin?{'X-PMG-Admin-Key':'fixture-admin'}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json()};}
