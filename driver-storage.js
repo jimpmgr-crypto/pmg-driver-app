@@ -30,7 +30,7 @@
     const rows = parse(storage.getItem(key), null);
     if (!Array.isArray(rows) || !rows.length) return false;
     return rows.every(row => row && typeof row === 'object' && !Array.isArray(row) &&
-      /^[0-9a-f-]{36}$/i.test(String(row.id || '')) &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(row.id || '')) &&
       !row._driverAdded && !row.driverAdded && !row.addedBy && !row.createdBy &&
       !/^driver-|^local-/i.test(String(row.movementId || row._movementId || '')) &&
       !row.proofReceipt && !row._proofReceipt && !row.attachments && !row._attachments &&

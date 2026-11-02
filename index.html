@@ -2774,6 +2774,9 @@ function updateSyncDot(state) {
 async function saveJobsToCloud(date, jobs) {
   const simplified = jobs.map(jobToLocal);
   const reviewBackup = driverReviewBackupJobs(simplified);
+  // Headroom is advisory: a small real write can still fit when the reserve
+  // cannot. Actual saves below remain mandatory and throw on failure.
+  await ensureDriverStorageSpace().catch(() => {});
   localSaveJobs(date, jobs);
   if (!reviewBackup.length) {
     updateSyncUI();
@@ -6216,7 +6219,7 @@ async function handleSignComplete() {
   try {
     if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
     $('sign-save-error')?.remove();
-    await ensureDriverStorageSpace();
+    await ensureDriverStorageSpace().catch(() => {});
     proofEvent = queueTrialEvent('proof_complete', job, {
       consigneeName: consignee,
       driverNotes: notes,

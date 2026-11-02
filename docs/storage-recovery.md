@@ -7,7 +7,7 @@ A quota exception here prevents completion, while the old toast disappears.
 Old daily plans have no retention limit. Device storage contents still require
 phone evidence; a quota failure does not prove which records occupy the space.
 
-`driver-storage.js` checks headroom on startup and before sign-off. It copies
+`driver-storage.js` checks headroom on startup, normal plan refreshes and before sign-off. The reserve is advisory: the actual local save still decides whether a small write fits. It copies
 eligible ordinary past-day job caches to IndexedDB database
 `pmg-driver-cache-archive-v1`, store `snapshots`. Each record contains a unique
 ID, original key, exact raw JSON and archive time. A committed copy and separate
@@ -28,7 +28,7 @@ the existing investigation task packet/report; no new recurring process.
 
 ## Already-open affected phone
 
-Once the recovery page is approved and published, open
+After publication, open
 `https://pmg-driver-app.pages.dev/storage-recovery.html` in the same browser/store
 without closing the original job form. Tap **Free space safely**, then return
 to the original form and retry. This route can repair storage for old running
@@ -53,3 +53,7 @@ retry plus exact live completion/proof readback before closing the incident.
 
 Release allowlist includes the new module and recovery HTML. Never publish
 tests or the localhost fixture. Use the existing release guard and authority.
+
+## Open-app acceptance, 2 November
+
+CUA Chrome with the exact deployed old app plus isolated synthetic controls: old build stayed on page load 2 with its signature and note while an update waited. Recovery in a separate same-origin tab verified and archived one old cache. The original running page then persisted its audit; signature bytes and note matched. Returning the fixture to the job list automatically loaded the new build on page load 3. No close/reopen was needed. This is browser evidence, not proof of John's handset or of silent hot-patching a page already on a proof form.

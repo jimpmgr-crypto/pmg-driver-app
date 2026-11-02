@@ -60,15 +60,24 @@ vm.runInContext('let signCompletionInFlight=false;\n'+html.slice(start,end),ctx)
  ctx.activeJob={id:a,status:'scheduled'};ctx.allJobs=[ctx.activeJob];
  ctx.showCompletionSaveError=e=>shown=e.message;ctx.showJobList=()=>{leftForm=true;};
  ctx.ensureDriverStorageSpace=async()=>{throw Error('Phone app storage is full; keep this form open');};
+ const normalQueue=ctx.queueTrialEvent;
+ ctx.queueTrialEvent=()=>{throw Error('Phone app storage is full; keep this form open');};
  await ctx.handleSignComplete();
  assert.match(shown,/storage is full/);assert.equal(queued,1,'failed storage preflight sends no audit');
  assert.equal(calls,1,'failed preflight cannot complete');assert.equal(leftForm,false,'signature form retained');
  ctx.ensureDriverStorageSpace=async()=>{};
+ ctx.queueTrialEvent=normalQueue;
  ctx.persistTrialEventToWorker=async()=>{throw Error('audit save failed');};
  ctx.setQueueState=()=>{throw Error('secondary storage quota');};
  await ctx.handleSignComplete();
  assert.equal(shown,'audit save failed','secondary queue failure cannot hide original visible error');
  assert.equal(calls,1);assert.equal(leftForm,false);
+ // A headroom reserve is advisory; do not refuse a real small save that fits.
+ ctx.ensureDriverStorageSpace=async()=>{throw Error('Insufficient reserve only');};
+ ctx.persistTrialEventToWorker=async()=>true;ctx.setQueueState=()=>{};release=null;
+ const small=ctx.handleSignComplete();while(!release)await new Promise(r=>setImmediate(r));release();await small;
+ assert.equal(calls,2,'small save can complete even when the optional reserve cannot fit');
+ assert.equal(leftForm,true);
  console.log('PASS identity, separate loads, cached ID, consignment ID, ambiguity, concurrent and repeated completion');
- console.log('PASS storage preflight failure retains form, makes no completion write, and secondary queue error is contained');
+ console.log('PASS actual storage failure retains form without a completion write; secondary error contained; low headroom does not reject a valid small save');
 })().catch(e=>{console.error(e);process.exitCode=1});
