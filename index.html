@@ -1242,6 +1242,7 @@
 <div id="toast"></div>
 
 <script src="/job-backup-journal.js"></script>
+<script src="/driver-storage.js"></script>
 <script>
 // BEGIN GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const COLLECTED_CONCRETE_RATES = {"Collected concrete - Quarried": 130, "Collected concrete - Recycled": 120};
@@ -1688,7 +1689,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261027-driver-drop-order-r1';
+const APP_BUILD_ID = '20261102-driver-storage-recovery-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2419,6 +2420,26 @@ function readJSON(key, fallback) {
 
 function writeJSON(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+async function ensureDriverStorageSpace() {
+  return PmgDriverStorage.ensureSpace({ today: todayISO() });
+}
+
+function showCompletionSaveError(error) {
+  const message = PmgDriverStorage.quota(error) ? PmgDriverStorage.HELP : (error.message || 'Completion not confirmed');
+  // The transient toast hid the storage fault. Keep the form and a visible
+  // error until retry; never reload or drop its photo/signature here.
+  let notice = $('sign-save-error');
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = 'sign-save-error';
+    notice.setAttribute('role', 'alert');
+    notice.style.cssText = 'padding:12px;margin:12px 0;background:#fff1f0;color:#8c1d18;border:1px solid #d54b42;border-radius:8px;white-space:pre-wrap';
+    $('sign-save-main-btn')?.insertAdjacentElement('afterend', notice);
+  }
+  notice.textContent = message;
+  toast(message);
 }
 
 function getWritebackQueue() {
@@ -6194,6 +6215,8 @@ async function handleSignComplete() {
 
   try {
     if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
+    $('sign-save-error')?.remove();
+    await ensureDriverStorageSpace();
     proofEvent = queueTrialEvent('proof_complete', job, {
       consigneeName: consignee,
       driverNotes: notes,
@@ -6334,9 +6357,10 @@ async function handleSignComplete() {
     reloadForPendingServiceWorkerUpdate();
   } catch (e) {
     if (proofEvent) {
-      setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed');
+      // A storage exception must not throw again while reporting the failure.
+      try { setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed'); } catch {}
     }
-    toast('Error: ' + e.message);
+    showCompletionSaveError(e);
   } finally {
     signCompletionInFlight = false;
     setSignCompleteBusy(false);
@@ -7290,7 +7314,18 @@ function init() {
   }
 }
 
-init();
+// Recover space before the first plan/login write, including on old phones.
+// A failed recovery still opens the app, with an explicit persistent warning.
+async function startDriverApp() {
+  let storageError;
+  try { await ensureDriverStorageSpace(); } catch (error) { storageError = error; }
+  try { init(); } catch (error) {
+    showError(PmgDriverStorage.quota(error) ? PmgDriverStorage.HELP : ('App could not open: ' + error.message));
+    return;
+  }
+  if (storageError) showError(PmgDriverStorage.HELP);
+}
+startDriverApp();
 
 function recordCurrentAppBuild() {
   try {

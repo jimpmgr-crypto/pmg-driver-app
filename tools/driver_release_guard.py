@@ -33,6 +33,8 @@ DEPLOY_FILES = (
     "icon-512.png",
     "index.html",
     "job-backup-journal.js",
+    "driver-storage.js",
+    "storage-recovery.html",
     "manifest.json",
     "plant-manifest.json",
     "plant-seed.json",

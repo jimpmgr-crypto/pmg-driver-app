@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>PMG storage recovery acceptance</title>
+<h1>Storage recovery — isolated browser test</h1>
+<p>Synthetic data on this localhost origin only. No live PMG or HaulTech calls.</p>
+<button id="run">Run real-storage test</button><pre id="result">Ready</pre>
+<script src="/driver-storage.js"></script>
+<script>
+const result=document.getElementById('result');
+function check(value,message){if(!value)throw Error(message);result.textContent+='\nPASS '+message;}
+document.getElementById('run').onclick=async()=>{
+ document.getElementById('run').disabled=true;
+ const today='2026-11-02',old='pmg_local_jobs_2026-10-01';
+ try{
+  if(localStorage.length)throw Error('Use a fresh localhost test origin; existing data will not be removed');
+  result.textContent='Running with native localStorage and IndexedDB';
+  const protectedValues={
+   pmg_walkaround_draft_v1:'SYNTHETIC PHOTO AND SIGNATURE - KEEP',
+   pmg_local_jobs_2026_11_02:'unknown key - KEEP',
+   ['pmg_local_jobs_'+today]:JSON.stringify([{id:'driver-pending',notes:'PENDING WORK'}]),
+   ['pmg_writeback_queue_'+today]:JSON.stringify([{eventId:'pending-fixture',state:'pending Haultech'}]),
+   pmg_retry_queue:'[]'
+  };
+  for(const [key,value] of Object.entries(protectedValues))localStorage.setItem(key,value);
+  const raw=JSON.stringify([{id:'11111111-1111-4111-8111-111111111111',customer:'fixture',notes:'x'.repeat(2*1024*1024),_driverAdded:false}]);
+  localStorage.setItem(old,raw);
+  // Unknown fixture data is deliberately ineligible for automatic deletion.
+  let filler='';for(const step of [65536,4096,256,1]){for(;;){try{localStorage.setItem('unknown-fixture-filler',filler+'z'.repeat(step));filler+='z'.repeat(step);}catch(e){if(!PmgDriverStorage.quota(e))throw e;break;}}}
+  let failed=false;try{localStorage.setItem('pmg_trial_events_'+today,JSON.stringify([{eventId:'proof-fixture',note:'test sign-off'}]));}catch(e){failed=PmgDriverStorage.quota(e);}
+  check(failed,'Original audit write reproduces browser quota exception');
+  const recovered=await PmgDriverStorage.ensureSpace({today});
+  check(recovered.archivedCaches===1,'One eligible historical cache archived');
+  check(localStorage.getItem(old)===null,'Old small-store copy removed only after verified archive');
+  for(const [key,value] of Object.entries(protectedValues))check(localStorage.getItem(key)===value,'Preserved '+key);
+  check(localStorage.getItem('unknown-fixture-filler')===filler,'Unknown data preserved');
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(PmgDriverStorage.DB_NAME,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+  const copies=await new Promise((resolve,reject)=>{const tx=db.transaction(PmgDriverStorage.STORE),r=tx.objectStore(PmgDriverStorage.STORE).getAll();tx.oncomplete=()=>resolve(r.result);tx.onerror=()=>reject(tx.error)});db.close();
+  check(copies.some(r=>r.key===old&&r.raw===raw),'Archive survives database close/reopen with exact original bytes');
+  localStorage.setItem('pmg_trial_events_'+today,JSON.stringify([{eventId:'proof-fixture',note:'test sign-off'}]));
+  check(JSON.parse(localStorage.getItem('pmg_trial_events_'+today))[0].eventId==='proof-fixture','Previously failing sign-off audit write now persists');
+  result.textContent+='\nALL REAL-STORAGE CHECKS PASSED';
+ }catch(e){result.textContent+='\nFAIL '+e.message;}
+};
+</script>

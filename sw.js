@@ -1,10 +1,11 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20261027-driver-drop-order-r1';
+const CACHE_NAME = 'pmg-driver-live-v20261102-driver-storage-recovery-r1';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/app-version.json',
   '/job-backup-journal.js',
+  '/driver-storage.js',
   '/manifest.json',
   '/icon.png',
   '/icon-192.png',

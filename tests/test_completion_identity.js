@@ -33,7 +33,8 @@ assert.equal(queue[0].state,'written','unique live completion clears queue');
 let queued=0,calls=0,release;
 Object.assign(ctx,{
  activeJob:{...one},allJobs:[one,two],LIVE_WRITE:true,
- $:()=>({value:'',focus(){}}),getJobConsignmentId:()=>null,
+ $:()=>({value:'',focus(){},remove(){}}),getJobConsignmentId:()=>null,
+ ensureDriverStorageSpace:async()=>{},showCompletionSaveError:()=>{},
  jobRequiresConcreteSource:()=>false,setSignCompleteBusy:()=>{},
  composeDriverHaultechNote:()=>'',applyDriverCompletionNote:()=>'',getSignSigData:()=> 'data:fixture',getJobWasteTransferNote:()=>null,
  queueTrialEvent:()=>{queued++;return {eventId:'proof-fixture'};},persistTrialEventToWorker:async()=>true,saveProofMetadata:async()=>{},setQueueState:()=>{},signPhotoFile:null,
@@ -55,5 +56,19 @@ vm.runInContext('let signCompletionInFlight=false;\n'+html.slice(start,end),ctx)
  assert.equal(calls,1,'completed row cannot submit again');assert.equal(two.status,undefined,'other identical load unaffected');
  ctx.activeJob={id:'driver-one'};ctx.allJobs=[one,{...two,movementId:'driver-one'}];
  await ctx.handleSignComplete();assert.equal(calls,1,'ambiguous target no write');
+ let shown='',leftForm=false;
+ ctx.activeJob={id:a,status:'scheduled'};ctx.allJobs=[ctx.activeJob];
+ ctx.showCompletionSaveError=e=>shown=e.message;ctx.showJobList=()=>{leftForm=true;};
+ ctx.ensureDriverStorageSpace=async()=>{throw Error('Phone app storage is full; keep this form open');};
+ await ctx.handleSignComplete();
+ assert.match(shown,/storage is full/);assert.equal(queued,1,'failed storage preflight sends no audit');
+ assert.equal(calls,1,'failed preflight cannot complete');assert.equal(leftForm,false,'signature form retained');
+ ctx.ensureDriverStorageSpace=async()=>{};
+ ctx.persistTrialEventToWorker=async()=>{throw Error('audit save failed');};
+ ctx.setQueueState=()=>{throw Error('secondary storage quota');};
+ await ctx.handleSignComplete();
+ assert.equal(shown,'audit save failed','secondary queue failure cannot hide original visible error');
+ assert.equal(calls,1);assert.equal(leftForm,false);
  console.log('PASS identity, separate loads, cached ID, consignment ID, ambiguity, concurrent and repeated completion');
+ console.log('PASS storage preflight failure retains form, makes no completion write, and secondary queue error is contained');
 })().catch(e=>{console.error(e);process.exitCode=1});
