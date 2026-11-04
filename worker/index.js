@@ -2271,6 +2271,8 @@ async function htFetch(env, apiPath, opts = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
+  const pageHeaders = response => opts.checkPagination && response.headers.get('continuationtoken')
+    ? {'X-PMG-Partial-Page':'true'} : {};
   const resp = await fetch(`${HT_BASE}${apiPath}`, {
     method: opts.method || 'GET',
     headers: { ...headers, ...(opts.headers || {}) },
@@ -2286,12 +2288,12 @@ async function htFetch(env, apiPath, opts = {}) {
         headers: { ...headers, 'Authorization': `Bearer ${newToken}`, ...(opts.headers || {}) },
         body: opts.body,
       });
-      return corsResponse(await retryResp.text(), retryResp.status);
+      return corsResponse(await retryResp.text(), retryResp.status, pageHeaders(retryResp));
     }
   }
 
   const data = await resp.text();
-  return corsResponse(data, resp.status);
+  return corsResponse(data, resp.status, pageHeaders(resp));
 }
 
 async function mergeJobStatusOverrides(env, date, jobs) {
@@ -3283,7 +3285,7 @@ async function fetchHaultechJobsByDate(env, date) {
     selectFromDate: date,
     selectToDate: date,
     take: '200',
-  }));
+  }), {checkPagination:true});
   const text = await resp.text();
   if (!resp.ok) {
     return { ok: false, error: text || `haultech_jobs_http_${resp.status}` };
@@ -3292,7 +3294,7 @@ async function fetchHaultechJobsByDate(env, date) {
   if (!payload) return { ok: false, error: 'bad_haultech_jobs_data' };
   const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || payload.jobs || []);
   const total = payload.totalCount ?? payload.count ?? payload.total;
-  const completeDay = !resp.headers.get('continuationtoken') && jobs.length < 200 &&
+  const completeDay = !resp.headers.has('X-PMG-Partial-Page') && jobs.length < 200 &&
     (total == null || Number(total) === jobs.length) && new Set(jobs.map(row => row.id)).size === jobs.length;
   return { ok: true, jobs, completeDay };
 }

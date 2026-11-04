@@ -62,7 +62,7 @@ const sandbox = {
       return new Response(JSON.stringify({ error: 'public_worker_to_worker_404' }), { status: 404 });
     }
     if (String(url).includes('/api/Display/GetJobsByDatePaginated')) {
-      return new Response(JSON.stringify({ items: sandbox.__haultechJobs || [] }), { status: 200 });
+      return new Response(JSON.stringify({ items: sandbox.__haultechJobs || [] }), { status: 200, headers:sandbox.__partialPage ? {continuationtoken:'next-page'} : {} });
     }
     if (String(url).includes('/api/Customer/GetCustomerPaginated')) {
       return new Response(JSON.stringify(sandbox.__haultechCustomers || []), { status: 200 });
@@ -93,6 +93,7 @@ const sandbox = {
         id: payload.id || `00000000-0000-4000-8000-${String(sandbox.__nextJobNumber).padStart(12, '0')}`,
         jobId: payload.jobId || sandbox.__nextJobNumber++,
       };
+      if (sandbox.__discardSource) persisted.accountNotes = '';
       if (index >= 0) sandbox.__haultechJobs[index] = persisted;
       else sandbox.__haultechJobs.push(persisted);
       return new Response(JSON.stringify({ jobId: persisted.jobId, id: persisted.id }), { status: 200 });
@@ -905,6 +906,14 @@ async function completeJobFixture(job, quantity, extras = {}) {
     assert.strictEqual(attempt.status,409);
     assert(!attempt.calls.some(call => call.url.includes('UpsertJob') || call.url.includes('QuickCompleteJob')));
   }
+  sandbox.__partialPage = true;
+  assert.strictEqual((await tryHandoff(4)).status,422);
+  sandbox.__partialPage = false;
+  sandbox.__discardSource = true;
+  const lostSource = await tryHandoff(4);
+  assert.strictEqual(lostSource.status,502);
+  assert(!lostSource.calls.some(call => call.url.includes('QuickCompleteJob')));
+  sandbox.__discardSource = false;
   const unconfirmed = await tryHandoff(4,{}, {...mixer,accountNotes:''});
   assert.strictEqual(unconfirmed.status,422);
   assert(!unconfirmed.calls.some(call => call.url.includes('QuickCompleteJob')));
