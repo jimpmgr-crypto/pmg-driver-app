@@ -194,7 +194,7 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: true, openTasks: torqueTasks, checkedAt: new Date().toISOString() }),
+        body: JSON.stringify({ ok: true, vehicle:new URL(url).searchParams.get("vehicle"), openTasks: torqueTasks, checkedAt: new Date().toISOString() }),
       });
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
@@ -686,6 +686,46 @@ test.describe('driver app route audit', () => {
     await page.locator('#add-job-submit').click();
     await expect(page.locator('#add-job-modal')).toBeVisible();
     expect(captured.driverAddRequests).toHaveLength(0);
+  });
+
+  test('John can confirm the exact wheel from the warning with his pre-start already saved', async ({page}) => {
+    const task = {taskId:'T-FR',eventId:'T-FR',vehicle:'EY15BOV',position:'Front right',torqueNm:'625'};
+    const tasks = [task, {...task,taskId:'T-RL',eventId:'T-RL',position:'Rear left'}];
+    await stubExternalApis(page,{torqueTasks:tasks});
+    const writes=[];
+    let fail = true;
+    await page.route(FLEET_URL+'/api/torque/**/driver-complete/confirm',async route => {
+      const data=route.request().postDataJSON();
+      writes.push(data);
+      if (fail) return route.fulfill({status:503,json:{error:'Fleet unavailable'}});
+      const item=tasks.find(t => route.request().url().includes('/'+t.eventId+'/'));
+      tasks.splice(tasks.indexOf(item),1);
+      return route.fulfill({json:{ok:true,receipt:{...item,driver:data.driver,recordedAt:new Date().toISOString()}}});
+    });
+    await page.goto(APP_URL+'/?driver=john');
+    await page.evaluate(()=>{
+      setSelectedDriverVehicle('EY15BOV');
+      setLocalWalkaroundRecord({driverId:currentUser.driverId,date:todayISO(),vehicle:'EY15BOV',trailer:getSelectedDriverTrailer()||'',
+        completedAt:new Date().toISOString(),syncState:'saved_to_worker',torqueChecks:[{eventId:'T-FR',confirmed:true}]});
+    });
+    await page.reload();
+    const btn=page.locator('.torque-done-btn[data-event="T-FR"]');
+    await expect(btn).toBeEnabled();
+    page.once('dialog',d=>d.dismiss());await btn.click();
+    expect(writes.length).toBe(0);
+    page.once('dialog',d=>d.accept());await btn.click();
+    await expect(btn).toBeEnabled();expect(writes.length).toBe(1);
+    fail=false;page.once('dialog',d=>d.accept());await btn.click();
+    await expect(btn).toHaveCount(0);
+    expect(writes[1]).toMatchObject({driver:'John Bowman',vehicle:'EY15BOV',torqueNm:'625',position:'Front right',confirmed:true});
+    await page.reload();
+    await expect(page.locator('.torque-done-btn[data-event="T-RL"]')).toBeEnabled();
+    expect(await page.evaluate(()=>hasSelectedWalkaroundComplete())).toBe(false);
+    page.once('dialog',d=>d.accept());await page.locator('.torque-done-btn').click();
+    await expect(page.locator('.torque-done-btn')).toHaveCount(0);
+    await expect.poll(()=>page.evaluate(()=>hasSelectedWalkaroundComplete())).toBe(true);
+    await page.evaluate(()=>localStorage.removeItem(walkaroundStorageKey()));
+    expect(await page.evaluate(()=>hasSelectedWalkaroundComplete())).toBe(false);
   });
 
   test('open Fleet Live torque task has an obvious tick action', async ({ page }) => {

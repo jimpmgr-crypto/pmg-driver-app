@@ -696,6 +696,7 @@
     .torque-gate.clear { background: rgba(209,250,229,0.95); color: #065f46; border-color: #10b981; }
     .torque-gate.required { background: #ffedd5; color: #9a3412; border-color: #fb923c; }
     .torque-gate.checking { background: rgba(255,255,255,0.18); color: white; }
+    .torque-done-btn { display:block; margin:8px 0 10px; min-height:44px; }
     .torque-gate-title { font-size: 14px; font-weight: 950; margin-bottom: 4px; }
     .torque-gate-detail { font-size: 13px; line-height: 1.35; }
     .walkaround-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
@@ -1689,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261102-driver-storage-recovery-r1';
+const APP_BUILD_ID = '20261104-wheel-torque-done-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -4302,25 +4303,33 @@ function currentTorqueTasks() {
   return safeList(torqueCheckState.tasks);
 }
 
-function torqueConfirmationsFromRecord(record) {
-  return [
-    ...safeList(record?.torqueChecks),
-    ...safeList(record?.torqueConfirmations),
-    ...(record?.torqueCheck ? [record.torqueCheck] : []),
-  ].filter(item => item && typeof item === 'object');
+function pendingTorqueTasksForSelectedVehicle() {
+  // Fleet Live owns closure. A local tick can have a failed or missing receipt.
+  return currentTorqueTasks();
 }
 
-function recordConfirmsTorqueTask(record, task) {
-  if (!record) return false;
-  if (normaliseVehicleRef(record.vehicle) !== normaliseVehicleRef(task.vehicle || getSelectedDriverVehicle())) return false;
-  return torqueConfirmationsFromRecord(record).some(confirmation => {
-    if (confirmation.confirmed !== true) return false;
-    return confirmation.taskId === torqueTaskId(task) || (confirmation.eventId && confirmation.eventId === task.eventId);
-  });
-}
+const savingTorqueEvents = new Set();
 
-function pendingTorqueTasksForSelectedVehicle(record = getLocalWalkaroundRecord()) {
-  return currentTorqueTasks().filter(task => !recordConfirmsTorqueTask(record, task));
+async function confirmWarningTorque(eventId) {
+  const vehicle = normaliseVehicleRef(getSelectedDriverVehicle());
+  const task = currentTorqueTasks().find(row => row.eventId === eventId);
+  if (!task || !currentUser || savingTorqueEvents.has(eventId) || torqueCheckState.vehicle !== vehicle ||
+      torqueCheckState.loading || torqueCheckState.error) return;
+  const driver = currentUser.name;
+  const driverId = currentUser.driverId;
+  if (!window.confirm(`Have you torqued ${vehicle}, ${task.position}, to ${task.torqueNm} Nm? Record as ${driver}.`)) return;
+  savingTorqueEvents.add(eventId);
+  renderJobs();
+  try {
+    await recordDriverTorque({...task,vehicle,driver,driverId});
+    toast('Wheel torque recorded by ' + driver);
+  } catch (error) {
+    toast(error.message || 'Wheel torque save unverified. Check Fleet again.');
+  } finally {
+    savingTorqueEvents.delete(eventId);
+    ensureTorqueChecksForSelectedVehicle({force:true});
+    if (currentScreen === 'jobs') renderJobs();
+  }
 }
 
 function renderTorqueGateStatus(record = getLocalWalkaroundRecord()) {
@@ -4330,18 +4339,21 @@ function renderTorqueGateStatus(record = getLocalWalkaroundRecord()) {
   const stateMatches = normaliseVehicleRef(torqueCheckState.vehicle) === vehicleRef;
   const pending = pendingTorqueTasksForSelectedVehicle(record);
   if (pending.length) {
-    const amount = pending.map(task => `${task.torqueNm || DEFAULT_WHEEL_TORQUE_NM} Nm`).join(', ');
-    return `
-      <div class="torque-gate required">
-        <div class="torque-gate-title">Wheel torque check due</div>
-        <div class="torque-gate-detail">Confirm wheel torque before moving this wagon. Required amount: ${esc(amount)}.${stateMatches && torqueCheckState.error ? ' Current verification unavailable; reconnect or ask the office.' : ''}</div>
-      </div>`;
+    const live = stateMatches && !torqueCheckState.loading && !torqueCheckState.error;
+    return `<div class="torque-gate required">
+      <div class="torque-gate-title">Wheel torque check due</div>
+      ${pending.map(task => `<div class="torque-gate-detail">
+        <strong>${esc(vehicle)} · ${esc(task.position || 'Check wheel position with the office')} · ${esc(task.torqueNm || '—')} Nm</strong>
+        ${task.eventId && task.position && Number(task.torqueNm)>0 ? `<button type="button" class="btn btn-complete torque-done-btn" data-event="${esc(task.eventId)}" ${!live || savingTorqueEvents.has(task.eventId) ? 'disabled' : ''}>Wheel torque done</button>` : ''}
+      </div>`).join('')}
+      ${stateMatches && torqueCheckState.error ? 'Fleet unavailable. Reconnect and check again. <button type="button" class="torque-refresh-btn">Check again</button>' : ''}
+    </div>`;
   }
   if (stateMatches && torqueCheckState.loading) {
     return '<div class="torque-gate required">Checking current wheel torque requirements…</div>';
   }
   if (stateMatches && torqueCheckState.error) {
-    return '<div class="torque-gate required">Wheel torque verification unavailable. Known checks remain due; reconnect or ask the office before starting.</div>';
+    return '<div class="torque-gate required">Wheel torque verification unavailable. Known checks remain due; reconnect or ask the office before starting. <button type="button" class="torque-refresh-btn">Check again</button></div>';
   }
   return '';
 }
@@ -4364,7 +4376,8 @@ function ensureTorqueChecksForSelectedVehicle(options = {}) {
       return resp.json();
     })
     .then(data => {
-      if (!data || !Array.isArray(data.openTasks)) throw new Error('Invalid torque verification response');
+      if (data?.ok !== true || normaliseVehicleRef(data.vehicle) !== vehicleRef || !Array.isArray(data.openTasks) ||
+          data.openTasks.some(task => !task.eventId || ![task.vehicle,task.vehicleLabel].some(value => normaliseVehicleRef(value) === vehicleRef))) throw new Error('Invalid torque verification response');
       if (torqueCheckState !== requestState) return;
       const tasks = data.openTasks;
       torqueCheckState = { vehicle: vehicleRef, loading: false, error: '', tasks, checkedAt: data.checkedAt || new Date().toISOString(), loadedAt: Date.now() };
@@ -4630,6 +4643,7 @@ function renderWalkaroundPanel(options = {}) {
     : (vehicle ? `${selectedUnit} is not clear to move` : 'Select truck / wagon before moving');
   const detail = fullyClear
     ? 'Pre-start walkaround is saved against this selected unit for today.'
+    : done ? 'Your pre-start is saved. Check the wheel torque warning below.'
     : 'Jobs stay visible, but Start / In Transit and job completion are held here until the selected wagon pre-start is complete.';
   const selectorRows = `
       <div class="form-row ${vehicle && !walkaroundUnitSelectorsOpen ? 'hidden' : ''}" id="walkaround-unit-selectors">
@@ -4651,13 +4665,19 @@ function renderWalkaroundPanel(options = {}) {
       ${!fullyClear && vehicle ? `<p><strong>Using ${esc(selectedUnit)} today?</strong></p>` : ''}
       ${selectorRows}
       <div class="walkaround-actions">
-        <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${fullyClear ? 'Review / do another walkaround' : (vehicle ? 'Yes — start pre-start' : 'Start pre-start')}</button>
+        <button class="btn ${fullyClear ? 'btn-secondary' : 'btn-complete'}" id="start-walkaround-btn" type="button">${done ? 'Review / do another walkaround' : (vehicle ? 'Yes — start pre-start' : 'Start pre-start')}</button>
         ${vehicle ? `<button class="btn btn-secondary" id="change-walkaround-vehicle-btn" type="button" aria-expanded="${walkaroundUnitSelectorsOpen}">${walkaroundUnitSelectorsOpen ? 'Close wagon / trailer selection' : 'Change wagon / trailer'}</button>` : ''}
       </div>
     </div>`;
 }
 
 function attachWalkaroundPanelListeners(container) {
+  container.querySelectorAll('.torque-done-btn').forEach(btn =>
+    btn.addEventListener('click', () => confirmWarningTorque(btn.dataset.event)));
+  container.querySelector('.torque-refresh-btn')?.addEventListener('click', () => {
+    ensureTorqueChecksForSelectedVehicle({force:true});
+    renderJobs();
+  });
   container.querySelector('#start-walkaround-btn')?.addEventListener('click', () => showWalkaroundScreen());
   container.querySelector('#change-walkaround-vehicle-btn')?.addEventListener('click', () => {
     walkaroundUnitSelectorsOpen = !walkaroundUnitSelectorsOpen;
@@ -5124,14 +5144,28 @@ function updateWalkaroundTorqueButtons() {
   });
 }
 
+async function recordDriverTorque(check) {
+  const resp = await fleetApi(`/api/torque/${encodeURIComponent(check.eventId)}/driver-complete/confirm`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({confirmed:true,driver:check.driver,driverId:check.driverId,vehicle:check.vehicle,
+      position:check.position,torqueNm:check.torqueNm}),
+  });
+  if (!resp.ok) throw new Error(await responseError(resp, 'Wheel torque save failed'));
+  const reply = await resp.json();
+  const r = reply.receipt;
+  if (reply.ok !== true || r?.eventId !== check.eventId || r.driver !== check.driver || !r.recordedAt ||
+      ![r.vehicle,r.vehicleLabel].some(value => normaliseVehicleRef(value) === normaliseVehicleRef(check.vehicle)) ||
+      r.position !== check.position || Number(r.torqueNm) !== Number(check.torqueNm)) throw new Error('Fleet did not verify the wheel torque record.');
+  return r;
+}
+
 async function closeConfirmedFleetTorqueTasks(torqueChecks) {
   const confirmed = safeList(torqueChecks).filter(check => check.confirmed && check.eventId);
   const results = [];
   for (const check of confirmed) {
     try {
-      const resp = await fleetApi(`/api/torque/${encodeURIComponent(check.eventId)}/driver-complete`, { method: 'POST' });
-      if (!resp.ok) throw new Error(await responseError(resp, `torque close HTTP ${resp.status}`));
-      results.push({ eventId: check.eventId, closed: true });
+      const receipt = await recordDriverTorque(check);
+      results.push({ eventId:check.eventId, closed:true, receipt });
     } catch (err) {
       results.push({ eventId: check.eventId, closed: false, error: err.message || 'Fleet torque close failed' });
     }
@@ -5286,6 +5320,7 @@ async function completeWalkaround() {
     taskId: torqueTaskId(task),
     eventId: task.eventId || '',
     assetId: task.assetId || '',
+    position:task.position, driver:currentUser.name, driverId:currentUser.driverId,
     vehicle,
     torqueNm: task.torqueNm || DEFAULT_WHEEL_TORQUE_NM,
     confirmed: walkaroundState.torqueConfirmations?.[torqueTaskId(task)] === true,

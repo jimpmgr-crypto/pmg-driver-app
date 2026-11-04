@@ -21,7 +21,7 @@ function setup() {
  walkaroundState:{checks:{brakes:'yes'},photos:{},photoDataUrls:{},defectNotes:'LL draft'},
  };
  vm.createContext(c);
- const names=['driverVehicleStorageKey','getSelectedDriverVehicle','setSelectedDriverVehicle','driverTrailerStorageKey','getSelectedDriverTrailer','setSelectedDriverTrailer','safeIdPart','walkaroundStorageKeyFor','walkaroundStorageKey','getLocalWalkaroundRecord','setLocalWalkaroundRecord','normaliseVehicleRef','safeList','torqueCacheKey','torqueTaskId','readCachedTorqueTasks','writeCachedTorqueTasks','currentTorqueTasks','torqueConfirmationsFromRecord','recordConfirmsTorqueTask','pendingTorqueTasksForSelectedVehicle','renderTorqueGateStatus','hasSelectedWalkaroundComplete','selectedWalkaroundLabel','walkaroundDraftIdentity','walkaroundDraftMatches','walkaroundDraftStorageKey','migrateLegacyWalkaroundDraft','getSelectedWalkaroundDraft','saveWalkaroundDraft','clearWalkaroundDraft','renderWalkaroundPanel','attachWalkaroundPanelListeners','resumeWalkaroundDraftAfterEnter'];
+ const names=['driverVehicleStorageKey','getSelectedDriverVehicle','setSelectedDriverVehicle','driverTrailerStorageKey','getSelectedDriverTrailer','setSelectedDriverTrailer','safeIdPart','walkaroundStorageKeyFor','walkaroundStorageKey','getLocalWalkaroundRecord','setLocalWalkaroundRecord','normaliseVehicleRef','safeList','torqueCacheKey','torqueTaskId','readCachedTorqueTasks','writeCachedTorqueTasks','currentTorqueTasks','pendingTorqueTasksForSelectedVehicle','renderTorqueGateStatus','hasSelectedWalkaroundComplete','selectedWalkaroundLabel','walkaroundDraftIdentity','walkaroundDraftMatches','walkaroundDraftStorageKey','migrateLegacyWalkaroundDraft','getSelectedWalkaroundDraft','saveWalkaroundDraft','clearWalkaroundDraft','renderWalkaroundPanel','attachWalkaroundPanelListeners','resumeWalkaroundDraftAfterEnter'];
  names.forEach(n=>vm.runInContext(fn(n),c));
  c.ensureTorqueChecksForSelectedVehicle=()=>{};
  c.setSelectedDriverVehicle('LL21HJJ');c.setSelectedDriverTrailer('');
@@ -92,7 +92,7 @@ test('driver identities isolate drafts and records',()=>{
  const {c}=setup();vm.runInContext(fn('ensureTorqueChecksForSelectedVehicle'),c);
  const requests=[];c.fleetApi=()=>new Promise(resolve=>requests.push(resolve));c.responseError=async()=> 'failure';
  c.ensureTorqueChecksForSelectedVehicle({force:true});c.setSelectedDriverVehicle('YJ13GRF');c.ensureTorqueChecksForSelectedVehicle({force:true});
- requests[0]({ok:true,json:async()=>({openTasks:[]})});await new Promise(r=>setImmediate(r));assert.equal(c.torqueCheckState.vehicle,'YJ13GRF');assert(c.torqueCheckState.loading);
- requests[1]({ok:true,json:async()=>({openTasks:[]})});await new Promise(r=>setImmediate(r));assert.equal(c.torqueCheckState.vehicle,'YJ13GRF');assert(!c.torqueCheckState.loading);
+ requests[0]({ok:true,json:async()=>({ok:true,vehicle:'LL21HJJ',openTasks:[]})});await new Promise(r=>setImmediate(r));assert.equal(c.torqueCheckState.vehicle,'YJ13GRF');assert(c.torqueCheckState.loading);
+ requests[1]({ok:true,json:async()=>({ok:true,vehicle:'YJ13GRF',openTasks:[]})});await new Promise(r=>setImmediate(r));assert.equal(c.torqueCheckState.vehicle,'YJ13GRF');assert(!c.torqueCheckState.loading);
  console.log('PASS late torque reply cannot clear another truck');console.log(`${count+1} vehicle switch regression scenarios passed`);
 })().catch(e=>{console.error(e);process.exitCode=1});
