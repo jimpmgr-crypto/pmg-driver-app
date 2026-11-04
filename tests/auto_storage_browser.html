@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>Automatic job storage checks</title>
+<h1>Automatic job storage checks</h1><p>Synthetic work only, isolated localhost origin.</p>
+<button id="run">Run full-phone and restart checks</button><pre id="result">Ready</pre>
+<script src="/driver-storage.js"></script><script>
+const old='2026-05-01', today='2026-05-02', key=date=>'pmg_local_jobs_'+date;
+const snapshot=JSON.stringify([{id:'driver-fixture',notes:'x'.repeat(300000),proofReceipt:{protected:true},attachments:{photo:'photo-fixture'},status:'complete'}]);
+const current=JSON.stringify([{id:'driver-current',notes:'original'}]);
+const next=JSON.stringify([{id:'driver-current',notes:'changed',signature:'s'.repeat(900000)}]);
+const keep={pmg_retry_queue:JSON.stringify([{date:old,jobs:[{id:'driver-fixture',status:'complete'}]}]),pmg_walkaround_draft_v1:'signature/photo fixture',['pmg_writeback_queue_'+old]:'[{"state":"pending Haultech"}]'};
+const api=PmgDriverStorage, result=document.getElementById('result');
+function check(ok,message){if(!ok)throw Error(message);result.textContent+='\nPASS '+message;}
+function protectedIntact(){return Object.entries(keep).every(([k,v])=>localStorage.getItem(k)===v);}
+async function first(){
+ if (localStorage.length) throw Error('Use an empty isolated origin');
+ localStorage.setItem(key(old),snapshot);localStorage.setItem(key(today),current);
+ for(const [k,v] of Object.entries(keep))localStorage.setItem(k,v);
+ let filler='';for(const size of [65536,4096,256,1])for(;;){const value=filler+'z'.repeat(size);try{localStorage.setItem('unknown',value);filler=value;}catch(e){if(!api.quota(e))throw e;break;}}
+ let failed=false;try{localStorage.setItem(key(today),next);}catch(e){failed=api.quota(e);}check(failed,'New day backup exceeds native quota');
+ const put=IDBObjectStore.prototype.put;
+ IDBObjectStore.prototype.put=function(record,...rest){if(record.id==='active:'+key(old))throw Error('injected interruption');return put.call(this,record,...rest);};
+ try{await api.ensureSpace({today,activeJobs:true});throw Error('Unexpected recovery');}catch(e){check(e.name==='DriverStorageError' && localStorage.getItem(key(old))===snapshot,'Interrupted migration keeps original');}finally{IDBObjectStore.prototype.put=put;}
+ const r=await api.ensureSpace({today,activeJobs:true});
+ check(r.archivedCaches===1 && localStorage.getItem(key(old))===null && await api.readJobRaw(old)===snapshot,'Mixed protected day moved and independently read byte-for-byte');
+ check(await api.writeJobRaw(today,next,current) && await api.readJobRaw(today)===next,'Current oversized job saved and independently read back');
+ check(localStorage.getItem(key(today))===current && protectedIntact() && localStorage.getItem('unknown')===filler,'Original inline revision, older retry, draft, writeback and unknown data retained');
+ sessionStorage.setItem('auto-qa',result.textContent);location.reload();
+}
+async function second(){
+ result.textContent=sessionStorage.getItem('auto-qa');
+ check(await api.readJobRaw(old)===snapshot && await api.readJobRaw(today)===next && protectedIntact(),'After restart historical work, current signed work and retry survive');
+ const [a,b]=await Promise.all([api.writeJobRaw(today,'[{"edit":"A"}]',next),api.writeJobRaw(today,'[{"edit":"B"}]',next)]);
+ check(a!==b,'Only one racing change to the same revision committed');
+ localStorage.setItem(key(today),'[]');
+ let conflict=false;try{await api.readJobRaw(today);}catch(e){conflict=e.message.includes('Both copies');}
+ const db=await api.openArchive();const saved=await db.get('active:'+key(today));db.close();
+ check(conflict && saved.raw===(a?'[{"edit":"A"}]':'[{"edit":"B"}]') && localStorage.getItem(key(today))==='[]','An older app edit preserves both versions and asks for review');
+ result.textContent+='\nALL AUTOMATIC STORAGE CHECKS PASSED';
+}
+function fail(e){result.textContent+='\nFAIL '+e.message;}
+document.getElementById('run').onclick=()=>first().catch(fail);
+if(sessionStorage.getItem('auto-qa'))second().catch(fail);
+</script>

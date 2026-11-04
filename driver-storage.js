@@ -87,7 +87,77 @@
     storage.removeItem(key);
     return raw.length * 2;
   }
-  async function ensureSpace({ storage = root.localStorage, today, reserveChars = 128 * 1024, archiveFactory = openArchive } = {}) {
+  // Active snapshots have a stable lookup key. Older app tabs can still see their
+  // inline copy of today's work. If one changes it, keep both versions for review.
+  function jobKey(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Invalid job snapshot date');
+    return 'pmg_local_jobs_' + date;
+  }
+  async function withJobStore(date, action) {
+    const key = jobKey(date);
+    async function access() {
+      const db = await openArchive();
+      try { return await action(root.localStorage, db, key); }
+      finally { db.close(); }
+    }
+    return root.navigator?.locks ? root.navigator.locks.request('pmg-job-store:' + key, access) : access();
+  }
+  function activeValue(record, inline) {
+    if (!record) return inline;
+    if (typeof record.raw !== 'string' || (inline !== null && inline !== record.inline)) {
+      throw new Error('Another app version changed this saved day. Both copies are retained for the office.');
+    }
+    return record.raw;
+  }
+  async function readJobRaw(date) {
+    return withJobStore(date, async (storage, db, key) =>
+      activeValue(await db.get('active:' + key), storage.getItem(key)));
+  }
+  async function saveVerified(db, record) {
+    await db.put(record);
+    const check = await db.get(record.id);
+    if (!check || check.key !== record.key || check.raw !== record.raw ||
+        check.inline !== record.inline) {
+      throw new Error('Phone archive verification failed. Keep this screen open.');
+    }
+  }
+  async function writeJobRaw(date, raw, expected) {
+    return withJobStore(date, async (storage, db, key) => {
+      const id = 'active:' + key;
+      const record = await db.get(id);
+      const inline = storage.getItem(key);
+      const current = activeValue(record, inline);
+      if (expected !== undefined && current !== expected) return false;
+      if (current === raw) return true;
+      if (!record) {
+        try { storage.setItem(key, raw); return true; }
+        catch (error) { if (!quota(error)) throw error; }
+      }
+      if (!root.navigator?.locks) throw new Error(HELP);
+      await saveVerified(db, { id, key, raw, inline });
+      if (storage.getItem(key) !== inline) throw new Error('The phone copy changed during backup. Both copies are retained.');
+      return true;
+    });
+  }
+  async function movePastJobDay(date, today) {
+    if (date >= today) return 0;
+    return withJobStore(date, async (storage, db, key) => {
+      const id = 'active:' + key;
+      const record = await db.get(id);
+      const inline = storage.getItem(key);
+      if (!inline || !Array.isArray(parse(inline, null))) return 0;
+      const raw = activeValue(record, inline);
+      // Preserve the exact inline revision too if an overflow save superseded it.
+      if (raw !== inline) {
+        await saveVerified(db, { id: root.crypto.randomUUID(), key, raw: inline, reason: 'previous inline day' });
+      }
+      await saveVerified(db, { id, key, raw, inline });
+      if (storage.getItem(key) !== inline) return 0;
+      storage.removeItem(key);
+      return inline.length * 2;
+    });
+  }
+  async function ensureSpace({ storage = root.localStorage, today, reserveChars = 128 * 1024, archiveFactory = openArchive, activeJobs = false } = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(today || '')) throw new Error('Storage recovery requires the work date');
     const probeKey = 'pmg_storage_probe_' + root.crypto.randomUUID();
     const probe = () => {
@@ -99,6 +169,17 @@
     let archivedCaches = 0, freedBytes = 0;
     try {
       if (probe()) return { ok: true, archivedCaches, freedBytes };
+      if (activeJobs && root.navigator?.locks) {
+        // Only date-scoped job lists move. Drafts, proof and retry journals keep
+        // their existing keys. Every job list remains readable by date in the app.
+        const days = keys(storage).filter(key => /^pmg_local_jobs_\d{4}-\d{2}-\d{2}$/.test(key)).sort();
+        for (const key of days) {
+          const bytes = await movePastJobDay(key.slice(-10), today);
+          if (bytes) { archivedCaches++; freedBytes += bytes; }
+          if (probe()) return { ok: true, archivedCaches, freedBytes };
+        }
+        throw new Error('Remaining storage is protected');
+      }
       const candidates = keys(storage).filter(key => eligible(storage, key, today)).sort();
       if (!candidates.length) throw new Error('No eligible old caches; pending data retained');
       archive = await archiveFactory();
@@ -115,5 +196,5 @@
       throw error;
     } finally { archive?.close(); }
   }
-  root.PmgDriverStorage = { ensureSpace, openArchive, archiveOne, eligible, quota, HELP, DB_NAME, STORE };
+  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, eligible, quota, HELP, DB_NAME, STORE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

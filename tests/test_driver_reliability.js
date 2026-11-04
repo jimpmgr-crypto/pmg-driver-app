@@ -11,7 +11,15 @@ function fn(name) {
   return html.slice(start, end + 2);
 }
 function context(values, names) {
-  const ctx = vm.createContext({ console, Date, Set, Map, ...values });
+  const storage = values.localStorage;
+  const PmgDriverStorage = {
+    readJobRaw: date => storage.getItem('pmg_local_jobs_' + date),
+    writeJobRaw(date, raw, expected) {
+      const key = 'pmg_local_jobs_' + date;
+      if (expected === undefined || storage.getItem(key) === expected) storage.setItem(key, raw);
+    }
+  };
+  const ctx = vm.createContext({ console, Date, Set, Map, PmgDriverStorage, ...values });
   for (const name of names) vm.runInContext(fn(name), ctx);
   return ctx;
 }
@@ -33,9 +41,9 @@ test('previous-day pending rows are retained without replaying historical writes
   assert.equal(writes, 0, 'historic rows require office review, not new automatic writes');
 });
 
-test('failed local storage is surfaced rather than claiming a saved copy', () => {
+test('failed local storage is surfaced rather than claiming a saved copy', async () => {
   const ctx = context({ localStorage: { setItem() { throw new Error('QuotaExceededError'); } }, jobToLocal: j => j }, ['localSaveJobs']);
-  assert.throws(() => ctx.localSaveJobs('2026-10-17', [{ id: 'fixture' }]), /QuotaExceeded/);
+  await assert.rejects(() => ctx.localSaveJobs('2026-10-17', [{ id: 'fixture' }]), /QuotaExceeded/);
 });
 
 test('live reassignment outranks the person who added the row', () => {
@@ -196,14 +204,14 @@ function mergeContext(localRows) {
 
 test('same reference never moves local completion onto a different live GUID', () => {
   const ctx = mergeContext([{ id: '11111111-1111-4111-8111-111111111111', ticketNo: 'SAME-REF', status: 'complete' }]);
-  const rows = ctx.mergeWithLocal('2026-10-17', [{ id: '22222222-2222-4222-8222-222222222222', ticketNo: 'SAME-REF', status: 'scheduled' }]);
+  const rows = ctx.mergeWithLocal('2026-10-17', [{ id: '22222222-2222-4222-8222-222222222222', ticketNo: 'SAME-REF', status: 'scheduled' }], ctx.localGetJobs());
   assert.equal(rows[0].status, 'scheduled');
 });
 
 test('authoritative refresh cannot resurrect removed official jobs as driver-created rows', () => {
   const ctx = mergeContext([{ id: '11111111-1111-4111-8111-111111111111', ticketNo: 'REF', status: 'scheduled' }]);
-  assert.equal(ctx.mergeWithLocal('2026-10-17', []).length, 0);
-  assert.equal(ctx.mergeWithLocal('2026-10-17', [], { allowOfficialCached: true }).length, 1, 'offline recovery retains original official cache');
+  assert.equal(ctx.mergeWithLocal('2026-10-17', [], ctx.localGetJobs()).length, 0);
+  assert.equal(ctx.mergeWithLocal('2026-10-17', [], ctx.localGetJobs(), { allowOfficialCached: true }).length, 1, 'offline recovery retains original official cache');
 });
 
 test('malformed successful diary response preserves the fallback route', async () => {

@@ -1690,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261104-wheel-torque-done-r1';
+const APP_BUILD_ID = '20261104-automatic-job-storage-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2330,13 +2330,15 @@ function cachedDriverFields(row) {
   };
 }
 
-function localSaveJobs(date, jobs) {
-  localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(jobs.map(jobToLocal)));
+async function localSaveJobs(date, jobs, expected) {
+  return PmgDriverStorage.writeJobRaw(date, JSON.stringify(jobs.map(jobToLocal)), expected);
 }
 
-function localGetJobs(date) {
-  try { return JSON.parse(localStorage.getItem('pmg_local_jobs_' + date) || '[]'); }
-  catch { return []; }
+async function localGetJobs(date) {
+  const raw = await PmgDriverStorage.readJobRaw(date);
+  const rows = JSON.parse(raw ?? '[]');
+  if (!Array.isArray(rows)) throw new Error('Saved job list is unreadable. Original data retained.');
+  return rows;
 }
 
 async function cloudPutJobs(date, jobs) {
@@ -2356,9 +2358,10 @@ async function cloudPutJobs(date, jobs) {
   }
   PmgJobBackup.accept(payload, result, jobs);
   // Attach receipts only to the identical snapshot, never to a newer edit.
-  const localRows = localGetJobs(date);
+  const original = await PmgDriverStorage.readJobRaw(date);
+  const localRows = JSON.parse(original ?? '[]');
   PmgJobBackup.accept(payload, result, localRows);
-  localStorage.setItem('pmg_local_jobs_' + date, JSON.stringify(localRows));
+  await PmgDriverStorage.writeJobRaw(date, JSON.stringify(localRows), original);
   if (typeof allJobs !== 'undefined') {
     for (const job of allJobs) {
       const snapshot = jobToLocal(job);
@@ -2424,7 +2427,7 @@ function writeJSON(key, value) {
 }
 
 async function ensureDriverStorageSpace() {
-  return PmgDriverStorage.ensureSpace({ today: todayISO() });
+  return PmgDriverStorage.ensureSpace({ today: todayISO(), activeJobs: true });
 }
 
 function showCompletionSaveError(error) {
@@ -2660,7 +2663,7 @@ async function flushRetryQueue() {
     try {
       // A confirmed backup can add only a revision after the retry was queued.
       // Reuse that receipt only for the exact same row contents, never a newer edit.
-      const currentJson = localStorage.getItem('pmg_local_jobs_' + entry.date);
+      const currentJson = await PmgDriverStorage.readJobRaw(entry.date);
       const currentRows = JSON.parse(currentJson || 'null');
       const content = rows => JSON.stringify(rows, (key, value) => key === '_backupRevision' ? undefined : value);
       if (Array.isArray(currentRows) && content(currentRows) === content(entry.jobs)) {
@@ -2701,9 +2704,7 @@ async function flushRetryQueue() {
         }
       }
       // A newer form save/refresh must never be overwritten by an older flush.
-      if (localStorage.getItem('pmg_local_jobs_' + entry.date) === originalJobs) {
-        localStorage.setItem('pmg_local_jobs_' + entry.date, JSON.stringify(entry.jobs));
-      }
+      await PmgDriverStorage.writeJobRaw(entry.date, JSON.stringify(entry.jobs), originalJobs);
       await cloudPutJobs(entry.date, entry.jobs);
       results.set(original, liveWritePending ? entry : null);
     } catch {
@@ -2772,13 +2773,13 @@ function updateSyncDot(state) {
   });
 }
 
-async function saveJobsToCloud(date, jobs) {
+async function saveJobsToCloud(date, jobs, expected) {
   const simplified = jobs.map(jobToLocal);
   const reviewBackup = driverReviewBackupJobs(simplified);
   // Headroom is advisory: a small real write can still fit when the reserve
   // cannot. Actual saves below remain mandatory and throw on failure.
   await ensureDriverStorageSpace().catch(() => {});
-  localSaveJobs(date, jobs);
+  if (await localSaveJobs(date, jobs, expected) === false) return false; // A newer local edit won the refresh race.
   if (!reviewBackup.length) {
     updateSyncUI();
     return true;
@@ -2935,8 +2936,7 @@ function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
   if (changed) setWritebackQueue(updated);
 }
 
-function mergeWithLocal(date, cloudJobs, options = {}) {
-  const localJobs = localGetJobs(date);
+function mergeWithLocal(date, cloudJobs, localJobs, options = {}) {
   if (!localJobs.length) return cloudJobs;
   const identity = j => String(getHaultechJobId(j) || driverMovementId(j) || j.id || j.jobId || '');
   const cloudKeys = new Set(cloudJobs.map(identity).filter(Boolean));
@@ -3268,7 +3268,7 @@ async function hydrateBackupRevisions(date, jobs) {
   if (!response.ok) return jobs; // No guessed revision or silently rebased work.
   const rows = await response.json();
   if (!Array.isArray(rows)) return jobs;
-  const localRows = localGetJobs(date);
+  const localRows = await localGetJobs(date);
   return jobs.map(job => {
     const movementId = driverMovementId(job);
     if (!movementId || localRows.some(row => driverMovementId(row) === movementId)) return job;
@@ -3316,11 +3316,14 @@ async function loadJobs(options = {}) {
       savedAt: j.savedAt || now,
     }));
     jobs = await hydrateBackupRevisions(date, jobs).catch(() => jobs); // A backup outage must not hide a verified plan. No revision is guessed.
-    jobs = mergeWithLocal(date, jobs);
+    const localSnapshot = await PmgDriverStorage.readJobRaw(date);
+    const localRows = JSON.parse(localSnapshot ?? '[]');
+    if (!Array.isArray(localRows)) throw new Error('Saved jobs could not be read');
+    jobs = mergeWithLocal(date, jobs, localRows);
     allJobs = jobs;
     lastJobsUpdatedAt = new Date(data.savedAt);
     renderJobs();
-    saveJobsToCloud(date, allJobs).catch(error => showError('Phone backup failed: ' + error.message));
+    saveJobsToCloud(date, allJobs, localSnapshot).catch(error => showError('Phone backup failed: ' + error.message));
   } catch (e) {
     console.error('Load jobs error:', e);
     diaryReadState = {state:'unavailable',savedAt:'',complete:false};
@@ -3395,12 +3398,17 @@ async function loadJobsFallback(date) {
         if (key) existingKeys.add(key);
       }
     } catch {}
-    jobs = mergeWithLocal(date, jobs, { allowOfficialCached: true });
+    jobs = mergeWithLocal(date, jobs, await localGetJobs(date), { allowOfficialCached: true });
     allJobs = jobs;
     renderJobs();
   } catch {
     // Last resort — pure localStorage
-    const localJobs = localGetJobs(date);
+    let localJobs;
+    try { localJobs = await localGetJobs(date); }
+    catch (error) {
+      showError('Saved work could not be opened. Keep the app open and contact the office. ' + error.message);
+      return;
+    }
     allJobs = localJobs.map(lj => ({
       jobId: lj.id, _cached: true, _driverAdded: isLocalDriverTempJob(lj),
       _driver: lj.driver, _customer: lj.customer,
@@ -4137,7 +4145,7 @@ async function cancelDriverJob(job, { reason, note = '', photo = null, type = 'j
     state: 'pending Haultech', haultechWriteState: 'pending Haultech' }, { deferPersist: true });
   try {
     updateJobStatusLocal(job, 'cancelled');
-    localSaveJobs(todayISO(), allJobs);
+    await localSaveJobs(todayISO(), allJobs);
     if (!await persistTrialEventToWorker(event)) throw new Error('Cancellation audit not confirmed');
     if (photo) await saveWorkerProofAsset(`problem-${event.eventId}`, await photo.arrayBuffer(), photo.type || 'image/jpeg');
     const haultechNote = composeDriverHaultechNote({ reason, note });
@@ -5623,12 +5631,12 @@ async function updateDriverJobPaymentStatus(job, paymentStatus, container) {
     const savedStatus = normalisePaymentStatus(result.paymentStatus) || status;
     setJobPaymentStatus(job, savedStatus);
     const localDate = getHaultechJobDate(job);
-    const localJobs = localGetJobs(localDate).map(localJob => {
+    const localJobs = (await localGetJobs(localDate)).map(localJob => {
       const ids = [localJob.id, localJob.jobId, localJob.ticketNo].filter(Boolean).map(String);
       if (ids.includes(String(jobId))) setJobPaymentStatus(localJob, savedStatus);
       return localJob;
     });
-    localSaveJobs(localDate, localJobs);
+    await localSaveJobs(localDate, localJobs);
     const activeTab = document.querySelector('.detail-tab.active')?.dataset.tab || 'delivery';
     renderJobDetail(job, activeTab);
     toast(savedStatus === 'paid' ? 'Payment marked Paid' : 'Payment marked Not paid');
@@ -5866,8 +5874,8 @@ $('detail-delete-btn').addEventListener('click', async () => {
     // Remove from local list
     // Remove from local storage
     const date = todayISO();
-    const localJobs = localGetJobs(date).filter(j => j.id !== jobId);
-    localSaveJobs(date, localJobs);
+    const localJobs = (await localGetJobs(date)).filter(j => j.id !== jobId);
+    await localSaveJobs(date, localJobs);
     allJobs = allJobs.filter(j => (j.id || j.jobId || '') !== (activeJob.id || activeJob.jobId || ''));
     toast('✅ Ticket deleted');
     showJobList();
@@ -6421,7 +6429,7 @@ async function departJob(job, btn) {
 
   try {
     updateJobStatusLocal(job, 'started');
-    localSaveJobs(todayISO(), allJobs);
+    await localSaveJobs(todayISO(), allJobs);
     const event = queueTrialEvent('started', job, {
       status: 'started',
       state: 'pending Haultech',
@@ -7051,9 +7059,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
     const addSignature = fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas) ? fSigCanvas.toDataURL('image/png') : null;
     const addPhoto = fPhotoFile;
     localJob.attachments = await saveAddedJobProof(movementId, addSignature, addPhoto);
-    const existingLocal = localGetJobs(localDate);
+    const existingLocal = await localGetJobs(localDate);
     existingLocal.push(localJob);
-    localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
+    await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
     if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
     let haultechWriteState = 'saved locally';
     let haultechReason = DRIVER_ADDED_BACKUP_REASON;
@@ -7074,7 +7082,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
         haultechReason = `${DRIVER_ADDED_BACKUP_REASON}: ${writeErr.message || 'Haultech write failed'}`;
       }
     }
-    localStorage.setItem('pmg_local_jobs_' + localDate, JSON.stringify(existingLocal));
+    await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
     if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
     queueTrialEvent('day_sheet_row_added', localJob, {
 	      customer: localJob.customer,
@@ -7336,7 +7344,7 @@ function init() {
   if (requestedDriver && INCAB_USERS[requestedDriver]) {
     trialMode = true;
     currentUser = { username: requestedDriver, ...INCAB_USERS[requestedDriver] };
-    localStorage.setItem('pmg-user', requestedDriver);
+    try { localStorage.setItem('pmg-user', requestedDriver); } catch (error) { if (!PmgDriverStorage.quota(error)) throw error; }
     enterJobsScreen();
     resumeWalkaroundDraftAfterEnter();
     toast(`${INCAB_USERS[requestedDriver].name} driver mode`);
@@ -7361,7 +7369,7 @@ async function startDriverApp() {
     showError(PmgDriverStorage.quota(error) ? PmgDriverStorage.HELP : ('App could not open: ' + error.message));
     return;
   }
-  if (storageError) showError(PmgDriverStorage.HELP);
+  if (storageError && storageError.cause?.message !== 'Remaining storage is protected') showError(PmgDriverStorage.HELP);
 }
 startDriverApp();
 

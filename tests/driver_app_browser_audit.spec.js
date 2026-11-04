@@ -201,6 +201,17 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
   });
 }
 
+async function prepareFixturePrestart(page) {
+  await expect(page.locator('.quick-proof').first()).toBeVisible();
+  await page.evaluate(() => {
+    const vehicle = getJobVehicle(allJobs[0]);
+    setSelectedDriverVehicle(vehicle);
+    setLocalWalkaroundRecord({driverId:currentUser.driverId,date:todayISO(),vehicle,trailer:getSelectedDriverTrailer(),completedAt:new Date().toISOString()});
+    ensureTorqueChecksForSelectedVehicle({force:true});
+  });
+  await expect.poll(() => page.evaluate(() => hasSelectedWalkaroundComplete())).toBe(true);
+}
+
 test.describe('driver app route audit', () => {
   for (const routeName of ['john', 'andrew', 'neil', 'ian', 'richard', 'paul']) {
     test(`/${routeName} opens driver app without PIN bounce`, async ({ page }) => {
@@ -535,12 +546,12 @@ test.describe('driver app route audit', () => {
     const originalMovementId = captured.driverAddRequests[0].body.movementId;
     expect(originalMovementId).toMatch(/^driver-/);
     await page.getByRole('button', { name: '✓ Got it', exact: true }).click();
-    await page.evaluate(() => { isManager = true; });
+    await prepareFixturePrestart(page);
     await page.locator('.quick-proof').click();
     await page.locator('#sign-photo-input').setInputFiles({ name: 'proof.png', mimeType: 'image/png', buffer: TEST_PNG });
     await page.locator('#sign-save-main-btn').click();
     await expect(page.locator('#sign-screen')).toBeHidden();
-    const beforeRestart = await page.evaluate(() => localGetJobs(todayISO()).find(job => job.movementId));
+    const beforeRestart = await page.evaluate(async () => (await localGetJobs(todayISO())).find(job => job.movementId));
     expect(beforeRestart.status).toBe('complete');
     expect(beforeRestart.proofReceipt.protected).toBe(true);
     expect(beforeRestart.haultechWriteState).toBe('pending Haultech');
@@ -551,7 +562,7 @@ test.describe('driver app route audit', () => {
     await expect.poll(() => (captured.completionRequests || []).length).toBe(1);
     expect(captured.completionRequests[0].body.originalReference).toBe('Simon Ward');
     await expect.poll(() => page.evaluate(() => !!flushRetryQueue.running)).toBe(false);
-    await expect.poll(() => page.evaluate(() => localGetJobs(todayISO()).find(job => job.movementId)?.haultechWriteState)).toBe('written');
+    await expect.poll(() => page.evaluate(async () => (await localGetJobs(todayISO())).find(job => job.movementId)?.haultechWriteState)).toBe('written');
     const afterRestart = await page.evaluate(() => {
       const key = Object.keys(localStorage).find(name => name.startsWith('pmg_local_jobs_'));
       return JSON.parse(localStorage.getItem(key) || '[]').find(job => job.movementId);
@@ -615,7 +626,7 @@ test.describe('driver app route audit', () => {
     }];
     await stubExternalApis(page, { captured, jobs });
     await page.goto(`${APP_URL}/?driver=richard`);
-    await page.evaluate(() => { isManager = true; });
+    await prepareFixturePrestart(page);
     await page.locator('.quick-proof').click();
     await expect(page.locator('#sign-concrete-type')).toBeVisible();
 
@@ -753,11 +764,11 @@ test.describe('driver app route audit', () => {
 test('identical real loads keep separate completion state after local merge and reload', async ({ page }) => {
   await stubExternalApis(page);
   await page.goto(`${APP_URL}/?driver=neil`);
-  const check = async () => page.evaluate(() => {
+  const check = async () => page.evaluate(async () => {
     const a={id:'11111111-1111-4111-8111-111111111111',jobId:11422,deliveryStatus:'Completed',accountNotes:'Driver movement: driver-neil-one'};
     const b={id:'22222222-2222-4222-8222-222222222222',jobId:11425,deliveryStatus:'Scheduled',accountNotes:'Driver movement: driver-neil-two'};
     localStorage.setItem('pmg_local_jobs_'+todayISO(),JSON.stringify([{id:'driver-neil-one',movementId:'driver-neil-one',haultechJobId:a.id,status:'complete'}]));
-    const merged=mergeWithLocal(todayISO(),[a,b]);
+    const merged=mergeWithLocal(todayISO(),[a,b],await localGetJobs(todayISO()));
     return {states:merged.map(getJobStatus),redirect:findMatchingLiveDriverJob(a,[b]),cachedId:getHaultechJobId({_haultechJobId:b.id}),ambiguous:findMatchingLiveDriverJob({id:'driver-neil-one'},[a,{...b,accountNotes:a.accountNotes}])};
   });
   expect(await check()).toEqual({states:['complete','scheduled'],redirect:null,cachedId:'22222222-2222-4222-8222-222222222222',ambiguous:null});
@@ -806,7 +817,7 @@ test('offline backup keeps concrete fields and two loads sharing a reference', a
 
 function signoffJob() {
   return { id: '55555555-5555-4555-8555-555555555555', jobNumber: 99998,
-    customerName: 'Fixture Customer', deliveryDriverId: '201938f2-da93-4987-bd42-32342fcce78f',
+    customerName: 'Fixture Customer', deliveryVehicleId: '695b915e-d817-476c-b3e1-a1768233edd9', deliveryDriverId: '201938f2-da93-4987-bd42-32342fcce78f',
     deliveryDate: new Date().toISOString(), deliveryStatus: 'Scheduled',
     consignments: [{ id: '66666666-6666-4666-8666-666666666666', goodsDescription: '6F2', weight: 20,
       deliveryAddressLine1: 'Fixture Site', deliveryDriverStatus: 'Scheduled' }] };
@@ -817,7 +828,7 @@ for (const rejectProof of [false, true]) {
     const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [], completionRequests: [] };
     await stubExternalApis(page, { captured, jobs: [signoffJob()], rejectProof });
     await page.goto(`${APP_URL}/?driver=richard`);
-    await page.evaluate(() => { isManager = true; });
+    await prepareFixturePrestart(page);
     await page.locator('.quick-proof').click();
     await expect(page.locator('#sign-driver-signoff')).not.toBeChecked();
     await page.locator('#sign-notes').fill('Customer away; tipped in agreed place.');
@@ -864,4 +875,32 @@ test('malformed diary response is unavailable rather than an empty checked plan'
   await page.goto(`${APP_URL}/?driver=john`);
   await expect.poll(() => page.evaluate(() => diaryReadState.state)).toBe('unavailable');
   await expect(page.getByText('No jobs allocated in the checked plan', { exact: true })).toHaveCount(0);
+});
+
+
+test('opening John’s normal route automatically makes space and preserves a pending old day', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded-storage')) return;
+    sessionStorage.setItem('seeded-storage','yes');
+    const row = {id:'driver-pending',notes:'proof'.repeat(220000),_driverAdded:true};
+    localStorage.setItem('pmg_local_jobs_2020-01-02', JSON.stringify([row]));
+    localStorage.setItem('pmg_retry_queue', JSON.stringify([{date:'2020-01-02',jobs:[{id:row.id}]}]));
+    localStorage.setItem('pmg_walkaround_draft_v1:fixture', 'keep this proof');
+    let filler='';
+    for (;;) {
+      const next = filler + 'x'.repeat(32768);
+      try { localStorage.setItem('unknown-storage', next); filler=next; } catch (error) { if (error.name!=='QuotaExceededError') throw error; break; }
+    }
+  });
+  await page.goto(APP_URL+'/?driver=john');
+  for (let pass=0;pass<2;pass++) {
+    await expect(page.locator('#jobs-screen')).toBeVisible();
+    await expect.poll(() => page.evaluate(async () => {
+      const past = await localGetJobs('2020-01-02');
+      return {inline:localStorage.getItem('pmg_local_jobs_2020-01-02'),bytesMatch:past[0]?.notes==='proof'.repeat(220000),
+        retry:getRetryQueue()[0]?.jobs?.[0]?.id,draft:localStorage.getItem('pmg_walkaround_draft_v1:fixture')};
+    })).toEqual({inline:null,bytesMatch:true,retry:'driver-pending',draft:'keep this proof'});
+    if (!pass) await page.reload();
+  }
 });

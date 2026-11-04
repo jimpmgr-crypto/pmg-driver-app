@@ -87,7 +87,7 @@ for (const name of ['getJobNumber', 'cachedDriverFields', 'jobToLocal', 'mergeWi
 const cached = ctx.jobToLocal(live);
 assert.equal(cached.id, live.id, 'cache keeps job identity');
 ctx.localGetJobs = () => [cached];
-checkRoutes(ctx.mergeWithLocal('2026-10-17', [], { allowOfficialCached: true })[0]);
+checkRoutes(ctx.mergeWithLocal('2026-10-17', [], ctx.localGetJobs(), { allowOfficialCached: true })[0]);
 const driverLocal = {
   id: 'driver-fixture', movementId: 'driver-fixture', _driverAdded: true,
   from: 'Summary quarry', to: 'Summary destination',
@@ -95,7 +95,7 @@ const driverLocal = {
   deliveryAddress: delivery,
 };
 ctx.localGetJobs = () => [driverLocal];
-const driverCached = ctx.mergeWithLocal('2026-10-17', [])[0];
+const driverCached = ctx.mergeWithLocal('2026-10-17', [], ctx.localGetJobs())[0];
 checkRoutes(driverCached);
 const resaved = ctx.jobToLocal(driverCached);
 assert.equal(resaved.collectionAddress.placeId, 'fixture-place', 'selected address metadata survives re-save');
