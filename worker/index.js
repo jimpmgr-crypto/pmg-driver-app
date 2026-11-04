@@ -2611,6 +2611,69 @@ function requiresConcreteSourceForCompletion(job) {
   return isDeliveredConcreteJob(job) || /\b(?:no[ -]?fines|kerb[ -]?mix|gen\s*\d+)\b/.test(normalisedCompletionMaterial(job));
 }
 
+// A completed mixer job and its receiving wagon are different HaulTech jobs.
+function batchRouteKey(job) {
+  const c = firstConsignment(job);
+  const date = haultechIsoDate(job.deliveryDate);
+  if (!date || !job.customerId || job.customerId === AGREED_COMPLETION_POLICY.a1_customer_id ||
+      job.consignments?.length !== 1 || !c.collectionAddressLine1 || !c.deliveryAddressLine1 || !c.deliveryPostcode) return '';
+  const address = ['collection', 'delivery'].flatMap(side =>
+    [1,2,3,4,5].map(n => normalisedLookupText(c[side+'AddressLine'+n])).concat(compactToken(c[side+'Postcode'])));
+  return JSON.stringify([date, job.customerId, ...address]);
+}
+
+function linkedBatch(job, jobs) {
+  if (!jobs || !job.id || job.cancelled || job.active === false || !requiresConcreteSourceForCompletion(job)) return null;
+  const reg = Object.keys(DRIVER_APP_VEHICLE_IDS_BY_REG).find(r => DRIVER_APP_VEHICLE_IDS_BY_REG[r] === job.deliveryVehicleId);
+  if (!reg || VOLUMETRIC_CONCRETE_VEHICLES.has(reg)) return null;
+  const key = batchRouteKey(job);
+  if (!key) return null;
+  const group = jobs.filter(row => row.active !== false && !row.cancelled && batchRouteKey(row) === key);
+  const deliveries = group.filter(row => row.deliveryVehicleId === job.deliveryVehicleId && requiresConcreteSourceForCompletion(row));
+  if (deliveries.length !== 1 || deliveries[0].id !== job.id) return null;
+  // Count even open/unconfirmed mixer jobs. Never choose between two possible pours.
+  const mixers = group.filter(row => [...VOLUMETRIC_CONCRETE_VEHICLES].some(r => DRIVER_APP_VEHICLE_IDS_BY_REG[r] === row.deliveryVehicleId) && requiresConcreteSourceForCompletion(row));
+  if (mixers.length !== 1) return null;
+  const batch = mixers[0];
+  if (!batch.jobId || normalisedStatus(batch.deliveryStatus) !== 'completed' || !(Number(batch.quantity) > 0)) return null;
+  const notes = String(batch.trafficNotes || '');
+  // Match a complete instruction and a positive report of which wagon was loaded.
+  if (/\b(?:not|instead|cancelled|wrong|changed|swapped|split|part load)\b/i.test(notes)) return null;
+  const bookings = [...notes.matchAll(/\bbatch(?:ed)?\s+(?:in(?:to)?|on(?:to)?)\s+([a-z]{2}\d{2}(?:\s?[a-z]{3})?)\b/gi)];
+  if (bookings.length !== 1) return null;
+  const token = compactToken(bookings[0][1]);
+  const receivers = Object.keys(DRIVER_APP_VEHICLE_IDS_BY_REG).filter(r => r === token || (token.length === 4 && r.startsWith(token)));
+  if (receivers.length !== 1 || receivers[0] !== reg) return null;
+  const loaded = notes.split('|').map(part => part.trim()).filter(part => /^(?:driver note:\s*)?loaded\s+(?:on\s*to|in\s*to|on|in)\s+/i.test(part));
+  if (loaded.length !== 1) return null;
+  const wagon = loaded[0].replace(/^(?:driver note:\s*)?loaded\s+(?:on\s*to|in\s*to|on|in)\s+(?:the\s+)?/i, '').toUpperCase();
+  const actualReg = wagon.match(/^([A-Z]{2}\d{2})(?:\s?([A-Z]{3}))?\b/);
+  const actualToken = actualReg && compactToken(actualReg[0]);
+  const matchesNamedWagon = actualToken && (actualToken === reg || (actualToken === token && token.length === 4));
+  const explicitRegs = notes.toUpperCase().match(/\b[A-Z]{2}\d{2}(?:\s?[A-Z]{3})?\b/g) || [];
+  if (explicitRegs.some(value => ![reg, token].includes(compactToken(value)))) return null;
+  if (!matchesNamedWagon && !(reg === 'EY15BOV' && /^GRAB(?: TRUCK| WAGON| LORRY)?\b/.test(wagon))) return null;
+  const sources = new Set([...String(batch.accountNotes || '').matchAll(/\bDriver confirmed (RECYCLED|QUARRIED) concrete source\b/gi)].map(m => m[1].toLowerCase()));
+  if (sources.size !== 1) return null;
+  const source = [...sources][0];
+  const existing = inferConcreteType(completionPricingBody(job));
+  if (existing && existing !== source) return null;
+  if (!existing && /\b(?:quarried|recycled|quarry|rec|qu)\b/i.test([job.accountNotes, job.trafficNotes, jobGoodsDescription(job)].join(' '))) return null;
+  const batchGrade = normalisedCompletionMaterial(batch).match(/\b(?:st|gen|rc|c)\s*\d+\b/);
+  const deliveryGrade = normalisedCompletionMaterial(job).match(/\b(?:st|gen|rc|c)\s*\d+\b/);
+  if (deliveryGrade && (!batchGrade || compactToken(deliveryGrade[0]) !== compactToken(batchGrade[0]))) return null;
+  if (!deliveryGrade && !(/\bkerb mix\b/.test(normalisedCompletionMaterial(job)) && (compactToken(batchGrade?.[0]) === 'ST1' || /\bkerb mix\b/.test(normalisedCompletionMaterial(batch))))) return null;
+  return { number:batch.jobId, source, quantity:Number(batch.quantity) };
+}
+
+function showLinkedBatchSources(jobs) {
+  return jobs.map(job => {
+    if (COMPLETED_DIARY_STATUSES.has(normalisedStatus(job.deliveryStatus)) || inferConcreteType(completionPricingBody(job))) return job;
+    const batch = linkedBatch(job, jobs);
+    return batch && (!Number(job.quantity) || Number(job.quantity) === batch.quantity) ? {...job, concreteType:batch.source} : job;
+  });
+}
+
 function normaliseConcreteType(value) {
   const type = cleanText(value, 40).toLowerCase();
   if (type.startsWith('q')) return 'quarried';
@@ -3228,7 +3291,10 @@ async function fetchHaultechJobsByDate(env, date) {
   const payload = safeJsonParse(text);
   if (!payload) return { ok: false, error: 'bad_haultech_jobs_data' };
   const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || payload.jobs || []);
-  return { ok: true, jobs };
+  const total = payload.totalCount ?? payload.count ?? payload.total;
+  const completeDay = !resp.headers.get('continuationtoken') && jobs.length < 200 &&
+    (total == null || Number(total) === jobs.length) && new Set(jobs.map(row => row.id)).size === jobs.length;
+  return { ok: true, jobs, completeDay };
 }
 
 const COMPLETED_DRIVER_STATUSES = new Set(['signed', 'completed', 'complete', 'delivered']);
@@ -3368,7 +3434,7 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   const numericQuantity = Number(quantity);
   const typedCustomer = cleanText(consigneeName, 120);
   const normalizedPaymentStatus = normaliseA1PaymentStatus({ paymentStatus });
-  const normalizedConcreteType = normaliseConcreteType(concreteType);
+  let normalizedConcreteType = normaliseConcreteType(concreteType);
   const requestedDates = uniqueIsoDates(Array.isArray(dateOrDates) ? dateOrDates : [dateOrDates]);
   const primaryDate = requestedDates[0] || new Date().toISOString().slice(0, 10);
   const lookupDates = uniqueIsoDates([
@@ -3379,6 +3445,7 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   ]);
   let lastError = '';
   let job = null;
+  let batch = null;
   for (const lookupDate of lookupDates) {
     const jobLookup = await fetchHaultechJobsByDate(env, lookupDate);
     if (!jobLookup.ok) {
@@ -3386,7 +3453,10 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
       continue;
     }
     job = findHaultechJobById(jobLookup.jobs, jobId);
-    if (job) break;
+    if (job) {
+      if (jobLookup.completeDay && lookupDate === haultechIsoDate(job.deliveryDate)) batch = linkedBatch(job, jobLookup.jobs);
+      break;
+    }
   }
   if (!job) {
     return {
@@ -3396,6 +3466,11 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   }
 
   const existingConcreteType = inferConcreteType(completionPricingBody(job));
+  const otherSource = batch?.source === 'quarried' ? /\brecycled\b/i : /\bquarried\b/i;
+  if (batch && (otherSource.test(note) || batch.quantity !== numericQuantity || (normalizedConcreteType && normalizedConcreteType !== batch.source))) {
+    return { ok:false, error:'batch_source_mismatch', message:'The quantity or concrete source differs from batch job ' + batch.number + '. Ask the office to check the two tickets.' };
+  }
+  if (batch) normalizedConcreteType = batch.source;
   if (requiresConcreteSourceForCompletion(job) && !existingConcreteType && !normalizedConcreteType) {
     return {
       ok: false,
@@ -3426,14 +3501,18 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
     updatedJob = paymentUpdate.job;
     changed = changed || paymentUpdate.changed;
   }
-  const concreteTypeUpdate = isDeliveredConcreteJob(updatedJob)
+  const concreteTypeUpdate = requiresConcreteSourceForCompletion(updatedJob)
     ? applyDriverConcreteTypeToHaultechJob(updatedJob, normalizedConcreteType)
     : { job: updatedJob, changed: false, concreteType: '' };
   updatedJob = concreteTypeUpdate.job;
+  if (batch) {
+    updatedJob = {...updatedJob, accountNotes:mergePlainNoteText(updatedJob.accountNotes, 'Concrete source from batch job ' + batch.number)};
+    changed = true;
+  }
   changed = changed || concreteTypeUpdate.changed;
   const pourTime=resolveConcretePourTime({pourMinutes,driverNotes:note});
-  const pourPricing=await priceRecordedConcretePour(updatedJob,numericQuantity,env,normalizedConcreteType,pourTime);
-  const pricingUpdate = pourPricing || await completionAutoPrice(updatedJob, numericQuantity, env, normalizedConcreteType);
+  const pourPricing=batch ? null : await priceRecordedConcretePour(updatedJob,numericQuantity,env,normalizedConcreteType,pourTime);
+  const pricingUpdate = batch ? {job:updatedJob,changed:false} : pourPricing || await completionAutoPrice(updatedJob, numericQuantity, env, normalizedConcreteType);
   // Persist recorded operational time independently from financial success.
   if (pourTime.minutes !== null && pourTime.minutes !== undefined && isDeliveredConcreteJob(updatedJob)) {
     const cleanNotes=String(pricingUpdate.job.trafficNotes||'').replace(/(?:\s*\|\s*)?Recorded pour time: [\d.]+ minutes/g,'');
@@ -3458,6 +3537,15 @@ async function applyDriverCompletionUpdateToHaultechJob(env, jobId, dateOrDates,
   const upsertText = await upsertResp.text();
   if (!upsertResp.ok) {
     return { ok: false, error: `driver_update_failed: ${upsertText || upsertResp.status}` };
+  }
+  if (concreteTypeUpdate.concreteType) {
+    const check = await fetchHaultechJobsByDate(env, haultechIsoDate(updatedJob.deliveryDate) || primaryDate);
+    const saved = check.ok && findHaultechJobById(check.jobs, jobId);
+    const savedParts = String(saved?.accountNotes || '').split('|').map(part => part.trim());
+    if (!saved || !savedParts.includes('Driver confirmed ' + concreteTypeUpdate.concreteType.toUpperCase() + ' concrete source') ||
+        (batch && (!savedParts.includes('Concrete source from batch job ' + batch.number) || Number(saved.quantity) !== numericQuantity))) {
+      return {ok:false,error:'concrete_source_readback_failed',message:'Concrete source was not verified in HaulTech. Keep the proof and ask the office to check.'};
+    }
   }
   if(pricingUpdate.quotedPrice) {
     const date=String(updatedJob.deliveryDate||updatedJob.collectionDate||'').slice(0,10);
@@ -3622,6 +3710,7 @@ async function handleDriverRequest(request, env) {
         ok: true,
         service: 'pmg-driver-sync',
         workerBuildId: WORKER_BUILD_ID,
+        batchHandoffRevision: '20261104-r1',
         runtimePatchId: WORKER_RUNTIME_PATCH_ID,
         diarySnapshotVersion: '20261022-driver-saved-plan',
         pricingPolicyVersion: AGREED_COMPLETION_POLICY.version,
@@ -3702,7 +3791,10 @@ async function handleDriverRequest(request, env) {
       const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('diary:'+date));
       const result = await stub.fetch(new Request('https://store/__diary_snapshot/'+date, {method: env.PMG_APP_STORE_READ_ONLY === 'true' || url.searchParams.get('stored') === 'true' ? 'GET' : 'POST'}));
       const data = await result.json();
-      if (data.complete) data.jobs = await mergeJobStatusOverrides(env, date, visibleHaultechJobsForDate(data.jobs,date));
+      if (data.complete) {
+        const rows = data.state === 'live' ? showLinkedBatchSources(data.jobs) : data.jobs;
+        data.jobs = await mergeJobStatusOverrides(env, date, visibleHaultechJobsForDate(rows,date));
+      }
       return corsResponse(JSON.stringify(data),200,{'Cache-Control':'no-store'});
     }
 
@@ -3889,6 +3981,7 @@ async function handleDriverRequest(request, env) {
         { driverNotes, quantity: driverQuantity, consigneeName, originalReference, concreteType, pourMinutes: body.pourMinutes }
       );
       if (!noteResult.ok) {
+        if (noteResult.error === 'batch_source_mismatch') return corsResponse(JSON.stringify({error:noteResult.error, message:noteResult.message}), 409);
         const typeRequired = noteResult.error === 'concrete_type_required';
         return corsResponse(JSON.stringify({
           error: typeRequired ? 'concrete_type_required' : 'driver_update_failed',

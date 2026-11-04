@@ -836,6 +836,79 @@ async function completeJobFixture(job, quantity, extras = {}) {
     assert.strictEqual(check.resp.status,422,material+' must require source');
     assert.strictEqual(check.upsertPayload,null);
   }
+  for (const material of ['200X BULL NOSE KERBS+ KERB MIX','NO FINES','GEN1']) {
+    const fixture={jobId:12046,id:'88888888-8888-4888-8888-888888888888',customerId:'external-customer',quotedPrice:0,accountNotes:'Keep original note',consignments:[{goodsDescription:material,deliveryPostcode:'FY6 9DJ'}]};
+    const check=await completeJobFixture(fixture,4,{concreteType:'recycled'});
+    assert.strictEqual(check.resp.status,200);
+    assert((check.upsertPayload.accountNotes || '').includes('Driver confirmed RECYCLED concrete source'), material+' must persist explicit source');
+    assert(check.upsertPayload.accountNotes.includes('Keep original note'));
+    assert.strictEqual(check.upsertPayload.consignments[0].goodsDescription,material);
+    assert.strictEqual(check.upsertPayload.quotedPrice,0);
+  }
+  // The batching truck and receiving grab carry separate HaulTech job IDs.
+  const date = '2026-11-04';
+  const location = {
+    collectionAddressLine1:'PMG Yard', deliveryAddressLine1:'Sample Lodge Park',
+    deliveryAddressLine2:'Bank Lane', deliveryPostcode:'PR4 1TB',
+  };
+  const delivery = {
+    id:'567e8008-ae7a-4a93-a71c-5e67271322a1', jobId:12046, customerId:'park',
+    deliveryVehicleId:'3acf3f0b-462d-4b75-9072-3f0890ea036a', deliveryStatus:'Scheduled',
+    quantity:0, quotedPrice:0, trafficNotes:'Keep SW kerbs', deliveryDate:date,
+    consignments:[{...location, goodsDescription:'200X BULL NOSE KERBS+ KERB MIX'}],
+  };
+  const mixer = {
+    ...delivery, id:'2621af96-8dea-4045-b252-d34a57f7e1f8', jobId:12045,
+    deliveryVehicleId:'695b915e-d817-476c-b3e1-a1768233edd9', deliveryStatus:'Completed', quantity:4,
+    accountNotes:'Driver confirmed RECYCLED concrete source',
+    trafficNotes:'RECYCLED IF YOU CAN 4M3 BATCH INTO EY15 | Loaded on to grab truck 4m st1',
+    consignments:[{...location, goodsDescription:'ST1 CONCRETE'}],
+  };
+  const readBatch = async jobs => {
+    const testEnv = env();
+    testEnv.PMG_APP_STORE.get = () => ({fetch:async () => Response.json({date,state:'live',complete:true,jobs})});
+    const response = await workerRequest('/driver-diary/' + date, {}, testEnv);
+    return (await response.json()).jobs.find(row => row.id === delivery.id);
+  };
+  assert.strictEqual((await readBatch([mixer,delivery])).concreteType, 'recycled');
+  for (const jobs of [
+    [mixer,delivery,{...delivery,id:'other-delivery'}],
+    [mixer,delivery,{...mixer,id:'other-mixer',deliveryStatus:'Scheduled'}],
+    [{...mixer,accountNotes:''},delivery],
+    [{...mixer,accountNotes:'Driver confirmed RECYCLED concrete source | Driver confirmed QUARRIED concrete source'},delivery],
+    [{...mixer,deliveryStatus:'Scheduled'},delivery],
+    [{...mixer,customerId:'other'},delivery],
+    [{...mixer,deliveryDate:'2026-11-03'},delivery],
+    [{...mixer,consignments:[{...location,deliveryAddressLine2:'Different plot',goodsDescription:'ST1'}]},delivery],
+    [{...mixer,trafficNotes:'BATCH INTO EY15'},delivery],
+    [{...mixer,trafficNotes:'BATCH INTO EY15 | Loaded onto PN25AMU'},delivery],
+    [{...mixer,trafficNotes:'BATCH INTO PN25 | Loaded onto grab truck'},delivery],
+    [mixer,{...delivery,quantity:3}],
+  ]) assert.strictEqual((await readBatch(jobs)).concreteType,undefined);
+
+  const tryHandoff = async (quantity,extra = {}, batch = mixer) => {
+    sandbox.__haultechJobs = structuredClone([batch,delivery]);
+    sandbox.__fetches.length = 0;
+    const response = await workerRequest('/ht/complete/' + delivery.id,{
+      method:'PATCH',body:JSON.stringify({date,quantity,...extra}),
+    });
+    return {status:response.status, saved:sandbox.__haultechJobs[1], calls:[...sandbox.__fetches]};
+  };
+  const handoff = await tryHandoff(4,{driverNotes:'4 cube recycled kerb mix, 192 bullnose kerbs'});
+  assert.strictEqual(handoff.status,200);
+  assert.match(handoff.saved.accountNotes,/Concrete source from batch job 12045/);
+  assert.match(handoff.saved.accountNotes,/Driver confirmed RECYCLED concrete source/);
+  assert.strictEqual(handoff.saved.quotedPrice,0);
+  assert.strictEqual(handoff.saved.quantity,4);
+  assert(handoff.calls.some(call => call.url.includes('QuickCompleteJob')));
+  for (const attempt of [await tryHandoff(3),await tryHandoff(4,{concreteType:'quarried'}),await tryHandoff(4,{driverNotes:'4 cube quarried kerb mix'})]) {
+    assert.strictEqual(attempt.status,409);
+    assert(!attempt.calls.some(call => call.url.includes('UpsertJob') || call.url.includes('QuickCompleteJob')));
+  }
+  const unconfirmed = await tryHandoff(4,{}, {...mixer,accountNotes:''});
+  assert.strictEqual(unconfirmed.status,422);
+  assert(!unconfirmed.calls.some(call => call.url.includes('QuickCompleteJob')));
+  sandbox.__haultechJobs = [];
   completionPricing = await completeJobFixture({
     jobId: 9819,
     id: '19191919-1919-4919-8919-191919191919',

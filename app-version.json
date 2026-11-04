@@ -5,6 +5,6 @@
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Preserve current and pending work; recover browser storage by verified archive of eligible old job caches; persistent completion errors and same-origin recovery page.",
+  "notes": "Preserve current and pending work; recover browser storage by verified archive of eligible old job caches; persistent completion errors and same-origin recovery page. The prestart-fleet-torque-source check uses Fleet Live for wagon torque and Tony's plant app for plant records.",
   "plantBuildId": "20261017-plant-safe-writes"
 }
