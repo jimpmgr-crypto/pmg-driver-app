@@ -1,10 +1,10 @@
 {
   "buildId": "20261104-automatic-job-storage-r1",
-  "updatedAt": "2026-11-04",
+  "updatedAt": "2026-11-08",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
   "notes": "Preserve current and pending work; automatically move older job lists to verified, readable phone storage and save current overflow there; persistent completion errors and same-origin recovery page. The prestart-fleet-torque-source check uses Fleet Live for wagon torque and Tony's plant app for plant records. Wheel torque done records the driver against the exact Fleet wheel event.",
-  "plantBuildId": "20261017-plant-safe-writes"
+  "plantBuildId": "20261108-current-alerts"
 }

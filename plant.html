@@ -1218,7 +1218,7 @@
     const plantRetryScopes = new Set();
     const plantDirtyForms = new Set();
     const plantNewWriteIntents = new Map();
-    const PLANT_BUILD_ID = '20261017-plant-safe-writes';
+    const PLANT_BUILD_ID = '20261108-current-alerts';
 
     document.addEventListener('DOMContentLoaded', () => {
       [
@@ -1459,11 +1459,51 @@
       } catch {}
     }
 
+    let plantAlertRefreshBusy = false;
+    async function refreshPlantAlerts() {
+      if (document.hidden || plantAlertRefreshBusy || plantRetryScopes.size) return;
+      if ([els.serviceForm,els.assetForm,els.identityForm].some(form => form.dataset.saving === 'true')) return;
+      plantAlertRefreshBusy = true;
+      const generation = ++plantDataGeneration;
+      try {
+        const payload = await api(`/plant/assets?role=${encodeURIComponent(state.role)}`);
+        if (generation !== plantDataGeneration || !Array.isArray(payload.assets)) return;
+        state.assets = payload.assets;
+        state.stats = payload.stats || {};
+        state.reviewItems = payload.reviewItems || [];
+        state.reviewByAsset = groupByAsset(state.reviewItems);
+        state.workerOnline = true;
+        state.mode = 'worker';
+        const latestSelected = state.assets.find(asset => asset.id === state.selectedId);
+        if (state.record && latestSelected) state.record = {...state.record, asset:latestSelected};
+        const selectedId = state.selectedId;
+        const recordGeneration = plantRecordGeneration;
+        if (selectedId) {
+          const record = await api(`/plant/assets/${encodeURIComponent(selectedId)}?role=${encodeURIComponent(state.role)}`);
+          if (generation !== plantDataGeneration) return;
+          if (recordGeneration === plantRecordGeneration && state.selectedId === selectedId
+            && record?.asset?.id === selectedId && Array.isArray(record.history) && Array.isArray(record.filterParts)) {
+            state.record = record;
+          }
+        }
+        renderAll({preserveIdentityDraft:true});
+      } catch (_) {
+        // Keep known records on a failed read and make the source failure visible.
+        state.workerOnline = false;
+        state.mode = 'unavailable';
+        renderAll({preserveIdentityDraft:true});
+      } finally { plantAlertRefreshBusy = false; }
+    }
+
     function setupPlantUpdates() {
       if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',event=>{
         if (event.data?.type === 'PMG_SW_UPDATED') checkPlantUpdate();
       });
       window.addEventListener('focus',checkPlantUpdate);
+      window.addEventListener('focus',refreshPlantAlerts);
+      window.addEventListener('online',refreshPlantAlerts);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshPlantAlerts()});
+      setInterval(refreshPlantAlerts,60000);
       document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkPlantUpdate()});
       setInterval(()=>{if(!document.hidden)checkPlantUpdate()},300000);
       checkPlantUpdate();
