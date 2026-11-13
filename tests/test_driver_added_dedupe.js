@@ -35,7 +35,7 @@ assert(
 );
 
 const fallbackStart = indexHtml.indexOf('async function loadJobsFallback');
-const fallbackEnd = indexHtml.indexOf('jobs = mergeWithLocal(date, jobs, await localGetJobs(date), { allowOfficialCached: true });', fallbackStart);
+const fallbackEnd = indexHtml.indexOf('jobs = mergeWithLocal(date, jobs, await localGetJobs(date), { allowOfficialCached: true, retryLocalRows: false });', fallbackStart);
 assert(fallbackStart > 0 && fallbackEnd > fallbackStart, 'loadJobsFallback saved-job merge block not found');
 const fallbackBlock = indexHtml.slice(fallbackStart, fallbackEnd);
 assert(

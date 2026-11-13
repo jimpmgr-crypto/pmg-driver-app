@@ -1690,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261104-automatic-job-storage-r1';
+const APP_BUILD_ID = '20261113-read-only-plan-refresh-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2773,8 +2773,9 @@ function updateSyncDot(state) {
   });
 }
 
-async function saveJobsToCloud(date, jobs, expected) {
-  const simplified = jobs.map(jobToLocal);
+async function saveJobsToCloud(date, jobs, expected, changedJobs = jobs) {
+  // Preserve the full offline plan, but only submit the row the driver edited.
+  const simplified = changedJobs.map(jobToLocal);
   const reviewBackup = driverReviewBackupJobs(simplified);
   // Headroom is advisory: a small real write can still fit when the reserve
   // cannot. Actual saves below remain mandatory and throw on failure.
@@ -2794,6 +2795,17 @@ async function saveJobsToCloud(date, jobs, expected) {
     updateSyncUI();
     return false;
   }
+}
+
+async function saveRefreshedJobsLocally(date, jobs, expected) {
+  // A shared plan is a read, not a new driver edit. Sending its projected rows
+  // back to the journal creates stale revisions (including other drivers' work)
+  // and a new retained conflict on every refresh. Keep the offline copy, while
+  // explicit edits and the existing exact retry queue keep their write paths.
+  await ensureDriverStorageSpace().catch(() => {});
+  const saved = await localSaveJobs(date, jobs, expected);
+  updateSyncUI();
+  return saved;
 }
 
 function normaliseDriverMatchText(value) {
@@ -3001,7 +3013,7 @@ function mergeWithLocal(date, cloudJobs, localJobs, options = {}) {
     if (isLocalDriverTempJob(lj)) toRepush.push(lj);
   }
 
-  if (toRepush.length) {
+  if (toRepush.length && options.retryLocalRows !== false) {
     cloudPutJobs(date, toRepush).catch(() => addToRetryQueue(date, toRepush));
   }
 
@@ -3319,11 +3331,11 @@ async function loadJobs(options = {}) {
     const localSnapshot = await PmgDriverStorage.readJobRaw(date);
     const localRows = JSON.parse(localSnapshot ?? '[]');
     if (!Array.isArray(localRows)) throw new Error('Saved jobs could not be read');
-    jobs = mergeWithLocal(date, jobs, localRows);
+    jobs = mergeWithLocal(date, jobs, localRows, { retryLocalRows: false });
     allJobs = jobs;
     lastJobsUpdatedAt = new Date(data.savedAt);
     renderJobs();
-    saveJobsToCloud(date, allJobs, localSnapshot).catch(error => showError('Phone backup failed: ' + error.message));
+    saveRefreshedJobsLocally(date, allJobs, localSnapshot).catch(error => showError('Phone backup failed: ' + error.message));
   } catch (e) {
     console.error('Load jobs error:', e);
     diaryReadState = {state:'unavailable',savedAt:'',complete:false};
@@ -3398,7 +3410,7 @@ async function loadJobsFallback(date) {
         if (key) existingKeys.add(key);
       }
     } catch {}
-    jobs = mergeWithLocal(date, jobs, await localGetJobs(date), { allowOfficialCached: true });
+    jobs = mergeWithLocal(date, jobs, await localGetJobs(date), { allowOfficialCached: true, retryLocalRows: false });
     allJobs = jobs;
     renderJobs();
   } catch {
@@ -4155,7 +4167,7 @@ async function cancelDriverJob(job, { reason, note = '', photo = null, type = 'j
       body: JSON.stringify({ status: 'cancelled', reason, note, movementId: driverMovementId(job), driver: currentUser.name, date: todayISO() }),
     });
     await requireWorkerAcknowledgement(response, 'Cancellation status');
-    if (await saveJobsToCloud(todayISO(), allJobs) === false) throw new Error('Cancellation status saved; the changed backup still needs an office check');
+    if (await saveJobsToCloud(todayISO(), allJobs, undefined, [job]) === false) throw new Error('Cancellation status saved; the changed backup still needs an office check');
     setQueueState(event.eventId, 'saved locally', `${reason}; PMG status saved, not completed in Haultech`);
     job._cancellationPending = false;
     return true;
@@ -6352,7 +6364,7 @@ async function handleSignComplete() {
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
       if (matchedLiveJob) updateJobStatusLocal(matchedLiveJob, 'complete');
-      await saveJobsToCloud(todayISO(), allJobs);
+      await saveJobsToCloud(todayISO(), allJobs, undefined, [job]);
       const proofState = 'written';
       const proofMessage = completionCheck.ok
         ? (missingHaultechProof.length
@@ -6393,7 +6405,7 @@ async function handleSignComplete() {
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
-      await saveJobsToCloud(todayISO(), allJobs);
+      await saveJobsToCloud(todayISO(), allJobs, undefined, [job]);
       setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
       toast('✓ Complete saved');
     }
