@@ -865,7 +865,10 @@ for (const rejectProof of [false, true]) {
     expect(proofIndex).toBeGreaterThan(-1);
     expect(completionIndex).toBeGreaterThan(proofIndex);
     await page.reload();
-    await expect.poll(() => page.evaluate(() => getJobStatus(allJobs.find(job => job.id === '55555555-5555-4555-8555-555555555555')))).toBe('complete');
+    await expect.poll(() => page.evaluate(() => {
+      const job = allJobs.find(job => job.id === '55555555-5555-4555-8555-555555555555');
+      return job ? getJobStatus(job) : 'loading';
+    })).toBe('complete');
     expect(captured.completionRequests).toHaveLength(1);
   });
 }
