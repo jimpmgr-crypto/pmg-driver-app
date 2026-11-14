@@ -1300,7 +1300,7 @@ const MATERIAL_PRICING = {
   "Type 3 MOT": { type: 'tiered', threshold: 10, under10: 35, over10: 33, unit: "tonnes" },
   "Quarried 20mm Clean Stone": { type: 'tiered', threshold: 10, under10: 44, over10: 41.5, unit: "tonnes" },
   "Quarried 6mm Clean Stone": { type: 'tiered', threshold: 10, under10: 41.5, over10: 38.5, unit: "tonnes" },
-  "Grade 1 Topsoil": { type: 'banded', strictAboveThreshold: 10, bands: [{"min":15,"rate":15},{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
+  "Grade 1 Topsoil": { type: 'banded', strictAboveThreshold: 10, bands: [{"min":10,"rate":20},{"min":0,"rate":22}], unit: "tonnes" },
   "Blended Topsoil/Compost": { type: 'tiered', threshold: 10, under10: 32, over10: 30, unit: "tonnes" },
   "Fill": { type: "flat", rate: 5, unit: "tonnes" },
   "Recycled Grit Sand": { type: 'tiered', threshold: 10, under10: 31, over10: 29, unit: "tonnes" },
@@ -1690,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261113-read-only-plan-refresh-r1';
+const APP_BUILD_ID = '20261114-topsoil-customer-scope-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';

@@ -1,10 +1,10 @@
 {
-  "buildId": "20261113-read-only-plan-refresh-r1",
-  "updatedAt": "2026-11-13",
+  "buildId": "20261114-topsoil-customer-scope-r1",
+  "updatedAt": "2026-11-14",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Plan refreshes save an offline copy without creating backup writes for shared rows. Explicit driver edits and exact pending retries remain protected; existing conflicts retained for review.",
+  "notes": "Plan refreshes save an offline copy without creating backup writes for shared rows. Explicit driver edits and exact pending retries remain protected; existing conflicts retained for review. Topsoil GBP15/t restricted to named customer agreements; normal higher-quantity rate GBP20/t. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
   "plantBuildId": "20261108-current-alerts"
 }
