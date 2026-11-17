@@ -2455,7 +2455,28 @@ function readJSON(key, fallback) {
 }
 
 function writeJSON(key, value) {
+  const previous = localStorage.getItem(key);
+  if (previous !== null) {
+    try {
+      const parsed = JSON.parse(previous);
+      if (Array.isArray(value) && !Array.isArray(parsed)) throw new Error('Invalid saved list');
+    } catch {
+      throw new Error('Saved phone data cannot be read. Original data retained; ask the office.');
+    }
+  }
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function pendingStoreReadProblem() {
+  for (const key of [localQueueKey(), localEventKey(), walkaroundTicketQueueKey()]) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null && !Array.isArray(JSON.parse(raw))) throw new Error('Invalid saved list');
+    } catch {
+      return 'Saved phone records cannot be read. Original data retained; ask the office. Do not clear app data.';
+    }
+  }
+  return '';
 }
 
 async function ensureDriverStorageSpace() {
@@ -2811,7 +2832,7 @@ function needsWritebackAttention(item) {
 
 function updateSyncUI() {
   markDriverFailedWritebacksSavedLocally();
-  let retries = [], retryReadProblem = '';
+  let retries = [], retryReadProblem = pendingStoreReadProblem();
   try { retries = getRetryQueue(); } catch (error) { retryReadProblem = error.message; }
   const backupPending = retries.length > 0;
   const olderPending = retries.some(entry => entry?.date !== todayISO());

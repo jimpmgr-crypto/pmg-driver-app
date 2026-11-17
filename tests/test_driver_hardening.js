@@ -9,6 +9,14 @@ async function main(){
   for(const n of ['getRetryQueue','setRetryQueue','addToRetryQueue'])vm.runInContext(fn(n),c);
   assert.throws(()=>c.addToRetryQueue('2026-11-17',[{id:'new'}]),/read|retained/i);assert.equal(raw,'{broken original');
  });
+ await check('corrupt audit and pre-start queues are preserved and visibly require help',()=>{
+  for(const bad of ['{broken original','{"unexpected":"object"}']){
+   const data=new Map([['audit',bad]]);const c=vm.createContext({localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)},localQueueKey:()=> 'audit',localEventKey:()=> 'events',walkaroundTicketQueueKey:()=> 'prestart'});
+   vm.runInContext(fn('writeJSON')+'\n'+fn('pendingStoreReadProblem'),c);
+   assert.match(c.pendingStoreReadProblem(),/Original data retained/);assert.throws(()=>c.writeJSON('audit',[]),/Original data retained/);assert.equal(data.get('audit'),bad);
+   data.delete('audit');data.set('prestart',bad);assert.match(c.pendingStoreReadProblem(),/Original data retained/);assert.throws(()=>c.writeJSON('prestart',[]));assert.equal(data.get('prestart'),bad);
+  }
+ });
  function setup({lateFailure=false}={}){
   let raw=JSON.stringify([{id:'other',notes:'before'}]),calls=0,release,closed=false,notice='';
   const elements=new Map(),values={'f-customer':'Synthetic customer','f-qty':'20','f-unit':'t','f-material':'Synthetic aggregate','f-ref':'SYNTHETIC-ONLY','f-notes':'Synthetic test','f-from':'Yard','f-to':'Fixture','f-vehicle':'TEST'};
