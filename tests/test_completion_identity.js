@@ -95,6 +95,13 @@ vm.runInContext('let signCompletionInFlight=false;\n'+html.slice(start,end),ctx)
  assert(leftForm,'protected local completion must not trap the sign form after status acknowledgement');
  assert.match(shown,/Proof and completion status saved/);assert.match(shown,/Haultech confirmation/);
  assert.doesNotMatch(shown,/completed in Haultech/,'local status acknowledgement is not live completion');
+ ctx.activeJob={id:'driver-weight',_cached:true,_driverAdded:true,_quantity:20,status:'scheduled'};ctx.allJobs=[ctx.activeJob];
+ ctx.$=()=>({value:'19.48',focus(){},remove(){}});
+ let savedWeight;
+ vm.runInContext(fn('getJobWeight'),ctx);
+ ctx.saveJobsToCloud=async(d,jobs)=>{savedWeight=ctx.getJobWeight(jobs[0]);};
+ await ctx.handleSignComplete();
+ assert.equal(Number(savedWeight),19.48,'unmapped completion must save the signed actual quantity for later creation/retry');
  console.log('PASS protected local completion acknowledges saved status without claiming Haultech completion');
  console.log('PASS verified server completion survives local backup failure without repeat submission');
  console.log('PASS identity, separate loads, cached ID, consignment ID, ambiguity, concurrent and repeated completion');

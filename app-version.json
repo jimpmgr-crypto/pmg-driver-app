@@ -1,5 +1,5 @@
 {
-  "buildId": "20261117-driver-save-hardening-r2",
+  "buildId": "20261117-driver-recovery-sequences-r3",
   "updatedAt": "2026-11-17",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",

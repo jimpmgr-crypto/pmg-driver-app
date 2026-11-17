@@ -920,6 +920,23 @@ async function fillHardeningAddForm(page) {
   await page.locator('#f-notes').fill('No live records; regression fixture');
 }
 
+test('invalid audit record shapes show help without crashing or replacing saved bytes', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=john`);
+  for (const raw of ['null', '{}', '[null]', '[42]']) {
+    const result = await page.evaluate(raw => {
+      localStorage.setItem(localQueueKey(), raw);
+      updateSyncUI();
+      let refused = false;
+      try { setWritebackQueue([]); } catch { refused = true; }
+      return { raw: localStorage.getItem(localQueueKey()), refused };
+    }, raw);
+    expect(result).toEqual({raw, refused:true});
+    await expect(page.locator('#sync-banner')).toBeVisible();
+    await expect(page.locator('#sync-banner')).toContainText('Original data retained');
+  }
+});
+
 test('unreadable retry data stays intact and visible after reload', async ({ page }) => {
   await stubExternalApis(page);
   await page.goto(`${APP_URL}/?driver=john`);
