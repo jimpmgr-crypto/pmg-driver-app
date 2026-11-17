@@ -213,7 +213,7 @@ async function prepareFixturePrestart(page) {
 }
 
 test.describe('driver app route audit', () => {
-  for (const routeName of ['john', 'andrew', 'neil', 'ian', 'richard', 'paul']) {
+  for (const routeName of ['john', 'andrew', 'neil', 'ian', 'richard']) {
     test(`/${routeName} opens driver app without PIN bounce`, async ({ page }) => {
       const errors = [];
       page.on('pageerror', err => errors.push(err.message));
@@ -229,31 +229,19 @@ test.describe('driver app route audit', () => {
     });
   }
 
-  test('Paul route uses his Haultech identity and keeps all-rounder vehicle choice', async ({ page }) => {
+  test('retired path, query and remembered session are blocked without touching saved data', async ({ page }) => {
     const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
     await stubExternalApis(page, { captured });
-    await page.goto(`${APP_URL}/paul/`);
-    await expect(page.locator('#jobs-screen')).toBeVisible();
-    const identity = await page.evaluate(() => ({
-      username: currentUser.username,
-      name: currentUser.name,
-      driverId: currentUser.driverId,
-      vehicles: DRIVER_VEHICLE_OPTIONS,
-    }));
-    expect(identity).toMatchObject({
-      username: 'paul',
-      name: 'Paul Locket',
-      driverId: '2b5eab8a-0602-47b8-b242-28ef37eb6c2d',
-    });
-    expect(identity.vehicles).toEqual(expect.arrayContaining(['LL21HJJ', 'PN25FLF', 'EY15BOV']));
-    const visibleJobIds = await page.evaluate(() => {
-      allJobs = [
-        { id: 'paul-job', deliveryDriverId: currentUser.driverId },
-        { id: 'another-driver-job', deliveryDriverId: 'f5c31070-2945-408a-bc7a-0245159a191a' },
-      ];
-      return getDriverJobs(currentUser.driverId, currentUser.name).map(job => job.id);
-    });
-    expect(visibleJobIds).toEqual(['paul-job']);
+    for (const path of ['/paul/', '/?driver=paul', '/paul/?driver=john']) {
+      await page.goto(APP_URL + path);
+      await expect(page.getByRole('heading', { name: 'Driver access ended' })).toBeVisible();
+      await expect(page.locator('#jobs-screen')).toHaveCount(0);
+    }
+    await page.evaluate(() => localStorage.setItem('pmg-user', 'paul'));
+    await page.goto(APP_URL);
+    await expect(page.getByRole('heading', { name: 'Driver access ended' })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('pmg-user'))).toBe('paul');
+    expect(captured.workerRequests).toEqual([]);
   });
 
   test('saved driver session reopens jobs screen without PIN', async ({ page }) => {

@@ -1639,7 +1639,6 @@ const INCAB_USERS = {
   andrew:  { pin: '3333', driverId: 'd6795d54-a5f4-441b-b09a-df06558f7154', name: 'Andrew Whittaker' },
   neil:    { pin: '1962', driverId: '42374caa-5cf2-446e-823e-a40e9d2a2d28', name: 'Neil Antony' },
   ian:     { pin: '1234', driverId: '0c472976-88ac-4610-bccb-e5b9ffde707c', name: 'Ian Slater' },
-  paul:    { pin: '2580', driverId: '2b5eab8a-0602-47b8-b242-28ef37eb6c2d', name: 'Paul Locket' },
 };
 
 const VEHICLES = {
@@ -1690,7 +1689,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261117-driver-recovery-sequences-r3';
+const APP_BUILD_ID = '20261117-driver-roster-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -7473,6 +7472,24 @@ function showJobConfirmation(job) {
 }
 
 function init() {
+  const params = new URLSearchParams(window.location.search);
+  const routeDriver = window.location.pathname.toLowerCase().split('/').filter(Boolean)[0] || '';
+  const requested = (params.get('driver') || '').toLowerCase();
+  let savedUser = '';
+  try { savedUser = localStorage.getItem('pmg-user') || ''; } catch {}
+  if (routeDriver === 'paul' || requested === 'paul' ||
+      (!INCAB_USERS[routeDriver] && !INCAB_USERS[requested] && savedUser === 'paul')) {
+    const notice = document.createElement('main');
+    notice.id = 'driver-access-ended';
+    notice.style.cssText = 'max-width:32rem;margin:4rem auto;padding:1.5rem';
+    const title = document.createElement('h1');
+    title.textContent = 'Driver access ended';
+    const text = document.createElement('p');
+    text.textContent = 'Contact the PMG office if you need help with a previous job.';
+    notice.append(title, text);
+    document.body.replaceChildren(notice);
+    return;
+  }
   renderUserButtons();
   initPlaceChips();
   initAddressAutocomplete();
@@ -7501,7 +7518,6 @@ function init() {
   // Reflect initial sync state
   updateSyncUI();
 
-  const params = new URLSearchParams(window.location.search);
   const pathParts = window.location.pathname.toLowerCase().split('/').filter(Boolean);
   const pathDriver = pathParts.find((part) => INCAB_USERS[part]) || '';
   const requestedDriver = (params.get('driver') || pathDriver || '').toLowerCase();
@@ -7515,7 +7531,6 @@ function init() {
     return;
   }
 
-  const savedUser = localStorage.getItem('pmg-user');
   if (savedUser && INCAB_USERS[savedUser]) {
     currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };
     enterJobsScreen();

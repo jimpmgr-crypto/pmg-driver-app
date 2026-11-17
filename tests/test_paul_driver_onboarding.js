@@ -10,13 +10,12 @@ const postChangeCheck = fs.readFileSync(path.join(projectRoot, 'tools/driver_app
 
 const paulId = '2b5eab8a-0602-47b8-b242-28ef37eb6c2d';
 
-assert(
-  index.includes(`paul:    { pin: '2580', driverId: '${paulId}', name: 'Paul Locket' }`),
-  'Paul must have the agreed PIN and exact live Haultech driver identity'
-);
+assert(!index.includes(paulId), 'Paul must not be listed as an active driver');
+assert(index.includes("routeDriver === 'paul'") && index.includes("savedUser === 'paul'"),
+  'Retired links and saved sessions must stop before app startup');
 assert(
   worker.includes(`'paul locket': '${paulId}'`),
-  'worker driver mapping must match the frontend and live Haultech record'
+  'Historical Worker mapping must remain available for reconciliation'
 );
 assert(
   redirects.includes('/paul/app-version.json /app-version.json 200'),
@@ -28,11 +27,11 @@ assert(
 );
 assert(
   index.includes('const DRIVER_VEHICLE_OPTIONS = Object.values(VEHICLES);'),
-  'Paul must retain the shared all-rounder vehicle list rather than a fixed wagon'
+  'Active drivers retain the shared vehicle list'
 );
 assert(
   postChangeCheck.includes('"paul locket"'),
   'post-change reconciliation must recognise Paul as a Driver App user'
 );
 
-console.log('Paul driver onboarding regression checks passed');
+console.log('Retired driver and historical reconciliation checks passed');
