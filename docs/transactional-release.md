@@ -19,3 +19,9 @@ Driver and Yard updates defer while a form/queue/capture is active. Plant announ
 ## 17 October verification record
 
 The full evidence is in the current Codex task app-release-20261017/RELEASE-REPORT.md and canonical Tom job packet TJP-20261017-072227-haultech-replacement-discovery-and-workflow-pari-7fd582daa27e4547aea08a2c092be42a. It includes narrow allowlists, CUA evidence, independent reviews, rollout IDs, 5,354-ticket index reconciliation, 70 preserved recent job rows and the CORS defect caught/fixed during live readback. No blanket bug-free or native HaulTech invoice-send fix claim is made.
+
+## Recurrence checks required after the 17 November review
+
+For any shared save, retry or storage change, exercise the complete user action and its partial-success boundaries. A successful API receipt followed by a local/audit failure must keep a truthful saved state and must not invite a new movement. Delay Add and completion responses while another local row changes; require exact preservation. Corrupt retry JSON must remain byte-identical and visible, never become an empty queue. Test lost headers and a stalled response body; deadline expiry must not trigger a new write identity. Check mapped HaulTech completion separately from unmapped protected proof/status.
+
+These are enforced in `tests/test_driver_hardening.js`, `tests/test_driver_request_deadline.js`, `tests/test_driver_reliability.js`, `tests/test_completion_identity.js` and three full-page browser regressions in `tests/driver_app_browser_audit.spec.js`. Run the existing unit and browser suites; native phone acceptance remains a separate gate. Review every caller of a shared save helper when changing it; do not assume testing refresh covers Add, completion, cancellation and background retry.

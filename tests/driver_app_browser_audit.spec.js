@@ -907,3 +907,66 @@ test('opening John’s normal route automatically makes space and preserves a pe
     if (!pass) await page.reload();
   }
 });
+
+async function fillHardeningAddForm(page) {
+  await page.locator('#add-job-btn').click();
+  await page.locator('#f-vehicle').selectOption('EY15BOV');
+  await page.locator('#f-customer').fill('Synthetic hardening customer');
+  await page.locator('#f-material').fill('MOT');
+  await page.locator('#f-from').fill('Yard');
+  await page.locator('#f-to').fill('Synthetic destination');
+  await page.locator('#f-qty').fill('2');
+  await page.locator('#f-ref').fill('SYNTHETIC-HARDENING');
+  await page.locator('#f-notes').fill('No live records; regression fixture');
+}
+
+test('unreadable retry data stays intact and visible after reload', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=john`);
+  await expect(page.locator('#jobs-screen')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('pmg_retry_queue', '{unreadable retained original'));
+  await page.reload();
+  await expect(page.locator('#sync-banner')).toContainText('Saved retries cannot be read');
+  expect(await page.evaluate(() => localStorage.getItem('pmg_retry_queue'))).toBe('{unreadable retained original');
+});
+
+test('late Add Job receipt retains another change in native phone storage', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(`${APP_URL}/?driver=john`);
+  await expect(page.locator('#jobs-screen')).toBeVisible();
+  await page.evaluate(() => {
+    const original = submitDriverAddedRow;
+    submitDriverAddedRow = async (...args) => {
+      const response = await original(...args);
+      const date = todayISO(), raw = await PmgDriverStorage.readJobRaw(date);
+      const rows = JSON.parse(raw);
+      rows.push({ id: 'driver-concurrent-fixture', movementId: 'driver-concurrent-fixture', notes: 'Newer work retained', driver: currentUser.name, status: 'scheduled' });
+      await PmgDriverStorage.writeJobRaw(date, JSON.stringify(rows), raw);
+      return response;
+    };
+  });
+  await fillHardeningAddForm(page);
+  await page.locator('#add-job-submit').click();
+  await expect(page.locator('#job-confirm-modal')).toBeVisible();
+  const saved = await page.evaluate(async () => await localGetJobs(todayISO()));
+  expect(saved.some(row => row.notes === 'Newer work retained')).toBe(true);
+  expect(saved.filter(row => row.reference === 'SYNTHETIC-HARDENING')).toHaveLength(1);
+});
+
+test('late audit quota after Add Job shows saved warning and closes resubmit form', async ({ page }) => {
+  const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
+  await stubExternalApis(page, { captured });
+  await page.goto(`${APP_URL}/?driver=john`);
+  await expect(page.locator('#jobs-screen')).toBeVisible();
+  await page.evaluate(() => {
+    const original = queueTrialEvent;
+    queueTrialEvent = (...args) => { if (args[0] === 'day_sheet_row_added') throw new Error('Synthetic late quota'); return original(...args); };
+  });
+  await fillHardeningAddForm(page);
+  await page.locator('#add-job-submit').click();
+  await expect(page.locator('#add-job-modal')).toBeHidden();
+  await expect(page.locator('#error-bar')).toContainText('Row saved on this phone');
+  expect(captured.driverAddRequests).toHaveLength(1);
+  const rows = await page.evaluate(async () => await localGetJobs(todayISO()));
+  expect(rows.filter(row => row.reference === 'SYNTHETIC-HARDENING')).toHaveLength(1);
+});

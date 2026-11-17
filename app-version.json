@@ -1,10 +1,10 @@
 {
-  "buildId": "20261117-isolated-driver-retries-r1",
+  "buildId": "20261117-driver-save-hardening-r2",
   "updatedAt": "2026-11-17",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Driver edits queue only their own movement; preserve unrelated retries and full offline plans. Work-plan reads do not wait for pending writebacks; confirmed completion is distinguished from phone backup failure. Preserves current pricing, pre-start and protected proof gates.",
+  "notes": "Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes.",
   "plantBuildId": "20261108-current-alerts"
 }

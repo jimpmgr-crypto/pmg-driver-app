@@ -86,6 +86,16 @@ vm.runInContext('let signCompletionInFlight=false;\n'+html.slice(start,end),ctx)
  assert.equal(leftForm,true,'verified completion must not trap driver in sign screen');
  assert.match(shown,/completed in Haultech and proof saved/);
  await ctx.handleSignComplete();assert.equal(calls,3,'no repeat completion after local failure');
+ ctx.activeJob={id:'driver-unmapped',status:'scheduled'};ctx.allJobs=[ctx.activeJob];leftForm=false;shown='';
+ ctx.saveProofMetadata=async()=>({protected:true});ctx.saveWorkerProofAsset=async()=>({protected:true});
+ ctx.api=async url=>{assert.match(url,/job-status/);return {ok:true,json:async()=>({ok:true})};};
+ ctx.requireWorkerAcknowledgement=async response=>{assert.equal((await response.json()).ok,true);};
+ ctx.saveJobsToCloud=async()=>{throw Error('post-status phone quota');};
+ await ctx.handleSignComplete();
+ assert(leftForm,'protected local completion must not trap the sign form after status acknowledgement');
+ assert.match(shown,/Proof and completion status saved/);assert.match(shown,/Haultech confirmation/);
+ assert.doesNotMatch(shown,/completed in Haultech/,'local status acknowledgement is not live completion');
+ console.log('PASS protected local completion acknowledges saved status without claiming Haultech completion');
  console.log('PASS verified server completion survives local backup failure without repeat submission');
  console.log('PASS identity, separate loads, cached ID, consignment ID, ambiguity, concurrent and repeated completion');
  console.log('PASS actual storage failure retains form without a completion write; secondary error contained; low headroom does not reject a valid small save');

@@ -34,6 +34,7 @@ function fixture(overrides = {}) {
     updateJobStatusLocal: () => {}, localSaveJobs: () => {}, allJobs: [], currentScreen: 'detail',
     toast: () => {}, ...overrides,
   };
+  ctx.driverFetch = (...args) => ctx.fetch(...args);
   vm.createContext(ctx);
   for (const name of ['localEventKey', 'localQueueKey', 'readJSON', 'writeJSON', 'getWritebackQueue',
     'setWritebackQueue', 'setQueueState', 'setQueueStateIfPending', 'queueTrialEvent',

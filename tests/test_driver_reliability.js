@@ -20,6 +20,7 @@ function context(values, names) {
     }
   };
   const ctx = vm.createContext({ console, Date, Set, Map, PmgDriverStorage, formatDate:x=>x, ...values });
+  ctx.driverFetch = (...args) => ctx.fetch(...args);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../job-backup-journal.js'),'utf8'),ctx);
   if (names.includes('flushRetryQueue')) {
     vm.runInContext(fn('saveRetriedJobRows'),ctx);
@@ -44,6 +45,15 @@ test('previous-day pending rows are retained without replaying historical writes
   await ctx.flushRetryQueue();
   assert.equal(queue.length, 1);
   assert.equal(writes, 0, 'historic rows require office review, not new automatic writes');
+});
+
+test('cancellation during a live retry cannot be backed up as the old scheduled row', async () => {
+  const row={id:'driver-race',movementId:'driver-race',status:'scheduled',haultechWriteState:'pending Haultech'};
+  let queue=[{date:'2026-10-17',jobs:[{...row}]}],local=JSON.stringify([row]),backups=0;
+  const ctx=context({todayISO:()=> '2026-10-17',getRetryQueue:()=>JSON.parse(JSON.stringify(queue)),setRetryQueue:q=>queue=q,
+    submitDriverAddedRow:async()=>{local=JSON.stringify([{...row,status:'cancelled'}]);return {jobId:'live-one'};},
+    cloudPutJobs:async()=>{backups++;},localStorage:{getItem:()=>local,setItem:(k,v)=>local=v},toast(){},updateSyncUI(){}},['pruneRetryQueue','flushRetryQueue']);
+  await ctx.flushRetryQueue();assert.equal(backups,0);assert.equal(queue.length,1);assert.equal(JSON.parse(local)[0].status,'cancelled');
 });
 
 test('failed local storage is surfaced rather than claiming a saved copy', async () => {

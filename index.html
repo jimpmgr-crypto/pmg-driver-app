@@ -1690,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261117-isolated-driver-retries-r1';
+const APP_BUILD_ID = '20261117-driver-save-hardening-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2063,6 +2063,33 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+async function driverFetch(url, options = {}, timeoutMs = null) {
+  const controller = new AbortController();
+  const parentSignal = options.signal;
+  const abortFromParent = () => controller.abort(parentSignal.reason);
+  if (parentSignal?.aborted) abortFromParent();
+  else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+  const limit = timeoutMs ?? (String(options.method || 'GET').toUpperCase() === 'GET' ? 30000 : 90000);
+  let timer;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('Connection timed out before confirmation. Keep any unsaved proof open; do not enter a new copy.'));
+    }, limit);
+  });
+  try {
+    return await Promise.race([timeout, (async () => {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      // Bound the full acknowledgement, not just arrival of the HTTP headers.
+      await response.clone().arrayBuffer();
+      return response;
+    })()]);
+  } finally {
+    clearTimeout(timer);
+    parentSignal?.removeEventListener('abort', abortFromParent);
+  }
+}
+
 function api(path, opts = {}) {
   const method = String(opts.method || 'GET').toUpperCase();
   const unsafeLiveWrite =
@@ -2076,14 +2103,14 @@ function api(path, opts = {}) {
   if (!LIVE_WRITE && unsafeLiveWrite) {
     return Promise.reject(new Error('Live Haultech writes disabled for John trial'));
   }
-  return fetch(WORKER_URL + path, {
+  return driverFetch(WORKER_URL + path, {
     ...opts,
     headers: { 'X-PMG-Key': API_KEY, ...(opts.headers || {}) },
   });
 }
 
 function fleetApi(path, opts = {}) {
-  return fetch(FLEET_LIVE_URL + path, {
+  return driverFetch(FLEET_LIVE_URL + path, {
     ...opts,
     headers: { 'X-PMG-Role': 'gary', ...(opts.headers || {}) },
   });
@@ -2343,7 +2370,7 @@ async function localGetJobs(date) {
 
 async function cloudPutJobs(date, jobs) {
   const payload = await PmgJobBackup.prepare(localStorage, date, jobs, currentUser?.name);
-  const resp = await fetch(WORKER_URL + '/jobs/' + date, {
+  const resp = await driverFetch(WORKER_URL + '/jobs/' + date, {
     method: 'PUT',
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -2378,8 +2405,13 @@ function driverReviewBackupJobs(jobs) {
 }
 
 function getRetryQueue() {
-  try { return JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]'); }
-  catch { return []; }
+  try {
+    const queue = JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]');
+    if (!Array.isArray(queue)) throw new Error('Invalid saved retry list');
+    return queue;
+  } catch {
+    throw new Error('Saved retries cannot be read. Original data retained; ask the office. Do not clear app data.');
+  }
 }
 
 function setRetryQueue(q) {
@@ -2542,7 +2574,7 @@ function queueTrialEvent(type, job, payload = {}, options = {}) {
 async function persistTrialEventToWorker(event) {
   let acknowledged = false;
   try {
-    const response = await fetch(WORKER_URL + `/ticket/trial-${event.eventId}`, {
+    const response = await driverFetch(WORKER_URL + `/ticket/trial-${event.eventId}`, {
       method: 'PUT',
       headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
@@ -2601,12 +2633,13 @@ function renderQueueSummary(options = {}) {
   const pills = states.map(state => `<span class="queue-pill">${esc(labels[state])}: ${counts[state] || 0}</span>`).join('');
   const waiting = (counts['pending Haultech'] || 0) + (counts['saved locally'] || 0);
   const failed = counts.failed || 0;
-  const backups = getRetryQueue();
+  let backups = [], retryReadProblem = '';
+  try { backups = getRetryQueue(); } catch (error) { retryReadProblem = error.message; }
   let backupProblem = '';
   try { backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO()) || ''; }
   catch { backupProblem = 'Backup status unavailable'; }
   const otherPending = backups.length > 0 || getPendingWalkaroundTickets().length > 0;
-  const summary = backupProblem || backups.some(entry => entry?.date !== todayISO())
+  const summary = retryReadProblem || backupProblem || backups.some(entry => entry?.date !== todayISO())
     ? 'Saved work needs an office check'
     : (failed ? `${failed} item${failed === 1 ? '' : 's'} need office help`
       : (waiting ? `${waiting} item${waiting === 1 ? '' : 's'} saved and waiting to send`
@@ -2639,6 +2672,8 @@ async function saveRetriedJobRows(date, originals, updated) {
   const rows = JSON.parse(raw ?? '[]');
   if (!Array.isArray(rows)) throw new Error('Saved plan cannot be read; retry retained');
   const content = row => PmgJobBackup.canonical(PmgJobBackup.clean(row));
+  if (rows.some(row => originals.some(original =>
+    PmgJobBackup.identity(original) === PmgJobBackup.identity(row) && content(original) !== content(row)))) return false;
   const merged = rows.map(row => {
     const i = originals.findIndex(original => PmgJobBackup.identity(original) === PmgJobBackup.identity(row)
       && content(original) === content(row));
@@ -2646,6 +2681,19 @@ async function saveRetriedJobRows(date, originals, updated) {
   });
   // A partial retry is never a replacement for the full offline work plan.
   return PmgDriverStorage.writeJobRaw(date, JSON.stringify(merged), raw);
+}
+
+async function saveNewDriverRow(date, row) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const raw = await PmgDriverStorage.readJobRaw(date);
+    const rows = JSON.parse(raw ?? '[]');
+    if (!Array.isArray(rows)) throw new Error('Saved plan cannot be read; keep this form open');
+    if (rows.some(existing => PmgJobBackup.identity(existing) === PmgJobBackup.identity(row))) {
+      throw new Error('This movement is already saved. Ask the office before entering it again.');
+    }
+    if (await PmgDriverStorage.writeJobRaw(date, JSON.stringify([...rows, row]), raw) !== false) return;
+  }
+  throw new Error('The saved plan changed while adding this row. Keep this form open and retry.');
 }
 
 // Share one creation request between Add and background retry on this phone.
@@ -2734,7 +2782,9 @@ async function flushRetryQueue() {
         }
       }
       // A newer form save/refresh must never be overwritten by an older flush.
-      await saveRetriedJobRows(entry.date, originalRows, entry.jobs);
+      if (await saveRetriedJobRows(entry.date, originalRows, entry.jobs) === false) {
+        throw new Error('Saved row changed during retry; newer work retained for office review');
+      }
       await cloudPutJobs(entry.date, entry.jobs);
       results.set(original, liveWritePending ? entry : null);
     } catch {
@@ -2761,20 +2811,22 @@ function needsWritebackAttention(item) {
 
 function updateSyncUI() {
   markDriverFailedWritebacksSavedLocally();
-  const backupPending = pruneRetryQueue().length > 0;
-  const olderPending = pruneRetryQueue().some(entry => entry?.date !== todayISO());
+  let retries = [], retryReadProblem = '';
+  try { retries = getRetryQueue(); } catch (error) { retryReadProblem = error.message; }
+  const backupPending = retries.length > 0;
+  const olderPending = retries.some(entry => entry?.date !== todayISO());
   const queue = getWritebackQueue();
   const writebackPending = queue.some(item => item.state === 'pending Haultech');
   const writebackFailed = queue.some(item => item.state === 'failed');
   const backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO());
-  const pending = queue.some(needsWritebackAttention) || olderPending || !!backupProblem;
+  const pending = queue.some(needsWritebackAttention) || olderPending || !!backupProblem || !!retryReadProblem;
   const banner = $('sync-banner');
   if (pending) {
     banner.classList.remove('hidden');
     document.body.classList.add('has-sync-banner');
     const label = banner.querySelector('span');
     if (label) {
-      label.textContent = backupProblem || (olderPending
+      label.textContent = retryReadProblem || backupProblem || (olderPending
         ? '⚠️ Earlier work still needs an office check. The saved retry record has been retained.'
         : (writebackFailed
             ? '⚠️ Something did not send. Keep any proof open — tap Retry or tell the office.'
@@ -5317,7 +5369,7 @@ function compressImageFile(file) {
 
 async function uploadWalkaroundAsset(recordId, kind, blob) {
   const assetId = walkaroundAssetId(recordId, kind);
-  const resp = await fetch(WORKER_URL + `/photos/${assetId}`, {
+  const resp = await driverFetch(WORKER_URL + `/photos/${assetId}`, {
     method: 'PUT',
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': blob.type || 'application/octet-stream' },
     body: blob,
@@ -6091,7 +6143,7 @@ async function requireWorkerAcknowledgement(response, label) {
 }
 
 async function saveWorkerProofAsset(assetId, body, contentType = 'application/octet-stream') {
-  const response = await fetch(WORKER_URL + `/photos/${assetId}`, {
+  const response = await driverFetch(WORKER_URL + `/photos/${assetId}`, {
     method: 'PUT', headers: { 'X-PMG-Key': API_KEY, 'Content-Type': contentType }, body,
   });
   await requireWorkerAcknowledgement(response, 'Proof upload');
@@ -6106,7 +6158,7 @@ async function saveDriverSignoff(event, signoff) {
 }
 
 async function saveProofMetadata(storageKey, metadata) {
-  const response = await fetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
+  const response = await driverFetch(WORKER_URL + `/ticket/pod-${storageKey}`, {
     method: 'PUT', headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(metadata),
   });
@@ -6303,6 +6355,7 @@ async function handleSignComplete() {
   const wtn = getJobWasteTransferNote(job);
   let proofEvent = null;
   let completionVerified = false;
+  let protectedStatusSaved = false;
 
   try {
     if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
@@ -6433,6 +6486,7 @@ async function handleSignComplete() {
           body: JSON.stringify({ status: 'complete', driver: currentUser.name, date: todayISO() }),
       });
       await requireWorkerAcknowledgement(statusResponse, 'Completion status');
+      protectedStatusSaved = true;
       job.proofReceipt = protectedReceipt;
 
       applyDriverCompletionNote(job, haultechDriverNote || notes);
@@ -6448,13 +6502,15 @@ async function handleSignComplete() {
     renderJobs();
     reloadForPendingServiceWorkerUpdate();
   } catch (e) {
-    if (completionVerified) {
+    if (completionVerified || protectedStatusSaved) {
       // The source readback and protected proof already succeeded. A phone
       // backup failure must not trap the driver or invite a second completion.
-      try { setQueueState(proofEvent.eventId, 'written', 'Haultech completion verified; phone backup needs attention'); } catch {}
+      try { setQueueState(proofEvent.eventId, completionVerified ? 'written' : 'pending Haultech', completionVerified ? 'Haultech completion verified; phone backup needs attention' : 'Proof and completion status saved; Haultech confirmation and phone backup need office review'); } catch {}
       showJobList();
       try { renderJobs(); } catch {}
-      showError('Job completed in Haultech and proof saved. Phone backup needs an office check. Do not enter the job again.');
+      showError(completionVerified
+        ? 'Job completed in Haultech and proof saved. Phone backup needs an office check. Do not enter the job again.'
+        : 'Proof and completion status saved. Haultech confirmation and phone backup need an office check. Do not enter the job again.');
       return;
     }
     if (proofEvent) {
@@ -7000,6 +7056,16 @@ async function loadCustomers(options = {}) {
   } catch {}
 }
 
+function finishAddedJobForm() {
+  $('add-job-modal').classList.add('hidden');
+  $('add-job-form').reset();
+  $('f-customer-id').value = '';
+  updateA1PaymentFields();
+  updateWasteFieldsVisibility();
+  if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
+  fPhotoFile = null;
+}
+
 $('add-job-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const customerName = $('f-customer').value.trim();
@@ -7063,7 +7129,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
   }
   setSelectedDriverVehicle(vehicle);
 
+  let addedRowSaved = false;
   try {
+    if (LIVE_WRITE) getRetryQueue(); // Do not replace an unreadable pending record.
     // Driver-created rows must stay in the office-review queue. Live Haultech
     // creation remains server/office-owned because the driver app cannot verify
     // pricing, allocation and duplicate state at the point of entry.
@@ -7114,9 +7182,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
     const addSignature = fSigCanvas && fSigCtx && !isBlankCanvas(fSigCanvas) ? fSigCanvas.toDataURL('image/png') : null;
     const addPhoto = fPhotoFile;
     localJob.attachments = await saveAddedJobProof(movementId, addSignature, addPhoto);
-    const existingLocal = await localGetJobs(localDate);
-    existingLocal.push(localJob);
-    await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
+    await saveNewDriverRow(localDate, localJob);
+    addedRowSaved = true;
+    const originalAddedRow = JSON.parse(JSON.stringify(localJob));
     if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
     let haultechWriteState = 'saved locally';
     let haultechReason = DRIVER_ADDED_BACKUP_REASON;
@@ -7137,7 +7205,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
         haultechReason = `${DRIVER_ADDED_BACKUP_REASON}: ${writeErr.message || 'Haultech write failed'}`;
       }
     }
-    await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
+    if (await saveRetriedJobRows(localDate, [originalAddedRow], [localJob]) === false) {
+      throw new Error('A newer local change was retained; creation receipt needs an office check');
+    }
     if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
     queueTrialEvent('day_sheet_row_added', localJob, {
 	      customer: localJob.customer,
@@ -7193,13 +7263,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       _containment: localJob.containment,
       savedAt: localJob.savedAt,
     });
-    $('add-job-modal').classList.add('hidden');
-    $('add-job-form').reset();
-    $('f-customer-id').value = '';
-    updateA1PaymentFields();
-    updateWasteFieldsVisibility();
-    if (fSigCtx) fSigCtx.clearRect(0,0,fSigCanvas.width,fSigCanvas.height);
-    fPhotoFile = null;
+    finishAddedJobForm();
     showJobConfirmation({
       customer: localJob.customer,
       vehicle: localJob.vehicle,
@@ -7213,7 +7277,11 @@ $('add-job-form').addEventListener('submit', async (e) => {
     renderJobs();
     toast(haultechWriteState === 'written' ? 'Row saved to Haultech' : 'Row saved locally - Haultech retry queued');
   } catch (e) {
-    toast('Failed to save row: ' + (e.message || 'Unknown error'));
+    if (addedRowSaved) {
+      finishAddedJobForm();
+      await loadJobs({ force: true }).catch(() => {});
+      showError('Row saved on this phone; sending or backup needs an office check. Do not enter it again. ' + (e.message || ''));
+    } else toast('Failed to save row: ' + (e.message || 'Unknown error'));
   } finally {
     btn.disabled = false; btn.textContent = 'Save row';
   }
@@ -7468,7 +7536,7 @@ function resumeWalkaroundDraftAfterEnter() {
 }
 
 async function checkForAppVersionUpdate(reason = 'timer') {
-  const resp = await fetch(`${APP_VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
+  const resp = await driverFetch(`${APP_VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
   if (!resp.ok) return;
   const version = await resp.json();
   const latestBuildId = String(version?.buildId || '').trim();
