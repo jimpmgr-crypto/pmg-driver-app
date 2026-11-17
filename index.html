@@ -1690,7 +1690,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261114-topsoil-customer-scope-r1';
+const APP_BUILD_ID = '20261117-isolated-driver-retries-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2619,11 +2619,33 @@ function renderQueueSummary(options = {}) {
 
 function addToRetryQueue(date, jobs) {
   const q = getRetryQueue();
-  const idx = q.findIndex(e => e.date === date);
-  const entry = { date, jobs, savedAt: new Date().toISOString() };
-  if (idx >= 0) q[idx] = entry; else q.push(entry);
-  setRetryQueue(q);
+  if (!Array.isArray(q)) throw new Error('Saved retries cannot be read. Keep the form open and ask the office.');
+  const changed = new Map(jobs.map(row => [PmgJobBackup.identity(row), row]));
+  if (changed.has('')) throw new Error('Saved retry has no movement identity');
+  // Only this explicit edit supersedes the retry for its own movement. Retain
+  // every unrelated row/date verbatim; exact in-flight intents stay journalled.
+  const retained = q.flatMap(entry => {
+    if (!entry || entry.date !== date || !Array.isArray(entry.jobs)) return [entry];
+    const rows = entry.jobs.filter(row => !row || !changed.has(PmgJobBackup.identity(row)));
+    return rows.length === entry.jobs.length ? [entry] : (rows.length ? [{ ...entry, jobs: rows }] : []);
+  });
+  for (const row of changed.values()) retained.push({ date, jobs: [row], savedAt: new Date().toISOString() });
+  setRetryQueue(retained);
   updateSyncUI();
+}
+
+async function saveRetriedJobRows(date, originals, updated) {
+  const raw = await PmgDriverStorage.readJobRaw(date);
+  const rows = JSON.parse(raw ?? '[]');
+  if (!Array.isArray(rows)) throw new Error('Saved plan cannot be read; retry retained');
+  const content = row => PmgJobBackup.canonical(PmgJobBackup.clean(row));
+  const merged = rows.map(row => {
+    const i = originals.findIndex(original => PmgJobBackup.identity(original) === PmgJobBackup.identity(row)
+      && content(original) === content(row));
+    return i >= 0 ? updated[i] : row;
+  });
+  // A partial retry is never a replacement for the full offline work plan.
+  return PmgDriverStorage.writeJobRaw(date, JSON.stringify(merged), raw);
 }
 
 // Share one creation request between Add and background retry on this phone.
@@ -2659,16 +2681,24 @@ async function flushRetryQueue() {
   for (const entry of q) {
     if (!entry || entry.date !== todayISO() || !Array.isArray(entry.jobs) || !entry.jobs.length) continue;
     const original = JSON.stringify(entry);
-    let originalJobs = JSON.stringify(entry.jobs);
+    let originalRows = JSON.parse(JSON.stringify(entry.jobs));
     try {
       // A confirmed backup can add only a revision after the retry was queued.
       // Reuse that receipt only for the exact same row contents, never a newer edit.
       const currentJson = await PmgDriverStorage.readJobRaw(entry.date);
       const currentRows = JSON.parse(currentJson || 'null');
-      const content = rows => JSON.stringify(rows, (key, value) => key === '_backupRevision' ? undefined : value);
-      if (Array.isArray(currentRows) && content(currentRows) === content(entry.jobs)) {
-        entry.jobs = currentRows;
-        originalJobs = currentJson;
+      const content = row => PmgJobBackup.canonical(PmgJobBackup.clean(row));
+      if (Array.isArray(currentRows)) {
+        entry.jobs = entry.jobs.map(row => {
+          const matches = currentRows.filter(current => PmgJobBackup.identity(current) === PmgJobBackup.identity(row));
+          if (matches.length !== 1) return row;
+          const current = matches[0];
+          if (isTerminalJobStatus(current.status) && content(current) !== content(row)) {
+            throw new Error('A newer closed row needs office review; old retry retained');
+          }
+          return content(current) === content(row) ? current : row;
+        });
+        originalRows = JSON.parse(JSON.stringify(entry.jobs));
       }
       let liveWritePending = false;
       for (const job of entry.jobs) {
@@ -2704,7 +2734,7 @@ async function flushRetryQueue() {
         }
       }
       // A newer form save/refresh must never be overwritten by an older flush.
-      await PmgDriverStorage.writeJobRaw(entry.date, JSON.stringify(entry.jobs), originalJobs);
+      await saveRetriedJobRows(entry.date, originalRows, entry.jobs);
       await cloudPutJobs(entry.date, entry.jobs);
       results.set(original, liveWritePending ? entry : null);
     } catch {
@@ -3297,12 +3327,14 @@ async function hydrateBackupRevisions(date, jobs) {
 async function loadJobs(options = {}) {
   if (!options.force && document.hidden) return;
   const date = todayISO();
+  $('date-label').textContent = formatDate(date);
   $('jobs-container').innerHTML = `<div class="loading"><div class="spinner"></div>Loading jobs from Haultech…</div>`;
   showError(null);
 
   try {
-    // Finish pending row receipts before a plan refresh can re-save their local snapshots.
-    await flushRetryQueue();
+    // Reading the plan must not wait for a stalled old writeback. Both paths
+    // use exact-snapshot compare-and-save so a late receipt cannot replace edits.
+    flushRetryQueue().catch(error => showError(error.message || 'Saved work needs an office check'));
     if (!customers.length) loadCustomers().catch(() => {});
     const resp = await api(`/driver-diary/${date}`);
     if (!resp.ok) {
@@ -6270,6 +6302,7 @@ async function handleSignComplete() {
   const sigData = getSignSigData();
   const wtn = getJobWasteTransferNote(job);
   let proofEvent = null;
+  let completionVerified = false;
 
   try {
     if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
@@ -6359,6 +6392,7 @@ async function handleSignComplete() {
       const completionCheck = await verifyHaultechCompletion(haultechCompleteJob, haultechJobId);
       if (!completionCheck.ok) throw new Error('Completion was submitted but not verified in Haultech. Proof is protected; office check required. ' + completionCheck.reason);
 
+      completionVerified = true;
       applyDriverCompletionNote(job, haultechDriverNote || notes);
       if(pourMinutes !== null) job.pourMinutes=pourMinutes;
       if(concreteType) job.concreteType=concreteType;
@@ -6414,6 +6448,15 @@ async function handleSignComplete() {
     renderJobs();
     reloadForPendingServiceWorkerUpdate();
   } catch (e) {
+    if (completionVerified) {
+      // The source readback and protected proof already succeeded. A phone
+      // backup failure must not trap the driver or invite a second completion.
+      try { setQueueState(proofEvent.eventId, 'written', 'Haultech completion verified; phone backup needs attention'); } catch {}
+      showJobList();
+      try { renderJobs(); } catch {}
+      showError('Job completed in Haultech and proof saved. Phone backup needs an office check. Do not enter the job again.');
+      return;
+    }
     if (proofEvent) {
       // A storage exception must not throw again while reporting the failure.
       try { setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed'); } catch {}
@@ -7074,7 +7117,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     const existingLocal = await localGetJobs(localDate);
     existingLocal.push(localJob);
     await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
-    if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
+    if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
     let haultechWriteState = 'saved locally';
     let haultechReason = DRIVER_ADDED_BACKUP_REASON;
     let confirmedJobId = localJob.id;
@@ -7095,7 +7138,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
       }
     }
     await PmgDriverStorage.writeJobRaw(localDate, JSON.stringify(existingLocal));
-    if (LIVE_WRITE) addToRetryQueue(localDate, existingLocal);
+    if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
     queueTrialEvent('day_sheet_row_added', localJob, {
 	      customer: localJob.customer,
 	      addedBy: localJob.addedBy,

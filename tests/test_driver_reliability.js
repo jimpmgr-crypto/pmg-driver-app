@@ -19,7 +19,12 @@ function context(values, names) {
       if (expected === undefined || storage.getItem(key) === expected) storage.setItem(key, raw);
     }
   };
-  const ctx = vm.createContext({ console, Date, Set, Map, PmgDriverStorage, ...values });
+  const ctx = vm.createContext({ console, Date, Set, Map, PmgDriverStorage, formatDate:x=>x, ...values });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../job-backup-journal.js'),'utf8'),ctx);
+  if (names.includes('flushRetryQueue')) {
+    vm.runInContext(fn('saveRetriedJobRows'),ctx);
+    vm.runInContext(fn('isTerminalJobStatus'),ctx);
+  }
   for (const name of names) vm.runInContext(fn(name), ctx);
   return ctx;
 }
@@ -99,6 +104,18 @@ test('retry accepts only the receipt revision for unchanged queued content', asy
   assert.equal(JSON.parse(local)[0]._backupRevision, 3);
   assert.equal(uploaded[0]._backupRevision, 3);
   assert.equal(queue.length, 0);
+});
+
+test('partial retry adopts exact revision without losing other rows; newer cancellation blocks replay', async () => {
+  const row={id:'driver-one',movementId:'driver-one',status:'scheduled',haultechWriteState:'pending Haultech'};
+  let queue=[{date:'2026-10-17',jobs:[{...row}]}], local=JSON.stringify([{...row,_backupRevision:4},{id:'other',notes:'keep exactly'}]),calls=0;
+  const ctx=context({todayISO:()=> '2026-10-17',getRetryQueue:()=>JSON.parse(JSON.stringify(queue)),setRetryQueue:q=>queue=q,
+    submitDriverAddedRow:async()=>{calls++;return {jobId:'real-one'};},cloudPutJobs:async()=>{},
+    localStorage:{getItem:()=>local,setItem:(k,v)=>local=v},toast(){},updateSyncUI(){}},['pruneRetryQueue','flushRetryQueue']);
+  await ctx.flushRetryQueue();assert.equal(calls,1);assert.equal(queue.length,0);
+  assert.equal(JSON.parse(local).length,2);assert.equal(JSON.parse(local)[0]._backupRevision,4);assert.equal(JSON.parse(local)[1].notes,'keep exactly');
+  queue=[{date:'2026-10-17',jobs:[{...row}]}];local=JSON.stringify([{...row,status:'cancelled'}]);
+  await ctx.flushRetryQueue();assert.equal(calls,1,'newer closed row cannot be recreated from old retry');assert.equal(queue.length,1);assert.equal(JSON.parse(local)[0].status,'cancelled');
 });
 
 test('concurrent refresh waits for the existing retry receipt without a second submission', async () => {

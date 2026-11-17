@@ -78,6 +78,15 @@ vm.runInContext('let signCompletionInFlight=false;\n'+html.slice(start,end),ctx)
  const small=ctx.handleSignComplete();while(!release)await new Promise(r=>setImmediate(r));release();await small;
  assert.equal(calls,2,'small save can complete even when the optional reserve cannot fit');
  assert.equal(leftForm,true);
+ // Server success remains success even if the local post-completion save fails.
+ ctx.activeJob={id:a,status:'scheduled'};ctx.allJobs=[ctx.activeJob];leftForm=false;shown='';release=null;
+ ctx.showError=message=>shown=message;
+ ctx.saveJobsToCloud=async()=>{throw Error('phone backup quota');};
+ const committed=ctx.handleSignComplete();while(!release)await new Promise(r=>setImmediate(r));release();await committed;
+ assert.equal(leftForm,true,'verified completion must not trap driver in sign screen');
+ assert.match(shown,/completed in Haultech and proof saved/);
+ await ctx.handleSignComplete();assert.equal(calls,3,'no repeat completion after local failure');
+ console.log('PASS verified server completion survives local backup failure without repeat submission');
  console.log('PASS identity, separate loads, cached ID, consignment ID, ambiguity, concurrent and repeated completion');
  console.log('PASS actual storage failure retains form without a completion write; secondary error contained; low headroom does not reject a valid small save');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -14,7 +14,7 @@ function fn(name) {
     const localProposal = {id:'local-row', movementId:'driver-local', _driverAdded:true, status:'problem', proofReceipt:{protected:true}};
     let writes=0, saved, retries=0, mergeOptions;
     const c=vm.createContext({
-      document:{hidden:false}, todayISO:()=> '2026-11-13', $:()=>({innerHTML:''}), showError(){},
+      document:{hidden:false}, formatDate:x=>x, todayISO:()=> '2026-11-13', $:()=>({innerHTML:''}), showError(){},
       flushRetryQueue:async()=>{retries++;}, customers:[{}],
       api:async()=>({ok:true,json:async()=>({date:'2026-11-13',complete:true,state:'live',savedAt:'2026-11-13T12:00:00Z',jobs:[remote]})}),
       hydrateBackupRevisions:async(d,j)=>j,

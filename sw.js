@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20261114-topsoil-customer-scope-r1';
+const CACHE_NAME = 'pmg-driver-live-v20261117-isolated-driver-retries-r1';
 const APP_SHELL = [
   '/',
   '/index.html',
