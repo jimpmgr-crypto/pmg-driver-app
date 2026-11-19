@@ -434,7 +434,7 @@ test.describe('driver app route audit', () => {
     expect(captured.ticketSaves).toHaveLength(0);
   });
 
-  test('full fake John walkaround stores photos in round-the-wagon order and returns to loads clear', async ({ page }) => {
+  test('John walkaround survives a full phone after the server accepts the photos', async ({ page }) => {
     const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
     await stubExternalApis(page, { captured });
     await page.goto(`${APP_URL}/?driver=john`);
@@ -463,7 +463,39 @@ test.describe('driver app route audit', () => {
     }
 
     await page.locator('#walkaround-check-all').click();
+    await page.getByText('Optional driver signature', {exact:false}).click();
+    const canvas = page.locator('#walkaround-sig-canvas');
+    await canvas.scrollIntoViewIfNeeded();
+    const {x, y} = await canvas.boundingBox();
+    await page.mouse.move(x + 20, y + 20);
+    await page.mouse.down();
+    await page.mouse.move(x + 80, y + 45);
+    await page.mouse.up();
+    await page.evaluate(() => {
+      const archive = PmgDriverStorage.archiveAcknowledgedDraft;
+      let first = true;
+      PmgDriverStorage.archiveAcknowledgedDraft = async (key, raw) => {
+        if (first) { first = false; throw new Error('Synthetic archive unavailable'); }
+        window.archivedWalkaroundDraft = await archive(key, raw);
+        return window.archivedWalkaroundDraft;
+      };
+      const save = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === walkaroundStorageKey() && getSelectedWalkaroundDraft()?.active) {
+          throw new DOMException('Synthetic full phone', 'QuotaExceededError');
+        }
+        return save.call(this, key, value);
+      };
+    });
     await page.locator('#walkaround-complete-btn').click();
+    await expect(page.locator('#walkaround-save-error')).toContainText('Walkaround saved to PMG');
+    await expect(page.locator('#walkaround-complete-btn')).toHaveText('Finish phone save');
+    expect(captured.ticketSaves).toHaveLength(1);
+    expect(await page.evaluate(() => getSelectedWalkaroundDraft()?.active)).toBe(true);
+    await page.locator('#walkaround-complete-btn').click();
+    await expect(page.locator('#jobs-screen')).toBeVisible();
+    expect(await page.evaluate(() => window.archivedWalkaroundDraft)).toBe(true);
+    await page.reload();
     await expect(page.locator('#jobs-screen')).toBeVisible();
     await expect(page.locator('#walkaround-screen')).toBeHidden();
     await expect(page.locator('#walkaround-card')).toHaveClass(/done/);
@@ -471,14 +503,15 @@ test.describe('driver app route audit', () => {
 
     expect(captured.photoUploads.map(url => {
       const assetId = url.match(/photos\/([^/?]+)/)?.[1] || '';
-      return order.find(slot => assetId.includes(`waasset-${slot}-`));
-    })).toEqual(order);
+      return [...order, 'signature'].find(slot => assetId.includes(`waasset-${slot}-`));
+    })).toEqual([...order, 'signature']);
     expect(captured.ticketSaves).toHaveLength(1);
     expect(captured.ticketSaves[0].body.photoSlots).toEqual(order);
     expect(captured.ticketSaves[0].body.photoSlotsExpected).toEqual(order);
     expect(captured.ticketSaves[0].body.photoCaptureModes).toEqual(Object.fromEntries(order.map(slot => [slot, 'native_camera'])));
     expect(captured.ticketSaves[0].body.appBuildId).toBeTruthy();
     expect(captured.ticketSaves[0].body.torqueChecks).toEqual([]);
+    expect(captured.ticketSaves[0].body.signatureProvided).toBe(true);
     expect(captured.ticketSaves[0].body.vehicle).toBe('PN25AMU');
   });
 

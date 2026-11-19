@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261119-prestart-access-r1';
+const APP_BUILD_ID = '20261119-walkaround-save-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -4733,10 +4733,12 @@ function saveWalkaroundDraft() {
   } catch {}
 }
 
-function clearWalkaroundDraft(identity = walkaroundDraftIdentity()) {
+function clearWalkaroundDraft(identity = walkaroundDraftIdentity(), expectedRaw) {
   try {
     const key = walkaroundDraftStorageKey(identity);
-    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+    const raw = localStorage.getItem(key);
+    if (expectedRaw !== undefined && raw !== null && raw !== expectedRaw) return;
+    const saved = JSON.parse(raw || 'null');
     if (!identity.startedAt || saved?.startedAt === identity.startedAt) localStorage.removeItem(key);
     const legacy = JSON.parse(localStorage.getItem(WALKAROUND_DRAFT_KEY) || 'null');
     if (walkaroundDraftMatches(legacy, identity) && (!identity.startedAt || legacy.startedAt === identity.startedAt)) localStorage.removeItem(WALKAROUND_DRAFT_KEY);
@@ -4952,6 +4954,7 @@ function renderWalkaroundScreen() {
       </div>
     </details>
 
+    <div class="error-bar hidden" id="walkaround-save-error" role="alert"></div>
     <button class="btn-submit" id="walkaround-complete-btn" type="button">Complete pre-start</button>
   `;
   if ($('walkaround-defect-notes')) $('walkaround-defect-notes').value = walkaroundState.defectNotes || '';
@@ -5439,9 +5442,53 @@ function validateWalkaroundBeforeComplete() {
   return missing;
 }
 
+async function finishWalkaroundSave(state, btn) {
+  const { record, draft } = state.finishedSave;
+  try {
+    // Confirmed cloud proof can release the space taken by its exact phone
+    // draft after an archive readback. An unconfirmed submission keeps its draft.
+    if (draft && record.syncState === 'saved_to_worker') {
+      try { setLocalWalkaroundRecord(record); }
+      catch (error) {
+        if (!PmgDriverStorage.quota(error)) throw error;
+        await PmgDriverStorage.archiveAcknowledgedDraft(draft.key, draft.raw);
+        setLocalWalkaroundRecord(record);
+      }
+    } else {
+      setLocalWalkaroundRecord(record);
+    }
+    if (record.syncState === 'ticket_pending') queueWalkaroundTicket(record);
+  } catch {
+    if (walkaroundState !== state || currentScreen !== 'walkaround') return;
+    const error = $('walkaround-save-error');
+    error.textContent = record.syncState === 'saved_to_worker'
+      ? 'Walkaround saved to PMG. This phone could not finish saving its copy. Keep this form open and tap Finish phone save to retry the phone copy.'
+      : 'Walkaround backup is still pending. Keep this form open and tap Finish phone save to retry saving this check.';
+    error.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Finish phone save';
+    return;
+  }
+
+  if (draft) clearWalkaroundDraft(record, draft.raw);
+  toast(record.syncState === 'saved_to_worker' ? '✓ Walkaround complete' : 'Walkaround proof saved - office sync pending');
+  if (walkaroundState !== state || !walkaroundDraftMatches(record) || currentScreen !== 'walkaround') return;
+  showJobList();
+  renderJobs();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  reloadForPendingServiceWorkerUpdate();
+}
+
 async function completeWalkaround() {
   if (!walkaroundState || $('walkaround-complete-btn')?.disabled) return;
   const savingState = walkaroundState;
+  const btn = $('walkaround-complete-btn');
+  if (savingState.finishedSave) {
+    btn.disabled = true;
+    btn.textContent = 'Finishing phone save…';
+    await finishWalkaroundSave(savingState, btn);
+    return;
+  }
   const missing = validateWalkaroundBeforeComplete();
   if (missing.length) {
     toast(`Missing: ${missing.slice(0, 2).join(', ')}${missing.length > 2 ? '...' : ''}`);
@@ -5450,9 +5497,16 @@ async function completeWalkaround() {
 
   stopWalkaroundCamera();
 
-  const btn = $('walkaround-complete-btn');
   btn.disabled = true;
   btn.textContent = 'Saving walkaround...';
+  let draft;
+  try {
+    const key = walkaroundDraftStorageKey();
+    const raw = localStorage.getItem(key);
+    const saved = JSON.parse(raw || 'null');
+    if (saved?.active && saved.startedAt === savingState.startedAt && walkaroundDraftMatches(saved)) draft = { key, raw };
+  } catch {}
+
 
   const date = todayISO();
   const vehicle = getSelectedDriverVehicle();
@@ -5541,15 +5595,8 @@ async function completeWalkaround() {
       localRecord.syncError = [localRecord.syncError, `Fleet torque close failed for ${closeFailures.length} item(s)`].filter(Boolean).join('; ');
     }
   }
-  setLocalWalkaroundRecord(localRecord);
-  clearWalkaroundDraft(baseRecord);
-  if (syncState === 'ticket_pending') queueWalkaroundTicket(localRecord);
-  toast(syncState === 'saved_to_worker' ? '✓ Walkaround complete' : 'Walkaround proof saved - office sync pending');
-  if (walkaroundState !== savingState || !walkaroundDraftMatches(baseRecord) || currentScreen !== 'walkaround') return;
-  showJobList();
-  renderJobs();
-  window.scrollTo({ top: 0, behavior: 'auto' });
-  reloadForPendingServiceWorkerUpdate();
+  savingState.finishedSave = { record: localRecord, draft };
+  await finishWalkaroundSave(savingState, btn);
 }
 
 

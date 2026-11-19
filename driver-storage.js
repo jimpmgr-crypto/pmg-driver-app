@@ -121,6 +121,17 @@
       throw new Error('Phone archive verification failed. Keep this screen open.');
     }
   }
+  async function archiveAcknowledgedDraft(key, raw) {
+    const storage = root.localStorage;
+    if (!raw || storage.getItem(key) !== raw) return false;
+    const db = await openArchive();
+    try {
+      await saveVerified(db, { id: root.crypto.randomUUID(), key, raw, reason: 'acknowledged walkaround draft' });
+      if (storage.getItem(key) !== raw) return false;
+      storage.removeItem(key);
+      return true;
+    } finally { db.close(); }
+  }
   async function writeJobRaw(date, raw, expected) {
     return withJobStore(date, async (storage, db, key) => {
       const id = 'active:' + key;
@@ -196,5 +207,5 @@
       throw error;
     } finally { archive?.close(); }
   }
-  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, eligible, quota, HELP, DB_NAME, STORE };
+  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, eligible, quota, HELP, DB_NAME, STORE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
