@@ -935,6 +935,35 @@ test('unreadable retry data stays intact and visible after reload', async ({ pag
   expect(await page.evaluate(() => localStorage.getItem('pmg_retry_queue'))).toBe('{unreadable retained original');
 });
 
+test('pre-start opens while an old retry is retained and the work plan is stalled', async ({ page }) => {
+  await stubExternalApis(page);
+  const oldRetry = JSON.stringify([{date:'2020-01-02',jobs:[{id:'driver-retained-fixture'}]}]);
+  await page.addInitScript(raw => localStorage.setItem('pmg_retry_queue', raw), oldRetry);
+  let releaseDiary;
+  const diaryBlocked = new Promise(resolve => { releaseDiary = resolve; });
+  await page.route(`${WORKER_URL}/driver-diary/**`, async route => {
+    await diaryBlocked;
+    await route.fulfill({status:503, json:{error:'Fixture diary unavailable'}});
+  });
+
+  try {
+    await page.goto(`${APP_URL}/john`);
+    await expect(page.locator('#sync-banner')).toContainText('saved retry record has been retained');
+    await expect(page.getByText('Loading jobs from Haultech…')).toBeVisible();
+    const select = page.locator('#walkaround-card .driver-vehicle-select');
+    await select.selectOption({index:1});
+    await page.locator('#start-walkaround-btn').click({timeout:4000});
+    await expect(page.locator('#walkaround-screen')).toBeVisible();
+
+    releaseDiary();
+    await expect(page.locator('#jobs-loading')).toBeHidden();
+    await expect(page.locator('#walkaround-screen')).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('pmg_retry_queue'))).toBe(oldRetry);
+  } finally {
+    releaseDiary();
+  }
+});
+
 test('late Add Job receipt retains another change in native phone storage', async ({ page }) => {
   await stubExternalApis(page);
   await page.goto(`${APP_URL}/?driver=john`);

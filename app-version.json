@@ -1,10 +1,10 @@
 {
-  "buildId": "20261117-driver-roster-r1",
-  "updatedAt": "2026-11-17",
+  "buildId": "20261119-prestart-access-r1",
+  "updatedAt": "2026-11-19",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261022-driver-signoff-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
+  "notes": "Pre-start remains available while the job plan loads or retries need office review. Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
   "plantBuildId": "20261108-current-alerts"
 }

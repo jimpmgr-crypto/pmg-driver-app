@@ -52,7 +52,7 @@ assert(index.includes("Tick confirmed at"), 'wheel torque row must give drivers 
 assert(index.includes('.walkaround-card.prestart-gate.done'), 'completed walkaround state must have dedicated compact styling');
 assert(index.includes('position: static;'), 'completed walkaround card must not remain sticky over the jobs screen');
 assert(index.includes('.walkaround-card.prestart-gate.day-closed'), 'pre-start card must stop sticking once every job is already closed');
-assert(index.includes('renderWalkaroundPanel({ dayClosed: canFinishDay })'), 'closed-day layout must expose the explicit finish action on phone screens');
+assert(index.includes('renderDriverPrestart(canFinishDay)') && index.includes('renderWalkaroundPanel({ dayClosed })'), 'closed-day layout must expose the explicit finish action on phone screens');
 assert(index.includes("vehicle && !walkaroundUnitSelectorsOpen"), 'unit selectors stay compact but can open after completion');
 assert(index.includes("window.scrollTo({ top: 0, behavior: 'auto' });"), 'walkaround completion must force a clean return to the top of the jobs list');
 assert(index.includes("finished ? 'Re-open / check day'"), 'finished drivers must have a clear route out of the completed screen');

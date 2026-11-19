@@ -546,7 +546,6 @@
 
     /* ── Sync Banner ── */
     #sync-banner {
-      position: fixed; top: 56px; left: 0; right: 0; z-index: 90;
       background: #fef2f2; border-bottom: 2px solid #ef4444;
       padding: 10px 16px; display: flex; align-items: center; gap: 8px;
       font-size: 13px; font-weight: 600; color: #991b1b;
@@ -557,7 +556,6 @@
       border-radius: 6px; padding: 6px 14px; font-family: 'Inter', sans-serif;
       font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; min-height: 32px;
     }
-    body.has-sync-banner main { padding-top: 60px; }
 
     /* ── Sync Dot ── */
     .sync-dot {
@@ -659,6 +657,8 @@
       box-shadow: 0 12px 28px rgba(17,24,39,0.24);
     }
     #walkaround-screen { padding-top: 8px; }
+    #prestart-container { display: contents; }
+    #jobs-loading[hidden] { display: none; }
     .walkaround-card.done {
       background: #ecfdf5; color: #065f46; border-color: #10b981;
     }
@@ -920,6 +920,8 @@
       <span class="date-label" id="date-label"></span>
       <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
     </div>
+    <div id="prestart-container"></div>
+    <div class="loading" id="jobs-loading" role="status" hidden><div class="spinner"></div>Loading jobs from Haultech…</div>
     <div id="jobs-container"></div>
   </div>
 
@@ -1689,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261117-driver-roster-r1';
+const APP_BUILD_ID = '20261119-prestart-access-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2854,7 +2856,6 @@ function updateSyncUI() {
   const banner = $('sync-banner');
   if (pending) {
     banner.classList.remove('hidden');
-    document.body.classList.add('has-sync-banner');
     const label = banner.querySelector('span');
     if (label) {
       label.textContent = retryReadProblem || backupProblem || (olderPending
@@ -2865,7 +2866,6 @@ function updateSyncUI() {
     }
   } else {
     banner.classList.add('hidden');
-    document.body.classList.remove('has-sync-banner');
   }
   updateSyncDot(pending ? 'red' : (backupPending ? 'grey' : 'green'));
 }
@@ -3368,6 +3368,7 @@ function enterJobsScreen() {
   $('date-label').textContent = formatDate(todayISO());
   if (currentUser?.username !== 'richard') isManager = false;
   showJobList();
+  renderDriverPrestart();
   loadJobs({ force: true });
   refreshTimer = setInterval(() => loadJobs({ automatic: true }), JOB_REFRESH_MS);
 }
@@ -3411,7 +3412,8 @@ async function loadJobs(options = {}) {
   if (!options.force && document.hidden) return;
   const date = todayISO();
   $('date-label').textContent = formatDate(date);
-  $('jobs-container').innerHTML = `<div class="loading"><div class="spinner"></div>Loading jobs from Haultech…</div>`;
+  $('jobs-container').innerHTML = '';
+  $('jobs-loading').hidden = false;
   showError(null);
 
   try {
@@ -3424,7 +3426,7 @@ async function loadJobs(options = {}) {
       const err = await resp.json().catch(() => ({}));
       if (err.error === 'no_haultech_auth') {
         showError('Haultech auth token not set. Falling back to cached data.');
-        return loadJobsFallback(date);
+        return await loadJobsFallback(date);
       }
       throw new Error(err.error || `HTTP ${resp.status}`);
     }
@@ -3456,7 +3458,9 @@ async function loadJobs(options = {}) {
     diaryReadState = {state:'unavailable',savedAt:'',complete:false};
     updateSyncUI();
     showError('The current work plan could not be checked. Showing any saved work; contact the office for missing allocations.');
-    return loadJobsFallback(date);
+    return await loadJobsFallback(date);
+  } finally {
+    $('jobs-loading').hidden = true;
   }
 }
 
@@ -4076,6 +4080,7 @@ function openJobMap(job, mode = 'delivery', provider = 'apple') {
 function renderJobs() {
   const container = $('jobs-container');
   if (isManager) {
+    $('prestart-container').replaceChildren();
     renderManagerView(container);
   } else {
     renderDriverView(container);
@@ -4139,6 +4144,14 @@ function renderDayReviewPanel(jobs) {
     </div>`;
 }
 
+function renderDriverPrestart(dayClosed = false) {
+  // Pre-start has its own screen entry, even when the work plan cannot load.
+  const container = $('prestart-container');
+  container.innerHTML = renderWalkaroundPanel({ dayClosed });
+  attachDriverVehicleSelector(container);
+  attachWalkaroundPanelListeners(container);
+}
+
 function renderDriverView(container) {
   const jobs = sortJobsForDriver(getDriverJobs(currentUser.driverId, currentUser.name));
   const openJobs = getOpenDayReviewJobs(jobs);
@@ -4150,7 +4163,7 @@ function renderDriverView(container) {
   const queue = renderQueueSummary();
   const selectedVehicle = getSelectedDriverVehicle();
   const canFinishDay = jobs.length && !openJobs.length;
-  const walkaroundPanel = renderWalkaroundPanel({ dayClosed: canFinishDay });
+  renderDriverPrestart(canFinishDay);
   const trialBanner = trialMode ? `
     <div class="trial-banner">
       <strong>${esc(currentUser.name)} — ${diaryReadState.state === 'live' ? 'work plan checked' : 'saved work / office check needed'}</strong><br>
@@ -4160,7 +4173,6 @@ function renderDriverView(container) {
     </div>` : '';
   const summary = `
     ${trialBanner}
-    ${walkaroundPanel}
     <div class="driver-summary">
       <h2>${esc(currentUser.name)}</h2>
       <div class="driver-summary-meta">
@@ -4192,13 +4204,11 @@ function renderDriverView(container) {
       </div>`;
     attachDayReviewListeners(container, jobs);
     attachDriverVehicleSelector(container);
-    attachWalkaroundPanelListeners(container);
     return;
   }
   container.innerHTML = summary + jobs.map((job, i) => jobCardHTML(job, false, i === 0)).join('');
   attachDayReviewListeners(container, jobs);
   attachDriverVehicleSelector(container);
-  attachWalkaroundPanelListeners(container);
   attachCardListeners(container, jobs);
   attachQuickActionListeners(container, jobs);
 }
