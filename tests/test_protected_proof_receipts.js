@@ -44,6 +44,37 @@ const receiptPath = '/ticket/pod-fixture';
 let count = 0;
 async function check(name, run) { await run(); count++; console.log('PASS ' + name); }
 (async () => {
+  await check('walkaround recovery requires exact same-day draft, original photo, and all proof bytes', async () => {
+    const date = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/London'}).format(new Date());
+    const startedAt = new Date(Date.now() - 1200).toISOString();
+    const completedAt = new Date(Date.now() - 600).toISOString();
+    const draft = { date, driverId:'11111111-1111-4111-8111-111111111111', vehicle:'PN25AMU', trailer:'', startedAt,
+      photoKind:'front_left', photoSha256:require('crypto').createHash('sha256').update('front_left').digest('hex') };
+    const kinds = ['front_left','rear_left','rear_right','front_right','signature'];
+    const assets = kinds.map(kind => ({kind, assetId:'waasset-' + kind + '-fixture'}));
+    for (const asset of assets) store.set('photo:' + asset.assetId, Buffer.from(asset.kind));
+    const checks = Object.fromEntries('leaks battery tyres body plates steering brakes air lights mirrors cab load fit'.split(' ').map(key=>[key,'yes']));
+    checks.coupling = 'na';
+    const saved = { ...draft, completedAt, type:'driver_walkaround', recordId:'fixture', syncState:'saved_to_worker',
+      checks, defects:[], photoEvidenceRequired:true, signatureProvided:true, assets };
+    store.set('ticket:walkaround-fixture', JSON.stringify(saved));
+    const recover = async q => (await call('/walkaround-receipt/recover', 'POST', q)).body.record;
+    const record = await recover(draft);
+    assert.equal(record.recordId, 'fixture');
+    assert.equal(record.assets, undefined);
+    for (const change of [{photoSha256:'0'.repeat(64)}, {trailer:'C552979'}, {vehicle:'EY15BOV'}, {startedAt:completedAt}]) {
+      assert.equal(await recover({...draft, ...change}), null);
+    }
+    store.set('ticket:walkaround-duplicate', JSON.stringify(saved));
+    assert.equal(await recover(draft), null);
+    store.delete('ticket:walkaround-duplicate');
+    store.set('ticket:walkaround-fixture', JSON.stringify({...saved, defects:[{id:'tyres'}]}));
+    assert.equal(await recover(draft), null);
+    store.set('ticket:walkaround-fixture', JSON.stringify(saved));
+    store.delete('photo:waasset-signature-fixture');
+    assert.equal(await recover(draft), null);
+    store.delete('ticket:walkaround-fixture');
+  });
   await check('audit intent cannot populate signed eligibility', async () => {
     await call('/ticket/trial-' + event.eventId, 'PUT', event);
     assert.equal((await call('/tickets')).body[0].protectedProof, null);

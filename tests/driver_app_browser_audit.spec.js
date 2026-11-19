@@ -76,6 +76,7 @@ async function stubExternalApis(page, { torqueTasks = [], haultechJobs = [], cap
       const date = pathname.split('/').pop();
       return json(diaryOverride || { date, state: 'live', complete: true, savedAt: new Date().toISOString(), jobs: initialDiaryJobs });
     }
+    if (pathname === '/walkaround-receipt/recover') return json({record:null});
     if (pathname.startsWith('/haultech-jobs/')) return json([]);
     if (pathname.startsWith('/photos/') && method === 'PUT') {
       uploadedAssets.set(pathname.split('/').pop(), route.request().postDataBuffer());
@@ -399,6 +400,38 @@ test.describe('driver app route audit', () => {
     await expect(page.locator('#walkaround-screen')).toBeVisible();
     await expect(page.locator('[data-photo-slot="front_left"] .walkaround-photo-state')).toHaveText('Saved on this phone');
     await expect(page.locator('.walkaround-photo[data-photo-slot="rear_left"]')).toHaveClass(/next/);
+  });
+
+  test('original phone recovers an accepted walkaround without resubmitting it', async ({ page }) => {
+    const captured = {workerRequests:[],photoUploads:[],ticketSaves:[],driverAddRequests:[]};
+    await stubExternalApis(page,{captured});
+    await page.goto(`${APP_URL}/john`);
+    await expect(page.locator('#jobs-screen')).toBeVisible();
+    const receipt = await page.evaluate(data => {
+      setSelectedDriverVehicle('PN25AMU');
+      const draft = {...walkaroundDraftIdentity(), startedAt:new Date(Date.now()-1000).toISOString(),
+        active:true, photoDataUrls:{front_left:'data:image/png;base64,'+data}};
+      localStorage.setItem(walkaroundDraftStorageKey(draft),JSON.stringify(draft));
+      const {active,photoDataUrls,...identity} = draft;
+      return {...identity, recordId:'original-fixture', completedAt:new Date().toISOString(), syncState:'saved_to_worker'};
+    }, TEST_PNG.toString('base64'));
+    let reads = 0;
+    await page.route(`${WORKER_URL}/walkaround-receipt/recover`, async route => {
+      reads++;
+      const query = route.request().postDataJSON();
+      expect(query.startedAt).toBe(receipt.startedAt);
+      expect(query.photoSha256).toBe(require('crypto').createHash('sha256').update(TEST_PNG).digest('hex'));
+      await route.fulfill({json:{record:receipt}});
+    });
+    await page.reload();
+    await expect(page.locator('#walkaround-card')).toHaveClass(/done/);
+    expect(await page.evaluate(() => getLocalWalkaroundRecord()?.recordId)).toBe('original-fixture');
+    expect(reads).toBe(1);
+    expect(captured.ticketSaves).toHaveLength(0);
+    expect(captured.photoUploads).toHaveLength(0);
+    await page.reload();
+    await expect(page.locator('#walkaround-card')).toHaveClass(/done/);
+    expect(reads).toBe(1);
   });
 
   test('camera bounce before file return reopens the walkaround draft, not loads', async ({ page }) => {

@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261119-walkaround-save-r2';
+const APP_BUILD_ID = '20261119-walkaround-receipt-r3';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -5442,22 +5442,21 @@ function validateWalkaroundBeforeComplete() {
   return missing;
 }
 
+async function persistWalkaroundSave(record, draft) {
+  try { setLocalWalkaroundRecord(record); }
+  catch (error) {
+    if (!draft || record.syncState !== 'saved_to_worker' || !PmgDriverStorage.quota(error)) throw error;
+    await PmgDriverStorage.archiveAcknowledgedDraft(draft.key, draft.raw);
+    setLocalWalkaroundRecord(record);
+  }
+  if (record.syncState === 'ticket_pending') queueWalkaroundTicket(record);
+  if (draft) clearWalkaroundDraft(record, draft.raw);
+}
+
 async function finishWalkaroundSave(state, btn) {
   const { record, draft } = state.finishedSave;
   try {
-    // Confirmed cloud proof can release the space taken by its exact phone
-    // draft after an archive readback. An unconfirmed submission keeps its draft.
-    if (draft && record.syncState === 'saved_to_worker') {
-      try { setLocalWalkaroundRecord(record); }
-      catch (error) {
-        if (!PmgDriverStorage.quota(error)) throw error;
-        await PmgDriverStorage.archiveAcknowledgedDraft(draft.key, draft.raw);
-        setLocalWalkaroundRecord(record);
-      }
-    } else {
-      setLocalWalkaroundRecord(record);
-    }
-    if (record.syncState === 'ticket_pending') queueWalkaroundTicket(record);
+    await persistWalkaroundSave(record, draft);
   } catch {
     if (walkaroundState !== state || currentScreen !== 'walkaround') return;
     const error = $('walkaround-save-error');
@@ -5470,7 +5469,6 @@ async function finishWalkaroundSave(state, btn) {
     return;
   }
 
-  if (draft) clearWalkaroundDraft(record, draft.raw);
   toast(record.syncState === 'saved_to_worker' ? '✓ Walkaround complete' : 'Walkaround proof saved - office sync pending');
   if (walkaroundState !== state || !walkaroundDraftMatches(record) || currentScreen !== 'walkaround') return;
   showJobList();
@@ -7638,14 +7636,40 @@ function requestSafeAppReload(reason = 'update') {
   window.location.reload();
 }
 
+async function recoverSelectedWalkaround(draft) {
+  const key = walkaroundDraftStorageKey(draft);
+  const raw = localStorage.getItem(key);
+  const photo = Object.entries(draft.photoDataUrls || {}).find(([slot, value]) =>
+    requiredWalkaroundPhotoSlots().some(candidate => candidate.id === slot) && typeof value === 'string');
+  if (raw !== JSON.stringify(draft) || !photo || !draft.startedAt) return false;
+  const [photoKind, image] = photo;
+  const digest = await crypto.subtle.digest('SHA-256', await dataURLToBlob(image).arrayBuffer());
+  const photoSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  const response = await api('/walkaround-receipt/recover', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...walkaroundDraftIdentity(), startedAt:draft.startedAt, photoKind, photoSha256}),
+  });
+  if (!response.ok) return false;
+  const { record } = await response.json();
+  if (!walkaroundDraftMatches(record, draft) || record.startedAt !== draft.startedAt
+    || record.syncState !== 'saved_to_worker' || !Number.isFinite(Date.parse(record.completedAt))
+    || !walkaroundDraftMatches(draft) || currentScreen !== 'jobs' || getLocalWalkaroundRecord()
+    || localStorage.getItem(key) !== raw) return false;
+  await persistWalkaroundSave(record, { key, raw });
+  ensureTorqueChecksForSelectedVehicle({force:true});
+  if (currentScreen === 'jobs') renderJobs();
+  toast('Saved pre-start recovered from PMG');
+  return true;
+}
+
 function resumeWalkaroundDraftAfterEnter() {
-  try {
-    const draft = getSelectedWalkaroundDraft();
-    if (!draft?.active || !walkaroundDraftMatches(draft)) return;
-    setTimeout(() => {
-      if (currentScreen === 'jobs' && walkaroundDraftMatches(draft)) showWalkaroundScreen();
-    }, 350);
-  } catch {}
+  const draft = getSelectedWalkaroundDraft();
+  if (!draft?.active || !walkaroundDraftMatches(draft)) return;
+  setTimeout(async () => {
+    if (currentScreen !== 'jobs' || !walkaroundDraftMatches(draft)) return;
+    if (await recoverSelectedWalkaround(draft).catch(() => false)) return;
+    if (currentScreen === 'jobs' && walkaroundDraftMatches(draft)) showWalkaroundScreen();
+  }, 350);
 }
 
 async function checkForAppVersionUpdate(reason = 'timer') {

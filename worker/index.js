@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261022-driver-signoff-r1';
+const WORKER_BUILD_ID = '20261119-walkaround-receipt-r1';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -3675,6 +3675,46 @@ async function deriveProtectedProofReceipt(env, metadata) {
   return receipt;
 }
 
+async function recoverWalkaroundReceipt(env, query) {
+  const { date, driverId, vehicle, trailer, startedAt, photoKind, photoSha256 } = query || {};
+  const slots = ['front_left', 'rear_left', 'rear_right', 'front_right'];
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+    || date !== new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/London'}).format(new Date())
+    || typeof driverId !== 'string' || !/^[a-f0-9-]{36}$/.test(driverId)
+    || typeof vehicle !== 'string' || !/^[A-Z0-9]{1,12}$/.test(vehicle)
+    || typeof trailer !== 'string' || !/^[A-Z0-9]{0,16}$/.test(trailer)
+    || typeof startedAt !== 'string' || !Number.isFinite(Date.parse(startedAt))
+    || typeof photoSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(photoSha256)) return null;
+  if (trailer) slots.push('trailer_coupling');
+  if (!slots.includes(photoKind)) return null;
+
+  const matches = (await readDateTickets(env, date)).filter(record =>
+    record?.type === 'driver_walkaround' && record.date === date && record.driverId === driverId
+    && record.vehicle === vehicle && (record.trailer || '') === trailer && record.startedAt === startedAt);
+  if (matches.length !== 1) return null;
+  const record = matches[0];
+  const checks = ['leaks','battery','tyres','body','plates','steering','brakes','air','lights','mirrors','cab','load','coupling','fit'];
+  const completedAt = Date.parse(record.completedAt);
+  if (record.syncState !== 'saved_to_worker' || record.photoEvidenceRequired !== true
+    || !Number.isFinite(completedAt) || completedAt < Date.parse(startedAt) || completedAt > Date.now()
+    || !Array.isArray(record.defects) || record.defects.length
+    || !checks.every(check => record.checks?.[check] === 'yes' || (check === 'coupling' && !trailer && record.checks?.[check] === 'na'))) return null;
+  if (record.signatureProvided === true) slots.push('signature');
+  if (!Array.isArray(record.assets) || record.assets.length !== slots.length) return null;
+
+  const assets = await Promise.all(slots.map(async kind => {
+    const matches = record.assets.filter(asset => asset?.kind === kind
+      && typeof asset.assetId === 'string' && asset.assetId.startsWith(`waasset-${kind}-`)
+      && safePathParam(asset.assetId) === asset.assetId);
+    if (matches.length !== 1) return false;
+    const body = await env.PMG_DATA.get(`photo:${matches[0].assetId}`, {type:'arrayBuffer'});
+    return !!body?.byteLength && (kind !== photoKind || await proofBytesHash(body) === photoSha256);
+  }));
+  if (!assets.every(Boolean)) return null;
+  return { date, driverId, vehicle, trailer, startedAt, completedAt:record.completedAt,
+    recordId:record.recordId, type:'driver_walkaround', syncState:'saved_to_worker' };
+}
+
 async function ticketsWithProtectedProof(env, requestedDate = '') {
   const tickets = requestedDate ? await readDateTickets(env, requestedDate) : await listStoredTickets(env);
   const cancelled = new Set(tickets.filter(event => ['job_cancelled', 'day_review_cancelled', 'job_postponed'].includes(event?.type))
@@ -4812,6 +4852,19 @@ async function handleDriverRequest(request, env) {
       const suffix = request.method === 'GET' ? '/status' : '/backfill';
       const target = new Request('https://store/__ticket_index' + suffix, { method: request.method, ...(request.method === 'POST' ? { body: await request.text() } : {}) });
       return withStoreCors(await ticketIndexStub(env).fetch(target));
+    }
+
+    // Read-only recovery. The exact phone draft must prove possession of an
+    // original photo; the result carries no images, names or report contents.
+    if (path === '/walkaround-receipt/recover' && request.method === 'POST') {
+      const body = await request.text();
+      if (body.length > 1024) return corsResponse(JSON.stringify({ error:'invalid_recovery_request' }), 400);
+      try {
+        const record = await recoverWalkaroundReceipt(env, safeJsonParse(body));
+        return corsResponse(JSON.stringify({ record }), 200, { 'Cache-Control':'no-store' });
+      } catch {
+        return corsResponse(JSON.stringify({ error:'walkaround_recovery_unavailable' }), 503, { 'Cache-Control':'no-store' });
+      }
     }
 
     // GET /tickets
