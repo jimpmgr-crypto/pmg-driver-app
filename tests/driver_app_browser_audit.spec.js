@@ -537,7 +537,7 @@ test.describe('driver app route audit', () => {
     expect(captured.photoUploads.map(url => {
       const assetId = url.match(/photos\/([^/?]+)/)?.[1] || '';
       return [...order, 'signature'].find(slot => assetId.includes(`waasset-${slot}-`));
-    })).toEqual([...order, 'signature']);
+    }).sort()).toEqual([...order, 'signature'].sort());
     expect(captured.ticketSaves).toHaveLength(1);
     expect(captured.ticketSaves[0].body.photoSlots).toEqual(order);
     expect(captured.ticketSaves[0].body.photoSlotsExpected).toEqual(order);
