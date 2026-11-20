@@ -1122,3 +1122,18 @@ test('low-space phone protects sign-off and queues added work through restart', 
   expect(await page.evaluate(() => getWritebackQueue().find(x => x.type === 'proof_complete')?.state)).toBe('written');
   expect(await page.evaluate(() => localStorage.getItem('pmg_retry_queue'))).toBe(null);
 });
+
+
+test('canonical cancellation takes precedence over blank delivery status and cached actions', async ({ page }) => {
+  const job = {...signoffJob(), deliveryDriverId:'f5c31070-2945-408a-bc7a-0245159a191a',
+    cancelled:true, active:true, deliveryStatus:'None'};
+  const captured = {workerRequests:[],photoUploads:[],ticketSaves:[],driverAddRequests:[],completionRequests:[]};
+  await stubExternalApis(page,{captured,jobs:[job]});
+  await page.goto(APP_URL+'/?driver=john');
+  await expect(page.locator('.job-card').filter({hasText:'#99998'})).toContainText('CANCELLED');
+  await expect(page.locator('.quick-proof')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.job-card').filter({hasText:'#99998'})).toContainText('CANCELLED');
+  expect(captured.completionRequests).toHaveLength(0);
+  expect(captured.ticketSaves).toHaveLength(0);
+});
