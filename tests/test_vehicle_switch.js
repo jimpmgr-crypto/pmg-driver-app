@@ -12,7 +12,7 @@ function fn(name) {
 function setup() {
  const data=new Map(), timers=[];
  const c={console,Date,JSON,Map, Object, Array, String, Number, currentUser:{driverId:'richard-test',name:'Richard test'}, currentScreen:'jobs',isManager:false,
- WALKAROUND_DRAFT_KEY:'pmg_walkaround_draft_v1',walkaroundUnitSelectorsOpen:false,TORQUE_REFRESH_MS:60000,
+ WALKAROUND_DRAFT_KEY:'pmg_walkaround_draft_v1',walkaroundUnitSelectorsOpen:false,walkaroundReceiptCopies:new Map(),TORQUE_REFRESH_MS:60000,
  localStorage:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)},
  todayISO:()=> '2026-10-21',readJSON:(k,d)=>data.has(k)?JSON.parse(data.get(k)):d,writeJSON:(k,v)=>data.set(k,JSON.stringify(v)),
  isWalkaroundVisible:()=>true,esc:String,vehicleOptionsHTML:()=>'<option>LL21HJJ</option><option>YJ13GRF</option>',trailerOptionsHTML:()=>'',
@@ -64,9 +64,9 @@ test('separate truck and trailer drafts survive switching and clear only their o
 });
 test('legacy draft migrates without reselecting the old vehicle on reopen',()=>{
  const {c,data,timers}=setup();data.set(c.WALKAROUND_DRAFT_KEY,JSON.stringify({...c.walkaroundDraftIdentity(),active:true,defectNotes:'legacy'}));
- c.setSelectedDriverVehicle('YJ13GRF');c.resumeWalkaroundDraftAfterEnter();assert.equal(timers.length,0);assert.equal(c.getSelectedDriverVehicle(),'YJ13GRF');
- c.setSelectedDriverVehicle('LL21HJJ');assert.equal(c.getSelectedWalkaroundDraft().defectNotes,'legacy');c.resumeWalkaroundDraftAfterEnter();assert.equal(timers.length,1);
- c.setSelectedDriverVehicle('YJ13GRF');timers[0]();assert(!c.opened);
+ c.setSelectedDriverVehicle('YJ13GRF');c.resumeWalkaroundDraftAfterEnter();assert.equal(timers.length,1);assert.equal(c.getSelectedDriverVehicle(),'YJ13GRF');
+ c.setSelectedDriverVehicle('LL21HJJ');assert.equal(c.getSelectedWalkaroundDraft().defectNotes,'legacy');c.resumeWalkaroundDraftAfterEnter();assert.equal(timers.length,2);
+ c.setSelectedDriverVehicle('YJ13GRF');timers[1]();assert(!c.opened);
 });
 test('failed legacy migration preserves original photos and draft',()=>{
  const {c,data}=setup();data.set(c.WALKAROUND_DRAFT_KEY,JSON.stringify({...c.walkaroundDraftIdentity(),active:true,photoDataUrls:{front:'image'}}));

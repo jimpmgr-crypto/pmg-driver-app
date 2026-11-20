@@ -1,10 +1,10 @@
 {
-  "buildId": "20261119-walkaround-receipt-r3",
-  "updatedAt": "2026-11-19",
+  "buildId": "20261120-walkaround-phone-copy-r1",
+  "updatedAt": "2026-11-20",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261119-walkaround-receipt-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Recover the exact acknowledged walkaround on its original phone using its saved draft and an original photo match. Recover the exact acknowledged pre-start draft when phone storage is full and retry only the phone save. Pre-start remains available while the job plan loads or retries need office review. Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
+  "notes": "Keep acknowledged pre-start receipts in verified IndexedDB when the inline phone copy cannot be written. Recover the exact acknowledged walkaround on its original phone using its saved draft and an original photo match. Recover the exact acknowledged pre-start draft when phone storage is full and retry only the phone save. Pre-start remains available while the job plan loads or retries need office review. Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
   "plantBuildId": "20261108-current-alerts"
 }

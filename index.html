@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261119-walkaround-receipt-r3';
+const APP_BUILD_ID = '20261120-walkaround-phone-copy-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -1746,6 +1746,7 @@ let dayReviewOpen = false;
 let lastJobsUpdatedAt = null;
 let diaryReadState = {state:"unknown", savedAt:"", complete:false};
 let walkaroundState = null;
+const walkaroundReceiptCopies = new Map();
 let walkaroundSigCtx = null;
 let walkaroundSigDrawing = false;
 let walkaroundSigHasData = false;
@@ -3370,6 +3371,7 @@ function enterJobsScreen() {
   showJobList();
   renderDriverPrestart();
   loadJobs({ force: true });
+  if (!isManager) resumeWalkaroundDraftAfterEnter();
   refreshTimer = setInterval(() => loadJobs({ automatic: true }), JOB_REFRESH_MS);
 }
 
@@ -4147,6 +4149,7 @@ function renderDayReviewPanel(jobs) {
 function renderDriverPrestart(dayClosed = false) {
   // Pre-start has its own screen entry, even when the work plan cannot load.
   const container = $('prestart-container');
+  if (currentUser && getSelectedDriverVehicle()) loadWalkaroundReceiptCopy().catch(() => {});
   container.innerHTML = renderWalkaroundPanel({ dayClosed });
   attachDriverVehicleSelector(container);
   attachWalkaroundPanelListeners(container);
@@ -4404,11 +4407,28 @@ function walkaroundStorageKey(date = todayISO()) {
 
 function getLocalWalkaroundRecord() {
   if (!currentUser || !getSelectedDriverVehicle()) return null;
-  const record = readJSON(walkaroundStorageKey(), null);
+  const key = walkaroundStorageKey();
+  const inline = readJSON(key, null);
+  const alternate = walkaroundReceiptCopies.get(key);
+  const inlineTime = Date.parse(inline?.completedAt || inline?.createdAt);
+  const record = alternate && (!Number.isFinite(inlineTime) || Date.parse(alternate.completedAt) > inlineTime)
+    ? alternate : inline;
   if (!record || record.date !== todayISO()
     || normaliseVehicleRef(record.vehicle) !== normaliseVehicleRef(getSelectedDriverVehicle())
     || normaliseVehicleRef(record.trailer) !== normaliseVehicleRef(getSelectedDriverTrailer())) return null;
   return record;
+}
+
+async function loadWalkaroundReceiptCopy() {
+  const key = walkaroundStorageKey();
+  if (walkaroundReceiptCopies.has(key)) return;
+  const record = await PmgDriverStorage.readWalkaroundReceipt(key);
+  if (walkaroundReceiptCopies.has(key)) return;
+  const verified = record?.type === 'driver_walkaround' && record.recordId
+    && record.syncState === 'saved_to_worker' && Number.isFinite(Date.parse(record.completedAt))
+    && walkaroundStorageKeyFor(record) === key;
+  walkaroundReceiptCopies.set(key, verified ? record : null);
+  if (verified && currentScreen === 'jobs' && walkaroundStorageKey() === key) renderJobs();
 }
 
 function setLocalWalkaroundRecord(record) {
@@ -4526,7 +4546,7 @@ function ensureTorqueChecksForSelectedVehicle(options = {}) {
       if (torqueCheckState !== requestState) return;
       const tasks = data.openTasks;
       torqueCheckState = { vehicle: vehicleRef, loading: false, error: '', tasks, checkedAt: data.checkedAt || new Date().toISOString(), loadedAt: Date.now() };
-      writeCachedTorqueTasks(vehicleRef, tasks);
+      try { writeCachedTorqueTasks(vehicleRef, tasks); } catch { /* Live response still controls clearance. */ }
       if (currentScreen === 'jobs') renderJobs();
     })
     .catch(err => {
@@ -5443,11 +5463,25 @@ function validateWalkaroundBeforeComplete() {
 }
 
 async function persistWalkaroundSave(record, draft) {
+  const acknowledged = record.syncState === 'saved_to_worker';
+  const receipt = acknowledged ? {
+    date: record.date,
+    driverId: record.driverId,
+    vehicle: record.vehicle,
+    trailer: record.trailer,
+    type: record.type,
+    recordId: record.recordId,
+    startedAt: record.startedAt,
+    completedAt: record.completedAt,
+    syncState: record.syncState,
+    torqueChecks: record.torqueChecks,
+    torqueCloseResults: record.torqueCloseResults,
+  } : record;
   try { setLocalWalkaroundRecord(record); }
   catch (error) {
-    if (!draft || record.syncState !== 'saved_to_worker' || !PmgDriverStorage.quota(error)) throw error;
-    await PmgDriverStorage.archiveAcknowledgedDraft(draft.key, draft.raw);
-    setLocalWalkaroundRecord(record);
+    if (!acknowledged) throw error;
+    const key = walkaroundStorageKeyFor(receipt);
+    walkaroundReceiptCopies.set(key, await PmgDriverStorage.saveWalkaroundReceipt(key, receipt));
   }
   if (record.syncState === 'ticket_pending') queueWalkaroundTicket(record);
   if (draft) clearWalkaroundDraft(record, draft.raw);
@@ -5457,11 +5491,11 @@ async function finishWalkaroundSave(state, btn) {
   const { record, draft } = state.finishedSave;
   try {
     await persistWalkaroundSave(record, draft);
-  } catch {
+  } catch (cause) {
     if (walkaroundState !== state || currentScreen !== 'walkaround') return;
     const error = $('walkaround-save-error');
     error.textContent = record.syncState === 'saved_to_worker'
-      ? 'Walkaround saved to PMG. This phone could not finish saving its copy. Keep this form open and tap Finish phone save to retry the phone copy.'
+      ? `Walkaround saved to PMG. This phone could not save its receipt (${PmgDriverStorage.quota(cause) ? 'storage full' : 'phone storage unavailable'}). Keep this form open and tap Finish phone save to retry the phone copy.`
       : 'Walkaround backup is still pending. Keep this form open and tap Finish phone save to retry saving this check.';
     error.classList.remove('hidden');
     btn.disabled = false;
@@ -7581,7 +7615,6 @@ function init() {
     currentUser = { username: requestedDriver, ...INCAB_USERS[requestedDriver] };
     try { localStorage.setItem('pmg-user', requestedDriver); } catch (error) { if (!PmgDriverStorage.quota(error)) throw error; }
     enterJobsScreen();
-    resumeWalkaroundDraftAfterEnter();
     toast(`${INCAB_USERS[requestedDriver].name} driver mode`);
     return;
   }
@@ -7589,7 +7622,6 @@ function init() {
   if (savedUser && INCAB_USERS[savedUser]) {
     currentUser = { username: savedUser, ...INCAB_USERS[savedUser] };
     enterJobsScreen();
-    resumeWalkaroundDraftAfterEnter();
     toast(`${INCAB_USERS[savedUser].name} driver mode`);
   }
 }
@@ -7636,12 +7668,10 @@ function requestSafeAppReload(reason = 'update') {
   window.location.reload();
 }
 
-async function recoverSelectedWalkaround(draft) {
-  const key = walkaroundDraftStorageKey(draft);
-  const raw = localStorage.getItem(key);
+async function recoverSelectedWalkaround(draft, key, raw) {
   const photo = Object.entries(draft.photoDataUrls || {}).find(([slot, value]) =>
     requiredWalkaroundPhotoSlots().some(candidate => candidate.id === slot) && typeof value === 'string');
-  if (raw !== JSON.stringify(draft) || !photo || !draft.startedAt) return false;
+  if (!photo || !draft.startedAt) return false;
   const [photoKind, image] = photo;
   const digest = await crypto.subtle.digest('SHA-256', await dataURLToBlob(image).arrayBuffer());
   const photoSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -7653,9 +7683,11 @@ async function recoverSelectedWalkaround(draft) {
   const { record } = await response.json();
   if (!walkaroundDraftMatches(record, draft) || record.startedAt !== draft.startedAt
     || record.syncState !== 'saved_to_worker' || !Number.isFinite(Date.parse(record.completedAt))
-    || !walkaroundDraftMatches(draft) || currentScreen !== 'jobs' || getLocalWalkaroundRecord()
+    || !walkaroundDraftMatches(draft) || currentScreen !== 'jobs'
     || localStorage.getItem(key) !== raw) return false;
-  await persistWalkaroundSave(record, { key, raw });
+  const current = getLocalWalkaroundRecord();
+  if (current && Date.parse(current.completedAt) >= Date.parse(record.completedAt)) return true;
+  await persistWalkaroundSave(record, raw === null ? null : { key, raw });
   ensureTorqueChecksForSelectedVehicle({force:true});
   if (currentScreen === 'jobs') renderJobs();
   toast('Saved pre-start recovered from PMG');
@@ -7663,12 +7695,23 @@ async function recoverSelectedWalkaround(draft) {
 }
 
 function resumeWalkaroundDraftAfterEnter() {
-  const draft = getSelectedWalkaroundDraft();
-  if (!draft?.active || !walkaroundDraftMatches(draft)) return;
+  const identity = walkaroundDraftIdentity();
+  if (!identity.vehicle) return;
   setTimeout(async () => {
-    if (currentScreen !== 'jobs' || !walkaroundDraftMatches(draft)) return;
-    if (await recoverSelectedWalkaround(draft).catch(() => false)) return;
-    if (currentScreen === 'jobs' && walkaroundDraftMatches(draft)) showWalkaroundScreen();
+    if (currentScreen !== 'jobs' || !walkaroundDraftMatches(identity)) return;
+    await loadWalkaroundReceiptCopy().catch(() => {});
+    if (currentScreen !== 'jobs' || !walkaroundDraftMatches(identity)) return;
+    const key = walkaroundDraftStorageKey(identity);
+    const raw = localStorage.getItem(key);
+    const inline = getSelectedWalkaroundDraft();
+    const draft = inline || (raw === null && !getLocalWalkaroundRecord()
+      ? await PmgDriverStorage.readAcknowledgedWalkaroundDraft(key).catch(() => null) : null);
+    if (!draft?.active || !walkaroundDraftMatches(draft) || currentScreen !== 'jobs') return;
+    const matchingRaw = localStorage.getItem(key);
+    if (matchingRaw === null ? !inline : matchingRaw === JSON.stringify(draft)) {
+      if (await recoverSelectedWalkaround(draft, key, matchingRaw).catch(() => false)) return;
+    }
+    if (inline && currentScreen === 'jobs' && walkaroundDraftMatches(draft)) showWalkaroundScreen();
   }, 350);
 }
 

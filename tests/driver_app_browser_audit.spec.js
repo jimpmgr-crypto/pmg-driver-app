@@ -402,19 +402,27 @@ test.describe('driver app route audit', () => {
     await expect(page.locator('.walkaround-photo[data-photo-slot="rear_left"]')).toHaveClass(/next/);
   });
 
-  test('original phone recovers an accepted walkaround without resubmitting it', async ({ page }) => {
+  for (const archiveDraft of [false, true]) {
+  test(`original phone recovers an accepted walkaround from its ${archiveDraft ? 'archived' : 'inline'} draft without resubmitting it`, async ({ page }) => {
     const captured = {workerRequests:[],photoUploads:[],ticketSaves:[],driverAddRequests:[]};
     await stubExternalApis(page,{captured});
     await page.goto(`${APP_URL}/john`);
     await expect(page.locator('#jobs-screen')).toBeVisible();
-    const receipt = await page.evaluate(data => {
+    const receipt = await page.evaluate(async ({data,archiveDraft}) => {
       setSelectedDriverVehicle('PN25AMU');
       const draft = {...walkaroundDraftIdentity(), startedAt:new Date(Date.now()-1000).toISOString(),
         active:true, photoDataUrls:{front_left:'data:image/png;base64,'+data}};
-      localStorage.setItem(walkaroundDraftStorageKey(draft),JSON.stringify(draft));
+      const key = walkaroundDraftStorageKey(draft);
+      const raw = JSON.stringify(draft);
+      localStorage.setItem(key, raw);
+      if (archiveDraft) {
+        await PmgDriverStorage.archiveAcknowledgedDraft(key, raw);
+        localStorage.setItem(walkaroundStorageKey(), 'unreadable original receipt bytes');
+      }
       const {active,photoDataUrls,...identity} = draft;
-      return {...identity, recordId:'original-fixture', completedAt:new Date().toISOString(), syncState:'saved_to_worker'};
-    }, TEST_PNG.toString('base64'));
+      return {...identity, type:'driver_walkaround', recordId:'original-fixture',
+        completedAt:new Date().toISOString(), syncState:'saved_to_worker'};
+    }, {data:TEST_PNG.toString('base64'),archiveDraft});
     let reads = 0;
     await page.route(`${WORKER_URL}/walkaround-receipt/recover`, async route => {
       reads++;
@@ -432,7 +440,12 @@ test.describe('driver app route audit', () => {
     await page.reload();
     await expect(page.locator('#walkaround-card')).toHaveClass(/done/);
     expect(reads).toBe(1);
+    if (archiveDraft) {
+      expect(await page.evaluate(() => localStorage.getItem(walkaroundStorageKey()))).toBe('unreadable original receipt bytes');
+      expect(await page.evaluate(() => PmgDriverStorage.readWalkaroundReceipt(walkaroundStorageKey()))).toMatchObject({recordId:'original-fixture'});
+    }
   });
+  }
 
   test('camera bounce before file return reopens the walkaround draft, not loads', async ({ page }) => {
     await stubExternalApis(page);
@@ -505,16 +518,15 @@ test.describe('driver app route audit', () => {
     await page.mouse.move(x + 80, y + 45);
     await page.mouse.up();
     await page.evaluate(() => {
-      const archive = PmgDriverStorage.archiveAcknowledgedDraft;
+      const saveReceipt = PmgDriverStorage.saveWalkaroundReceipt;
       let first = true;
-      PmgDriverStorage.archiveAcknowledgedDraft = async (key, raw) => {
+      PmgDriverStorage.saveWalkaroundReceipt = async (key, record) => {
         if (first) { first = false; throw new Error('Synthetic archive unavailable'); }
-        window.archivedWalkaroundDraft = await archive(key, raw);
-        return window.archivedWalkaroundDraft;
+        return saveReceipt(key, record);
       };
       const save = Storage.prototype.setItem;
       Storage.prototype.setItem = function (key, value) {
-        if (key === walkaroundStorageKey() && getSelectedWalkaroundDraft()?.active) {
+        if (key === walkaroundStorageKey()) {
           throw new DOMException('Synthetic full phone', 'QuotaExceededError');
         }
         return save.call(this, key, value);
@@ -527,7 +539,7 @@ test.describe('driver app route audit', () => {
     expect(await page.evaluate(() => getSelectedWalkaroundDraft()?.active)).toBe(true);
     await page.locator('#walkaround-complete-btn').click();
     await expect(page.locator('#jobs-screen')).toBeVisible();
-    expect(await page.evaluate(() => window.archivedWalkaroundDraft)).toBe(true);
+    expect(await page.evaluate(() => PmgDriverStorage.readWalkaroundReceipt(walkaroundStorageKey()))).toMatchObject({syncState:'saved_to_worker'});
     await page.reload();
     await expect(page.locator('#jobs-screen')).toBeVisible();
     await expect(page.locator('#walkaround-screen')).toBeHidden();

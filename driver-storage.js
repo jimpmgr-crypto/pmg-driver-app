@@ -68,6 +68,25 @@
               tx.onabort = tx.onerror = () => fail(tx.error || new Error('Archive verification failed'));
             });
           },
+          latestAcknowledgedDraft(key) {
+            return new Promise((done, fail) => {
+              const tx = db.transaction(STORE, 'readonly');
+              const request = tx.objectStore(STORE).openCursor();
+              let latest = null;
+              request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                const row = cursor.value;
+                if (row.key === key && row.reason === 'acknowledged walkaround draft') {
+                  const draft = parse(row.raw, null);
+                  if (draft?.active && (!latest || draft.updatedAt > latest.updatedAt)) latest = draft;
+                }
+                cursor.continue();
+              };
+              tx.oncomplete = () => done(latest);
+              tx.onabort = tx.onerror = () => fail(tx.error || new Error('Phone archive read failed'));
+            });
+          },
           close() { db.close(); },
         });
       };
@@ -131,6 +150,29 @@
       storage.removeItem(key);
       return true;
     } finally { db.close(); }
+  }
+  async function readWalkaroundReceipt(key) {
+    const db = await openArchive();
+    try { return parse((await db.get('walkaround-receipt:' + key))?.raw, null); }
+    finally { db.close(); }
+  }
+  async function saveWalkaroundReceipt(key, record) {
+    if (!root.navigator?.locks) throw new Error('Phone receipt storage cannot be locked');
+    return root.navigator.locks.request('pmg-walkaround-receipt:' + key, async () => {
+      const db = await openArchive();
+      try {
+        const id = 'walkaround-receipt:' + key;
+        const existing = parse((await db.get(id))?.raw, null);
+        if (existing && Date.parse(existing.completedAt) > Date.parse(record.completedAt)) return existing;
+        await saveVerified(db, { id, key, raw: JSON.stringify(record) });
+        return record;
+      } finally { db.close(); }
+    });
+  }
+  async function readAcknowledgedWalkaroundDraft(key) {
+    const db = await openArchive();
+    try { return await db.latestAcknowledgedDraft(key); }
+    finally { db.close(); }
   }
   async function writeJobRaw(date, raw, expected) {
     return withJobStore(date, async (storage, db, key) => {
@@ -207,5 +249,5 @@
       throw error;
     } finally { archive?.close(); }
   }
-  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, eligible, quota, HELP, DB_NAME, STORE };
+  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, readWalkaroundReceipt, saveWalkaroundReceipt, readAcknowledgedWalkaroundDraft, eligible, quota, HELP, DB_NAME, STORE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
