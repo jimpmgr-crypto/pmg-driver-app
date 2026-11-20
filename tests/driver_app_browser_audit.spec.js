@@ -1137,3 +1137,70 @@ test('canonical cancellation takes precedence over blank delivery status and cac
   expect(captured.completionRequests).toHaveLength(0);
   expect(captured.ticketSaves).toHaveLength(0);
 });
+
+test('two-week cleanup removes only exact office-verified copies and leaves current and unsent work', async ({ page }) => {
+  await stubExternalApis(page);
+  await page.goto(APP_URL+'/?driver=john');
+  await expect(page.locator('#jobs-screen')).toBeVisible();
+  const result = await page.evaluate(async ({image,hash,checkHash}) => {
+    const today = todayISO();
+    const cutoff = PmgDriverStorage.retentionCutoff(today);
+    const oldDate = new Date(cutoff+'T12:00:00Z');
+    oldDate.setUTCDate(oldDate.getUTCDate()-1);
+    const date = oldDate.toISOString().slice(0,10);
+    const driverId = currentUser.driverId;
+    const verified = {date,driverId,vehicle:'PN25AMU',trailer:'',startedAt:date+'T05:00:00Z',
+      recordId:'wa-old-verifiable-123',type:'driver_walkaround',syncState:'saved_to_worker'};
+    const pending={...verified,vehicle:'PN25FLF',recordId:'wa-old-pending-123',syncState:'ticket_pending'};
+    const recent={...verified,date:cutoff,recordId:'wa-recent-123',startedAt:cutoff+'T05:00:00Z'};
+    const keys=[verified,pending,recent].map(r=>walkaroundStorageKeyFor(r));
+    [verified,pending,recent].forEach((r,i)=>localStorage.setItem(keys[i],JSON.stringify(r)));
+    const slots=['front_left','rear_left','rear_right','front_right'];
+    const draft={...verified,active:true,photoDataUrls:Object.fromEntries(slots.map(kind=>[kind,'data:image/png;base64,'+image]))};
+    const draftKey=walkaroundDraftStorageKey(draft);
+    localStorage.setItem(draftKey,JSON.stringify(draft));
+    await PmgDriverStorage.archiveAcknowledgedDraft(draftKey,JSON.stringify(draft));
+    const inProgressKey=walkaroundDraftStorageKey({...draft,vehicle:'PN25FLF'});
+    localStorage.setItem(inProgressKey,JSON.stringify({...draft,vehicle:'PN25FLF'}));
+    const session = {driverId,today,canRelease:()=>true};
+    const approved={...verified,checkSha256:checkHash,photos:Object.fromEntries(slots.map(kind=>[kind,hash]))};
+    const noReceipt=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[]})});
+    const wrongNotes=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[{...approved,recordId:'wrong',checkSha256:'0'.repeat(64)}]})});
+    const missingPhoto=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,canRelease:()=>false,verify:async()=>({ok:true,cutoff,receipts:[approved]})});
+    const released=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[approved]})});
+    return {noReceipt:noReceipt.removed,held:missingPhoto.removed,wrongNotes:wrongNotes.removed,removed:released.removed,
+      inline:keys.map(key=>!!localStorage.getItem(key)),inProgress:!!localStorage.getItem(inProgressKey),
+      archived:!!await PmgDriverStorage.readAcknowledgedWalkaroundDraft(draftKey)};
+  },{image:TEST_PNG.toString('base64'),hash:require('crypto').createHash('sha256').update(TEST_PNG).digest('hex'),checkHash:require('crypto').createHash('sha256').update('[[],""]').digest('hex')});
+  expect(result).toEqual({noReceipt:0,held:0,wrongNotes:0,removed:2,inline:[false,true,true],inProgress:true,archived:false});
+});
+
+test('driver startup automatically requests only older walkarounds from the office', async ({page}) => {
+  await stubExternalApis(page);
+  const driverId = 'f5c31070-2945-408a-bc7a-0245159a191a';
+  const saved = await page.evaluate(() => new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London'}).format(new Date()));
+  const now = new Date(saved+'T12:00:00Z');
+  now.setUTCDate(now.getUTCDate()-(now.getUTCDay()+6)%7-7);
+  const cutoff = now.toISOString().slice(0,10);
+  now.setUTCDate(now.getUTCDate()-1);
+  const oldDate = now.toISOString().slice(0,10);
+  const old={date:oldDate,driverId,vehicle:'PN25AMU',trailer:'',startedAt:oldDate+'T05:00:00Z',recordId:'wa-office-verified-test',
+    syncState:'saved_to_worker',type:'driver_walkaround'};
+  const recent={...old,date:cutoff,startedAt:cutoff+'T05:00:00Z',recordId:'wa-previous-week-test'};
+  const key = row => 'pmg_walkaround_'+row.date+'_'+row.driverId+'_'+row.vehicle+'_no-trailer';
+  await page.addInitScript(({records}) => {
+    if (sessionStorage.getItem('retention-fixture')) return;
+    sessionStorage.setItem('retention-fixture','yes');
+    records.forEach(([name,value])=>localStorage.setItem(name,JSON.stringify(value)));
+  },{records:[[key(old),old],[key(recent),recent]]});
+  let checked=0;
+  await page.route(WORKER_URL+'/walkaround-retention',async route=>{
+    checked++;
+    expect(route.request().postDataJSON()).toEqual([{date:old.date,driverId,vehicle:old.vehicle,trailer:'',startedAt:old.startedAt}]);
+    await route.fulfill({json:{ok:true,cutoff,receipts:[old]}});
+  });
+  await page.goto(APP_URL+'/?driver=john');
+  await expect.poll(() => page.evaluate(name=>localStorage.getItem(name),key(old))).toBe(null);
+  expect(await page.evaluate(name=>localStorage.getItem(name),key(recent))).not.toBeNull();
+  expect(checked).toBe(1);
+});

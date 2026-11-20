@@ -114,6 +114,42 @@
               tx.onabort = tx.onerror = () => fail(failure || tx.error || new Error('Phone records could not be saved'));
             });
           },
+          oldWalkaroundCopies(eligible) {
+            return new Promise((done, fail) => {
+              const tx = db.transaction(STORE, 'readonly');
+              const request = tx.objectStore(STORE).openCursor();
+              const found = [];
+              request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                const row = cursor.value;
+                const isDraft = row.reason === 'acknowledged walkaround draft';
+                if (isDraft || (typeof row.id === 'string' && row.id.startsWith('walkaround-receipt:'))) {
+                  const record = parse(row.raw, null);
+                  if (eligible(record, isDraft)) found.push({ ...row, record, isDraft });
+                }
+                cursor.continue();
+              };
+              tx.oncomplete = () => done(found);
+              tx.onabort = tx.onerror = () => fail(tx.error || new Error('Phone archive read failed'));
+            });
+          },
+          removeVerifiedCopy(row, canRelease) {
+            return new Promise((done, fail) => {
+              const tx = db.transaction(STORE, 'readwrite');
+              const records = tx.objectStore(STORE);
+              const request = records.get(row.id);
+              let removed = false;
+              request.onsuccess = () => {
+                const latest = request.result;
+                if (!latest || latest.key !== row.key || latest.raw !== row.raw || latest.reason !== row.reason || !canRelease(row.record)) return;
+                records.delete(row.id);
+                removed = true;
+              };
+              tx.oncomplete = () => done(removed);
+              tx.onabort = tx.onerror = () => fail(tx.error || new Error('Phone archive release failed'));
+            });
+          },
           latestAcknowledgedDraft(key) {
             return new Promise((done, fail) => {
               const tx = db.transaction(STORE, 'readonly');
@@ -202,6 +238,76 @@
     const db = await openArchive();
     try { return await db.updateRecords([...new Set(names)], change); }
     finally { db.close(); }
+  }
+  function retentionCutoff(today) {
+    const date = new Date(today + 'T12:00:00Z');
+    date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7 - 7);
+    return date.toISOString().slice(0,10);
+  }
+  function walkaroundIdentity(record) {
+    return JSON.stringify([record.date,record.driverId,record.vehicle,record.trailer || '',record.startedAt]);
+  }
+  async function photoDigest(bytes) {
+    const hash = new Uint8Array(await root.crypto.subtle.digest('SHA-256',bytes));
+    return [...hash].map(byte => byte.toString(16).padStart(2,'0')).join('');
+  }
+  async function draftPhotosMatch(draft, receipt) {
+    if (Object.keys(draft.torqueConfirmations || {}).length || draft.signatureData) return false;
+    const checks = Object.entries(draft.checks || {}).map(([key,value])=>[key,String(value)]).sort();
+    const data = JSON.stringify([checks,String(draft.defectNotes || '').trim()]);
+    if (await photoDigest(new TextEncoder().encode(data)) !== receipt.checkSha256) return false;
+    const photos = Object.entries(draft.photoDataUrls || {});
+    if (photos.length !== Object.keys(receipt.photos || {}).length || !photos.length) return false;
+    for (const [kind,data] of photos) {
+      if (typeof data !== 'string' || !/^data:image\/[^;]+;base64,/.test(data)) return false;
+      const bytes = Uint8Array.from(root.atob(data.split(',',2)[1]), char => char.charCodeAt(0));
+      if (await photoDigest(bytes) !== receipt.photos[kind]) return false;
+    }
+    return true;
+  }
+  async function reclaimVerifiedWalkarounds({driverId,today,verify,canRelease}) {
+    if (!root.navigator?.locks || !driverId) return null;
+    const cutoff = retentionCutoff(today);
+    const storage = root.localStorage;
+    const eligible = (record, isDraft = false) => record?.driverId === driverId
+      && /^\d{4}-\d{2}-\d{2}$/.test(record.date || '') && record.date < cutoff
+      && record.vehicle && record.startedAt && canRelease(record)
+      && (isDraft ? record.active === true : record.type === 'driver_walkaround' && record.recordId && record.syncState === 'saved_to_worker' && !record.syncError);
+    const db = await openArchive();
+    try {
+      const archived = await db.oldWalkaroundCopies(eligible);
+      const inline = keys(storage).filter(key => /^pmg_walkaround_\d{4}-\d{2}-\d{2}_/.test(key))
+        .map(key => { const raw = storage.getItem(key); return {key,raw,record:parse(raw,null)}; })
+        .filter(row => eligible(row.record));
+      const copies = [...archived,...inline];
+      const unique = new Map(copies.map(row => [walkaroundIdentity(row.record),row.record]));
+      const records = [...unique.values()];
+      const receipts = new Map();
+      for (let index=0; index<records.length; index+=30) {
+        const keys = records.slice(index,index+30).map(({date,driverId,vehicle,trailer,startedAt}) =>
+          ({date,driverId,vehicle,trailer:trailer || '',startedAt}));
+        const response = await verify(keys);
+        if (response?.ok !== true || response.cutoff !== cutoff || !Array.isArray(response.receipts)) return null;
+        for (const receipt of response.receipts) receipts.set(walkaroundIdentity(receipt),receipt);
+      }
+      let removed = 0;
+      for (const copy of copies) {
+        const receipt = receipts.get(walkaroundIdentity(copy.record));
+        if (!receipt || !eligible(copy.record,copy.isDraft)) continue;
+        if (copy.isDraft ? !await draftPhotosMatch(copy.record,receipt) : receipt.recordId !== copy.record.recordId) continue;
+        if (copy.id) {
+          if (await db.removeVerifiedCopy(copy,canRelease)) removed++;
+        } else {
+          await root.navigator.locks.request('pmg-walkaround-receipt:' + copy.key, () => {
+            if (storage.getItem(copy.key) === copy.raw && eligible(copy.record)) {
+              storage.removeItem(copy.key);
+              removed++;
+            }
+          });
+        }
+      }
+      return {removed,checked:records.length};
+    } finally { db.close(); }
   }
   async function readWalkaroundReceipt(key) {
     const db = await openArchive();
@@ -301,5 +407,5 @@
       throw error;
     } finally { archive?.close(); }
   }
-  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, updateRecords, readWalkaroundReceipt, saveWalkaroundReceipt, readAcknowledgedWalkaroundDraft, eligible, quota, HELP, DB_NAME, STORE };
+  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, updateRecords, readWalkaroundReceipt, saveWalkaroundReceipt, readAcknowledgedWalkaroundDraft, reclaimVerifiedWalkarounds, retentionCutoff, eligible, quota, HELP, DB_NAME, STORE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

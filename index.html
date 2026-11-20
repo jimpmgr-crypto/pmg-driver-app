@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261120-driver-storage-journal-r3';
+const APP_BUILD_ID = '20261120-driver-retention-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -3435,6 +3435,34 @@ $('pin-keypad').addEventListener('click', e => {
 // JOBS SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
 
+let lastWalkaroundRetentionRun = '';
+let walkaroundRetentionRunning = false;
+
+function scheduleWalkaroundRetention() {
+  const driverId = currentUser?.driverId;
+  const today = todayISO();
+  const run = driverId + ':' + today;
+  if (!driverId || isManager || currentScreen !== 'jobs' || !navigator.onLine
+    || walkaroundRetentionRunning || lastWalkaroundRetentionRun === run) return;
+  walkaroundRetentionRunning = true;
+  PmgDriverStorage.reclaimVerifiedWalkarounds({
+    driverId, today,
+    canRelease(record) {
+      if (currentUser?.driverId !== driverId || currentScreen !== 'jobs') return false;
+      try {
+        const pending = JSON.parse(localStorage.getItem(walkaroundTicketQueueKey()) || '[]');
+        return Array.isArray(pending) && pending.every(entry => entry && entry.date && entry.date !== record.date);
+      } catch { return false; }
+    },
+    async verify(keys) {
+      const response = await api('/walkaround-retention', {method:'POST',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify(keys)});
+      return response.ok ? response.json() : null;
+    },
+  }).then(result => { if (result) lastWalkaroundRetentionRun = run; })
+    .catch(() => {}).finally(() => { walkaroundRetentionRunning = false; });
+}
+
 function enterJobsScreen() {
   $('login-screen').classList.add('hidden');
   $('pin-screen').classList.add('hidden');
@@ -3444,8 +3472,14 @@ function enterJobsScreen() {
   showJobList();
   renderDriverPrestart();
   loadJobs({ force: true });
-  if (!isManager) resumeWalkaroundDraftAfterEnter();
-  refreshTimer = setInterval(() => loadJobs({ automatic: true }), JOB_REFRESH_MS);
+  if (!isManager) {
+    resumeWalkaroundDraftAfterEnter();
+    scheduleWalkaroundRetention();
+  }
+  refreshTimer = setInterval(() => {
+    loadJobs({ automatic: true });
+    scheduleWalkaroundRetention();
+  }, JOB_REFRESH_MS);
 }
 
 function logout() {

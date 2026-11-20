@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261119-walkaround-receipt-r1';
+const WORKER_BUILD_ID = '20261120-walkaround-retention-r1';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -3641,6 +3641,55 @@ async function proofBytesHash(bytes) {
   return [...new Uint8Array(hash)].map(value => value.toString(16).padStart(2, '0')).join('');
 }
 
+function walkaroundRetentionCutoff() {
+  const today = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/London'}).format(new Date());
+  const day = new Date(today+'T12:00:00Z');
+  day.setUTCDate(day.getUTCDate() - (day.getUTCDay() + 6) % 7 - 7);
+  return day.toISOString().slice(0,10);
+}
+
+function validWalkaroundRetentionIdentity(row, cutoff) {
+  return row && typeof row.date === 'string' && isValidIsoDate(row.date) && row.date < cutoff
+    && /^[a-f0-9-]{36}$/.test(row.driverId || '')
+    && /^[A-Z0-9]{1,12}$/.test(row.vehicle || '') && typeof row.trailer === 'string'
+    && /^[A-Z0-9]{0,16}$/.test(row.trailer)
+    && typeof row.startedAt === 'string' && Number.isFinite(Date.parse(row.startedAt));
+}
+
+async function walkaroundRetentionKey(row) {
+  const identity = JSON.stringify([row.date,row.driverId,row.vehicle,row.trailer,row.startedAt]);
+  return 'walkaround-office-receipt:' + await proofBytesHash(new TextEncoder().encode(identity));
+}
+
+async function handleWalkaroundRetention(env, body, publish) {
+  const cutoff = walkaroundRetentionCutoff();
+  if (!Array.isArray(body) || body.length > 30) return corsResponse(JSON.stringify({error:'invalid_retention_request'}),400);
+  const receipts = [];
+  for (const row of body) {
+    if (!validWalkaroundRetentionIdentity(row, cutoff)) continue;
+    const key = await walkaroundRetentionKey(row);
+    if (!publish) {
+      const receipt = safeJsonParse(await env.PMG_DATA.get(key));
+      if (receipt) receipts.push(receipt);
+      continue;
+    }
+    const expected = ['front_left','rear_left','rear_right','front_right'];
+    if (row.trailer) expected.push('trailer_coupling');
+    if (!/^wa-[A-Za-z0-9_-]{12,150}$/.test(row.recordId || '') || !row.photos
+      || !/^[a-f0-9]{64}$/.test(row.checkSha256 || '') || Object.keys(row.photos).length !== expected.length
+      || !expected.every(kind => /^[a-f0-9]{64}$/.test(row.photos[kind] || ''))) continue;
+    const receipt = {date:row.date,driverId:row.driverId,vehicle:row.vehicle,trailer:row.trailer,
+      startedAt:row.startedAt,recordId:row.recordId,photos:row.photos,checkSha256:row.checkSha256};
+    const stored = safeJsonParse(await env.PMG_DATA.get(key));
+    const same = stored && stored.recordId === receipt.recordId && stored.checkSha256 === receipt.checkSha256
+      && expected.every(kind => receipt.photos[kind] === stored.photos?.[kind]);
+    if (stored && !same) continue;
+    if (!stored) await env.PMG_DATA.put(key, JSON.stringify(receipt));
+    receipts.push(receipt);
+  }
+  return corsResponse(JSON.stringify({ok:true,cutoff,receipts}),200,{'Cache-Control':'no-store'});
+}
+
 async function deriveProtectedProofReceipt(env, metadata) {
   const event = safeJsonParse(await env.PMG_DATA.get(`ticket:trial-${metadata.eventId}`));
   const kinds = proofKinds(event);
@@ -4852,6 +4901,16 @@ async function handleDriverRequest(request, env) {
       const suffix = request.method === 'GET' ? '/status' : '/backfill';
       const target = new Request('https://store/__ticket_index' + suffix, { method: request.method, ...(request.method === 'POST' ? { body: await request.text() } : {}) });
       return withStoreCors(await ticketIndexStub(env).fetch(target));
+    }
+
+    if (path === '/walkaround-retention' && request.method === 'POST') {
+      const raw = await request.text();
+      return handleWalkaroundRetention(env, raw.length <= 32000 ? safeJsonParse(raw) : null, false);
+    }
+    if (path === '/admin/walkaround-retention' && request.method === 'POST') {
+      if (!hasAdminKey(request, env)) return corsResponse(JSON.stringify({error:'admin_key_required'}),403);
+      const raw = await request.text();
+      return handleWalkaroundRetention(env, raw.length <= 32000 ? safeJsonParse(raw) : null, true);
     }
 
     // Read-only recovery. The exact phone draft must prove possession of an
