@@ -38,6 +38,7 @@ const context = {
   YARD_ADDRESS: { line1: 'Test Yard' }, JOB_TYPE_STD: 'test-type', SERVICE_LEVEL_STD: 'test-service',
 };
 vm.createContext(context);
+vm.runInContext(section('const DRIVER_APP_DRIVER_IDS_BY_NAME', 'const DRIVER_APP_VEHICLE_IDS_BY_REG'), context);
 vm.runInContext(section('function findCustomerMatch(', 'function firstConsignment('), context);
 vm.runInContext(section('async function buildDriverAddedHaultechPayload(', 'function cleanMultiline('), context);
 let cases = 0;
