@@ -1,5 +1,5 @@
 {
-  "buildId": "20261120-driver-retention-r1",
+  "buildId": "20261120-driver-retention-r2",
   "updatedAt": "2026-11-20",
   "baselineCommit": "51791cd",
   "expectedWorkerBuildId": "20261120-driver-retirement-r2",

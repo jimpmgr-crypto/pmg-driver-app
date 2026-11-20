@@ -1159,6 +1159,12 @@ test('two-week cleanup removes only exact office-verified copies and leaves curr
     const draft={...verified,active:true,photoDataUrls:Object.fromEntries(slots.map(kind=>[kind,'data:image/png;base64,'+image]))};
     const draftKey=walkaroundDraftStorageKey(draft);
     localStorage.setItem(draftKey,JSON.stringify(draft));
+    const malformed = {...draft,vehicle:'BT66ZJO',recordId:'wa-old-malformed-123',
+      photoDataUrls:{...draft.photoDataUrls,front_left:'data:image/png;base64,%%%'}};
+    const malformedKey=walkaroundDraftStorageKey(malformed);
+    const malformedRaw=JSON.stringify(malformed);
+    localStorage.setItem(malformedKey,malformedRaw);
+    if (!await PmgDriverStorage.archiveAcknowledgedDraft(malformedKey,malformedRaw)) throw new Error('Could not seed corrupt archive fixture');
     await PmgDriverStorage.archiveAcknowledgedDraft(draftKey,JSON.stringify(draft));
     const inProgressKey=walkaroundDraftStorageKey({...draft,vehicle:'PN25FLF'});
     localStorage.setItem(inProgressKey,JSON.stringify({...draft,vehicle:'PN25FLF'}));
@@ -1167,12 +1173,13 @@ test('two-week cleanup removes only exact office-verified copies and leaves curr
     const noReceipt=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[]})});
     const wrongNotes=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[{...approved,recordId:'wrong',checkSha256:'0'.repeat(64)}]})});
     const missingPhoto=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,canRelease:()=>false,verify:async()=>({ok:true,cutoff,receipts:[approved]})});
-    const released=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[approved]})});
+    const released=await PmgDriverStorage.reclaimVerifiedWalkarounds({...session,verify:async()=>({ok:true,cutoff,receipts:[approved,{...approved,vehicle:malformed.vehicle,recordId:malformed.recordId}]})});
     return {noReceipt:noReceipt.removed,held:missingPhoto.removed,wrongNotes:wrongNotes.removed,removed:released.removed,
       inline:keys.map(key=>!!localStorage.getItem(key)),inProgress:!!localStorage.getItem(inProgressKey),
-      archived:!!await PmgDriverStorage.readAcknowledgedWalkaroundDraft(draftKey)};
+      archived:!!await PmgDriverStorage.readAcknowledgedWalkaroundDraft(draftKey),
+      malformedArchived:!!await PmgDriverStorage.readAcknowledgedWalkaroundDraft(malformedKey)};
   },{image:TEST_PNG.toString('base64'),hash:require('crypto').createHash('sha256').update(TEST_PNG).digest('hex'),checkHash:require('crypto').createHash('sha256').update('[[],""]').digest('hex')});
-  expect(result).toEqual({noReceipt:0,held:0,wrongNotes:0,removed:2,inline:[false,true,true],inProgress:true,archived:false});
+  expect(result).toEqual({noReceipt:0,held:0,wrongNotes:0,removed:2,inline:[false,true,true],inProgress:true,archived:false,malformedArchived:true});
 });
 
 test('driver startup automatically requests only older walkarounds from the office', async ({page}) => {

@@ -260,7 +260,13 @@
     if (photos.length !== Object.keys(receipt.photos || {}).length || !photos.length) return false;
     for (const [kind,data] of photos) {
       if (typeof data !== 'string' || !/^data:image\/[^;]+;base64,/.test(data)) return false;
-      const bytes = Uint8Array.from(root.atob(data.split(',',2)[1]), char => char.charCodeAt(0));
+      let decoded;
+      try { decoded = root.atob(data.split(',', 2)[1]); }
+      catch (error) {
+        if (error.name !== 'InvalidCharacterError') throw error;
+        return false;
+      }
+      const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
       if (await photoDigest(bytes) !== receipt.photos[kind]) return false;
     }
     return true;
