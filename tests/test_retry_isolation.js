@@ -6,7 +6,8 @@ async function run(){
  let q=[{date:'2026-11-16',jobs:[{id:'old',notes:'retain'}]},{date:'2026-11-17',jobs:[{id:'a',movementId:'driver-a',notes:'pending A'}],savedAt:'original'}];
  const c=vm.createContext({getRetryQueue:()=>clone(q),setRetryQueue:v=>q=clone(v),updateSyncUI(){},PmgJobBackup:{identity:r=>r.movementId||r.id},console});
  vm.runInContext(fn('addToRetryQueue'),c);
- c.addToRetryQueue('2026-11-17',[{id:'b',movementId:'driver-b',notes:'pending B'}]);
+ c.withDriverJournal=async(keys,change)=>change({});
+ await c.addToRetryQueue('2026-11-17',[{id:'b',movementId:'driver-b',notes:'pending B'}]);
  assert(q.some(e=>e.jobs.some(r=>r.id==='a')),'saving B must preserve exact unrelated pending A');
  assert.equal(q[0].jobs[0].notes,'retain');
  console.log('PASS saving a second row preserves previous pending work');

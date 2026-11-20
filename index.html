@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261120-walkaround-phone-copy-r1';
+const APP_BUILD_ID = '20261120-driver-storage-journal-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2371,7 +2371,11 @@ async function localGetJobs(date) {
 }
 
 async function cloudPutJobs(date, jobs) {
-  const payload = await PmgJobBackup.prepare(localStorage, date, jobs, currentUser?.name);
+  const backupJournal = {
+    transaction: withDriverJournal,
+    removeItem: key => withDriverJournal([key], storage => storage.setItem(key, null)),
+  };
+  const payload = await PmgJobBackup.prepare(backupJournal, date, jobs, currentUser?.name);
   const resp = await driverFetch(WORKER_URL + '/jobs/' + date, {
     method: 'PUT',
     headers: { 'X-PMG-Key': API_KEY, 'Content-Type': 'application/json' },
@@ -2382,7 +2386,7 @@ async function cloudPutJobs(date, jobs) {
     const message = resp.status === 409
       ? 'This row changed elsewhere. Your proposed work is retained for an office check.'
       : 'Job backup was not confirmed. The saved request will be retried.';
-    PmgJobBackup.problem(localStorage, date, payload, message);
+    await saveBackupProblem(date, payload, message);
     throw new Error(message);
   }
   // Attach receipts only to the identical snapshot, never to a newer edit.
@@ -2391,7 +2395,7 @@ async function cloudPutJobs(date, jobs) {
   PmgJobBackup.accept(payload, result, localRows);
   if (await PmgDriverStorage.writeJobRaw(date, JSON.stringify(localRows), original) === false) {
     const message = 'Phone records changed while saving the backup receipt. The exact request is retained for retry; newer work is safe.';
-    PmgJobBackup.problem(localStorage, date, payload, message);
+    await saveBackupProblem(date, payload, message);
     throw new Error(message);
   }
   PmgJobBackup.accept(payload, result, jobs);
@@ -2402,17 +2406,67 @@ async function cloudPutJobs(date, jobs) {
       if (saved) job._backupRevision = saved._backupRevision;
     }
   }
-  await PmgJobBackup.finish(localStorage, date, payload);
-  PmgJobBackup.problem(localStorage, date, payload, null);
+  await PmgJobBackup.finish(backupJournal, date, payload);
+  await saveBackupProblem(date, payload, null);
 }
 
 function driverReviewBackupJobs(jobs) {
   return jobs.filter(j => j && (j._driverAdded || j.driverAdded || String(j.id || '').startsWith('driver-')));
 }
 
-function getRetryQueue() {
+const driverJournalMirror = new Map();
+let driverJournalReadError = '';
+
+function readDriverJournalValue(key) {
+  const inline = localStorage.getItem(key);
+  const stored = driverJournalMirror.get(key);
+  if (!stored) return inline;
+  if (stored.inline !== inline) throw new Error('An older app changed saved phone records. Both copies are retained for the office.');
+  return stored.raw;
+}
+
+function driverJournalKeys() {
+  return [localEventKey(), localQueueKey(), 'pmg_retry_queue', 'pmg_backup_problem_' + todayISO()];
+}
+
+async function withDriverJournal(keys, change) {
+  const { outcome, values } = await PmgDriverStorage.updateRecords(keys, rows => {
+    const storage = {
+      getItem: key => rows.get(key).raw,
+      setItem: (key, value) => {
+        const row = rows.get(key);
+        row.raw = value;
+        row.changed = true;
+      },
+    };
+    return change(storage);
+  });
+  for (const key of driverJournalKeys()) {
+    if (!values.has(key)) continue;
+    const value = values.get(key);
+    if (value.persisted) driverJournalMirror.set(key, value);
+    else driverJournalMirror.delete(key);
+  }
+  return outcome;
+}
+
+async function saveBackupProblem(date, payload, message) {
+  return withDriverJournal(['pmg_backup_problems_' + date, 'pmg_backup_problem_' + date], storage =>
+    PmgJobBackup.problem({ ...storage, removeItem: key => storage.setItem(key, null) }, date, payload, message));
+}
+
+async function refreshDriverJournal() {
   try {
-    const queue = JSON.parse(localStorage.getItem('pmg_retry_queue') || '[]');
+    await withDriverJournal(driverJournalKeys(), () => {});
+    driverJournalReadError = '';
+  } catch (error) {
+    driverJournalReadError = error.message || 'Saved phone records could not be checked';
+  }
+}
+
+function getRetryQueue(storage = { getItem: readDriverJournalValue }) {
+  try {
+    const queue = JSON.parse(storage.getItem('pmg_retry_queue') || '[]');
     if (!Array.isArray(queue)) throw new Error('Invalid saved retry list');
     return queue;
   } catch {
@@ -2420,8 +2474,8 @@ function getRetryQueue() {
   }
 }
 
-function setRetryQueue(q) {
-  localStorage.setItem('pmg_retry_queue', JSON.stringify(q));
+function setRetryQueue(q, storage = localStorage) {
+  storage.setItem('pmg_retry_queue', JSON.stringify(q));
 }
 
 function pruneRetryQueue(q = getRetryQueue()) {
@@ -2455,17 +2509,17 @@ function clearDayFinished(date = todayISO()) {
   try { localStorage.removeItem(dayFinishedKey(date)); } catch {}
 }
 
-function readJSON(key, fallback) {
+function readJSON(key, fallback, storage = localStorage) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    const parsed = JSON.parse(storage.getItem(key) || JSON.stringify(fallback));
     if (Array.isArray(fallback) && (!Array.isArray(parsed) || parsed.some(item => !item || typeof item !== 'object' || Array.isArray(item)))) return fallback;
     return parsed;
   }
   catch { return fallback; }
 }
 
-function writeJSON(key, value) {
-  const previous = localStorage.getItem(key);
+function writeJSON(key, value, storage = localStorage) {
+  const previous = storage.getItem(key);
   if (previous !== null) {
     try {
       const parsed = JSON.parse(previous);
@@ -2474,13 +2528,14 @@ function writeJSON(key, value) {
       throw new Error('Saved phone data cannot be read. Original data retained; ask the office.');
     }
   }
-  localStorage.setItem(key, JSON.stringify(value));
+  storage.setItem(key, JSON.stringify(value));
 }
 
 function pendingStoreReadProblem() {
+  if (driverJournalReadError) return driverJournalReadError;
   for (const key of [localQueueKey(), localEventKey(), walkaroundTicketQueueKey()]) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readDriverJournalValue(key);
       if (raw !== null) {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed) || parsed.some(item => !item || typeof item !== 'object' || Array.isArray(item))) throw new Error('Invalid saved list');
@@ -2512,18 +2567,18 @@ function showCompletionSaveError(error) {
   toast(message);
 }
 
-function getWritebackQueue() {
-  return readJSON(localQueueKey(), []);
+function getWritebackQueue(storage = { getItem: readDriverJournalValue }) {
+  return readJSON(localQueueKey(), [], storage);
 }
 
-function setWritebackQueue(queue) {
-  writeJSON(localQueueKey(), queue);
+function setWritebackQueue(queue, storage) {
+  writeJSON(localQueueKey(), queue, storage);
 }
 
-function markDriverFailedWritebacksSavedLocally() {
+function markDriverFailedWritebacksSavedLocally(storage) {
   const driver = currentUser?.name || '';
   if (!driver) return false;
-  const queue = getWritebackQueue();
+  const queue = getWritebackQueue(storage);
   let changed = false;
   const updated = queue.map(item => {
     if (item && item.driver === driver && item.state === 'needs office review') {
@@ -2539,33 +2594,37 @@ function markDriverFailedWritebacksSavedLocally() {
     }
     return item;
   });
-  if (changed) setWritebackQueue(updated);
+  if (changed) setWritebackQueue(updated, storage);
   return changed;
 }
 
-function setQueueState(eventId, state, reason) {
-  const queue = getWritebackQueue();
-  const idx = queue.findIndex(item => item.eventId === eventId);
-  if (idx >= 0) {
-    queue[idx].state = state;
-    queue[idx].reason = reason || queue[idx].reason || '';
-    queue[idx].updatedAt = new Date().toISOString();
-    setWritebackQueue(queue);
-  }
+async function setQueueState(eventId, state, reason) {
+  return withDriverJournal([localQueueKey()], storage => {
+    const queue = getWritebackQueue(storage);
+    const idx = queue.findIndex(item => item.eventId === eventId);
+    if (idx >= 0) {
+      queue[idx].state = state;
+      queue[idx].reason = reason || queue[idx].reason || '';
+      queue[idx].updatedAt = new Date().toISOString();
+      setWritebackQueue(queue, storage);
+    }
+  });
 }
 
-function setQueueStateIfPending(eventId, state, reason) {
-  const queue = getWritebackQueue();
-  const idx = queue.findIndex(item => item.eventId === eventId);
-  if (idx >= 0 && queue[idx].state === 'pending Haultech') {
-    queue[idx].state = state;
-    queue[idx].reason = reason || queue[idx].reason || '';
-    queue[idx].updatedAt = new Date().toISOString();
-    setWritebackQueue(queue);
-  }
+async function setQueueStateIfPending(eventId, state, reason) {
+  return withDriverJournal([localQueueKey()], storage => {
+    const queue = getWritebackQueue(storage);
+    const idx = queue.findIndex(item => item.eventId === eventId);
+    if (idx >= 0 && queue[idx].state === 'pending Haultech') {
+      queue[idx].state = state;
+      queue[idx].reason = reason || queue[idx].reason || '';
+      queue[idx].updatedAt = new Date().toISOString();
+      setWritebackQueue(queue, storage);
+    }
+  });
 }
 
-function queueTrialEvent(type, job, payload = {}, options = {}) {
+async function queueTrialEvent(type, job, payload = {}, options = {}) {
   const now = new Date().toISOString();
   const jobId = String(job?.id || job?.jobId || payload.jobId || ('driver-' + Date.now()));
   const event = {
@@ -2583,25 +2642,27 @@ function queueTrialEvent(type, job, payload = {}, options = {}) {
     payload,
   };
 
-  const events = readJSON(localEventKey(), []);
-  events.push(event);
-  writeJSON(localEventKey(), events);
+  await withDriverJournal([localEventKey(), localQueueKey()], storage => {
+    const events = readJSON(localEventKey(), [], storage);
+    events.push(event);
+    writeJSON(localEventKey(), events, storage);
 
-  const queue = getWritebackQueue();
-  queue.push({
-    eventId: event.eventId,
-    type,
-    jobId,
-    jobNumber: event.jobNumber,
-    driver: event.driver,
-    state: event.haultechWriteState === 'written' ? 'pending Haultech' : event.haultechWriteState,
-    reason: payload.reason || (event.haultechWriteState === 'written' ? 'Waiting for worker acknowledgement' : (LIVE_WRITE ? 'Ready for live write' : 'Saved locally')),
-    missingPrice: payload.price === '' || payload.price === null || payload.price === undefined,
-    updatedAt: now,
+    const queue = getWritebackQueue(storage);
+    queue.push({
+      eventId: event.eventId,
+      type,
+      jobId,
+      jobNumber: event.jobNumber,
+      driver: event.driver,
+      state: event.haultechWriteState === 'written' ? 'pending Haultech' : event.haultechWriteState,
+      reason: payload.reason || (event.haultechWriteState === 'written' ? 'Waiting for worker acknowledgement' : (LIVE_WRITE ? 'Ready for live write' : 'Saved locally')),
+      missingPrice: payload.price === '' || payload.price === null || payload.price === undefined,
+      updatedAt: now,
+    });
+    setWritebackQueue(queue, storage);
   });
-  setWritebackQueue(queue);
 
-  if (!options.deferPersist) persistTrialEventToWorker(event);
+  if (!options.deferPersist) await persistTrialEventToWorker(event);
   return event;
 }
 
@@ -2618,13 +2679,15 @@ async function persistTrialEventToWorker(event) {
     if (receipt?.ok !== true) throw new Error('Worker audit acknowledgement was not confirmed');
     acknowledged = true;
     const alreadyWritten = event.haultechWriteState === 'written' || event.state === 'written';
-    setQueueStateIfPending(
+    await setQueueStateIfPending(
       event.eventId,
       LIVE_WRITE && alreadyWritten ? 'written' : event.haultechWriteState,
       LIVE_WRITE && alreadyWritten ? 'Worker accepted event' : 'Audit saved; waiting for live Haultech result'
     );
   } catch (e) {
-    setQueueState(event.eventId, 'failed', e.message || 'Worker KV failed');
+    if (!acknowledged) {
+      try { await setQueueState(event.eventId, 'failed', e.message || 'Worker KV failed'); } catch {}
+    }
   }
   updateSyncUI();
   return acknowledged;
@@ -2646,7 +2709,6 @@ function updateJobStatusLocal(job, status) {
 }
 
 function queueCounts() {
-  markDriverFailedWritebacksSavedLocally();
   const queue = getWritebackQueue();
   return queue.reduce((acc, item) => {
     acc[item.state] = (acc[item.state] || 0) + 1;
@@ -2670,7 +2732,7 @@ function renderQueueSummary(options = {}) {
   let backups = [], retryReadProblem = '';
   try { backups = getRetryQueue(); } catch (error) { retryReadProblem = error.message; }
   let backupProblem = '';
-  try { backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO()) || ''; }
+  try { backupProblem = readDriverJournalValue('pmg_backup_problem_' + todayISO()) || ''; }
   catch { backupProblem = 'Backup status unavailable'; }
   const otherPending = backups.length > 0 || getPendingWalkaroundTickets().length > 0;
   const summary = retryReadProblem || backupProblem || backups.some(entry => entry?.date !== todayISO())
@@ -2684,20 +2746,22 @@ function renderQueueSummary(options = {}) {
   return `<details class="queue-strip"><summary>${esc(options.technical ? 'Technical sync details' : `Sync details — ${summary}`)}</summary><div style="margin-top:8px">${pills}<div style="margin-top:6px">${esc(note)}</div></div></details>`;
 }
 
-function addToRetryQueue(date, jobs) {
-  const q = getRetryQueue();
-  if (!Array.isArray(q)) throw new Error('Saved retries cannot be read. Keep the form open and ask the office.');
-  const changed = new Map(jobs.map(row => [PmgJobBackup.identity(row), row]));
-  if (changed.has('')) throw new Error('Saved retry has no movement identity');
-  // Only this explicit edit supersedes the retry for its own movement. Retain
-  // every unrelated row/date verbatim; exact in-flight intents stay journalled.
-  const retained = q.flatMap(entry => {
-    if (!entry || entry.date !== date || !Array.isArray(entry.jobs)) return [entry];
-    const rows = entry.jobs.filter(row => !row || !changed.has(PmgJobBackup.identity(row)));
-    return rows.length === entry.jobs.length ? [entry] : (rows.length ? [{ ...entry, jobs: rows }] : []);
+async function addToRetryQueue(date, jobs) {
+  await withDriverJournal(['pmg_retry_queue'], storage => {
+    const q = getRetryQueue(storage);
+    if (!Array.isArray(q)) throw new Error('Saved retries cannot be read. Keep the form open and ask the office.');
+    const changed = new Map(jobs.map(row => [PmgJobBackup.identity(row), row]));
+    if (changed.has('')) throw new Error('Saved retry has no movement identity');
+    // Only this explicit edit supersedes the retry for its own movement. Retain
+    // every unrelated row/date verbatim; exact in-flight intents stay journalled.
+    const retained = q.flatMap(entry => {
+      if (!entry || entry.date !== date || !Array.isArray(entry.jobs)) return [entry];
+      const rows = entry.jobs.filter(row => !row || !changed.has(PmgJobBackup.identity(row)));
+      return rows.length === entry.jobs.length ? [entry] : (rows.length ? [{ ...entry, jobs: rows }] : []);
   });
   for (const row of changed.values()) retained.push({ date, jobs: [row], savedAt: new Date().toISOString() });
-  setRetryQueue(retained);
+  setRetryQueue(retained, storage);
+  });
   updateSyncUI();
 }
 
@@ -2757,7 +2821,7 @@ async function flushRetryQueue() {
   flushRetryQueue.pending = new Promise(resolve => { settle = resolve; });
   flushRetryQueue.running = true;
   try {
-  const q = pruneRetryQueue();
+  const q = await withDriverJournal(['pmg_retry_queue'], storage => pruneRetryQueue(getRetryQueue(storage)));
   if (!q.length) return;
   const results = new Map();
   for (const entry of q) {
@@ -2825,17 +2889,23 @@ async function flushRetryQueue() {
       results.set(original, entry);
     }
   }
-  const remaining = pruneRetryQueue().flatMap(entry => {
-    const key = JSON.stringify(entry);
-    if (!results.has(key)) return [entry];
-    const result = results.get(key);
-    return result ? [result] : [];
+  const remaining = await withDriverJournal(['pmg_retry_queue'], storage => {
+    const remaining = pruneRetryQueue(getRetryQueue(storage)).flatMap(entry => {
+      const key = JSON.stringify(entry);
+      if (!results.has(key)) return [entry];
+      const result = results.get(key);
+      return result ? [result] : [];
   });
-  setRetryQueue(remaining);
+  setRetryQueue(remaining, storage);
+  return remaining;
+  });
   if (remaining.length === 0 && q.length > 0) {
     toast('✓ Jobs synced to cloud');
   }
   updateSyncUI();
+  } catch (error) {
+    driverJournalReadError = error.message || 'Saved retry could not be checked';
+    updateSyncUI();
   } finally { flushRetryQueue.running = false; settle(); }
 }
 
@@ -2844,7 +2914,6 @@ function needsWritebackAttention(item) {
 }
 
 function updateSyncUI() {
-  markDriverFailedWritebacksSavedLocally();
   let retries = [], retryReadProblem = pendingStoreReadProblem();
   try { retries = getRetryQueue(); } catch (error) { retryReadProblem = error.message; }
   const backupPending = retries.length > 0;
@@ -2852,7 +2921,9 @@ function updateSyncUI() {
   const queue = getWritebackQueue();
   const writebackPending = queue.some(item => item.state === 'pending Haultech');
   const writebackFailed = queue.some(item => item.state === 'failed');
-  const backupProblem = localStorage.getItem('pmg_backup_problem_' + todayISO());
+  let backupProblem = '';
+  try { backupProblem = readDriverJournalValue('pmg_backup_problem_' + todayISO()); }
+  catch { backupProblem = 'Saved backup needs an office check'; }
   const pending = queue.some(needsWritebackAttention) || olderPending || !!backupProblem || !!retryReadProblem;
   const banner = $('sync-banner');
   if (pending) {
@@ -2899,13 +2970,13 @@ async function saveJobsToCloud(date, jobs, expected, changedJobs = jobs) {
     updateSyncUI();
     return true;
   }
-  if (reviewBackup.some(job => job.haultechWriteState === 'pending Haultech')) addToRetryQueue(date, reviewBackup);
+  if (reviewBackup.some(job => job.haultechWriteState === 'pending Haultech')) await addToRetryQueue(date, reviewBackup);
   try {
     await cloudPutJobs(date, reviewBackup);
     updateSyncUI();
     return true;
   } catch {
-    addToRetryQueue(date, reviewBackup);
+    await addToRetryQueue(date, reviewBackup);
     updateSyncUI();
     return false;
   }
@@ -3042,24 +3113,26 @@ function findMatchingLiveDriverJob(localJob, jobs = allJobs) {
 }
 
 function clearMatchedDriverWritebackQueue(localJobs, cloudJobs) {
-  const queue = getWritebackQueue();
-  if (!queue.length) return;
-  let changed = false;
-  const updated = queue.map(item => {
-    if (!item || item.state !== 'pending Haultech') return item;
-    const localJob = localJobs.find(lj => String(lj.id || lj.jobId || lj.ticketNo || '') === String(item.jobId || ''));
-    if (!localJob || !isLocalDriverTempJob(localJob)) return item;
-    const matched = findMatchingLiveDriverJob(localJob, cloudJobs.filter(j => !j?._cached));
-    if (!matched || getJobStatus(matched) !== 'complete') return item;
-    changed = true;
-    return {
-      ...item,
-      state: 'written',
-      reason: `Matched completed Haultech job ${getJobNumber(matched)}`,
-      updatedAt: new Date().toISOString(),
-    };
-  });
-  if (changed) setWritebackQueue(updated);
+  return withDriverJournal([localQueueKey()], storage => {
+    const queue = getWritebackQueue(storage);
+    if (!queue.length) return;
+    let changed = false;
+    const updated = queue.map(item => {
+      if (!item || item.state !== 'pending Haultech') return item;
+      const localJob = localJobs.find(lj => String(lj.id || lj.jobId || lj.ticketNo || '') === String(item.jobId || ''));
+      if (!localJob || !isLocalDriverTempJob(localJob)) return item;
+      const matched = findMatchingLiveDriverJob(localJob, cloudJobs.filter(j => !j?._cached));
+      if (!matched || getJobStatus(matched) !== 'complete') return item;
+      changed = true;
+      return {
+        ...item,
+        state: 'written',
+        reason: `Matched completed Haultech job ${getJobNumber(matched)}`,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    if (changed) setWritebackQueue(updated, storage);
+  }).catch(error => showError(error.message));
 }
 
 function mergeWithLocal(date, cloudJobs, localJobs, options = {}) {
@@ -3128,7 +3201,7 @@ function mergeWithLocal(date, cloudJobs, localJobs, options = {}) {
   }
 
   if (toRepush.length && options.retryLocalRows !== false) {
-    cloudPutJobs(date, toRepush).catch(() => addToRetryQueue(date, toRepush));
+    cloudPutJobs(date, toRepush).catch(() => addToRetryQueue(date, toRepush)).catch(error => showError(error.message));
   }
 
   return [...cloudJobs, ...toAdd];
@@ -4057,7 +4130,7 @@ function mapChoiceLinks(query, mode = 'delivery') {
 }
 
 function trackMapRoute(job, mode, query, provider = 'apple') {
-  queueTrialEvent('map_route', job, { mode, provider, address: query, state: 'written', haultechWriteState: 'written' });
+  queueTrialEvent('map_route', job, { mode, provider, address: query, state: 'written', haultechWriteState: 'written' }).catch(error => showError(error.message));
 }
 
 function attachMapChoiceListeners(container, job, mode, query) {
@@ -4236,8 +4309,7 @@ function attachDayReviewListeners(container, jobs) {
       return;
     }
     if (getOpenDayReviewJobs(jobs).length === 0 && jobs.length) {
-      saveFinishedForDay(jobs);
-      renderJobs();
+      saveFinishedForDay(jobs).then(renderJobs, error => showError(error.message));
       return;
     }
     dayReviewOpen = !dayReviewOpen;
@@ -4281,9 +4353,10 @@ async function handleDayReviewAction(job, action) {
 async function cancelDriverJob(job, { reason, note = '', photo = null, type = 'job_cancelled' }) {
   job._cancellationPending = true;
   const storageKey = getJobConsignmentId(job) || job.id || job.jobId;
-  const event = queueTrialEvent(type, job, { status: 'cancelled', reason, note, hasPhoto: !!photo,
-    state: 'pending Haultech', haultechWriteState: 'pending Haultech' }, { deferPersist: true });
+  let event;
   try {
+    event = await queueTrialEvent(type, job, { status: 'cancelled', reason, note, hasPhoto: !!photo,
+      state: 'pending Haultech', haultechWriteState: 'pending Haultech' }, { deferPersist: true });
     updateJobStatusLocal(job, 'cancelled');
     await localSaveJobs(todayISO(), allJobs);
     if (!await persistTrialEventToWorker(event)) throw new Error('Cancellation audit not confirmed');
@@ -4296,11 +4369,13 @@ async function cancelDriverJob(job, { reason, note = '', photo = null, type = 'j
     });
     await requireWorkerAcknowledgement(response, 'Cancellation status');
     if (await saveJobsToCloud(todayISO(), allJobs, undefined, [job]) === false) throw new Error('Cancellation status saved; the changed backup still needs an office check');
-    setQueueState(event.eventId, 'saved locally', `${reason}; PMG status saved, not completed in Haultech`);
+    await setQueueState(event.eventId, 'saved locally', `${reason}; PMG status saved, not completed in Haultech`);
     job._cancellationPending = false;
     return true;
   } catch (error) {
-    setQueueState(event.eventId, 'failed', error.message || 'Cancellation sync not confirmed');
+    if (event) {
+      try { await setQueueState(event.eventId, 'failed', error.message || 'Cancellation sync not confirmed'); } catch {}
+    }
     return false;
   }
 }
@@ -4312,10 +4387,10 @@ function getFinishedDayVehicle(jobs) {
   return jobVehicles.length === 1 ? jobVehicles[0] : '';
 }
 
-function saveFinishedForDay(jobs) {
+async function saveFinishedForDay(jobs) {
   const openJobs = getOpenDayReviewJobs(jobs);
   if (openJobs.length) return false;
-  markDriverFailedWritebacksSavedLocally();
+  await withDriverJournal([localQueueKey()], markDriverFailedWritebacksSavedLocally);
   const existing = getDayFinished();
   if (existing) {
     toast('✓ Already marked finished for the day');
@@ -4331,7 +4406,7 @@ function saveFinishedForDay(jobs) {
   };
   setDayFinished(payload);
   const fakeJob = { id: `day-${currentUser.driverId || currentUser.name}`, jobId: `day-${currentUser.driverId || currentUser.name}` };
-  const event = queueTrialEvent('day_finished', fakeJob, {
+  await queueTrialEvent('day_finished', fakeJob, {
     ...payload,
     state: 'written',
     haultechWriteState: 'written',
@@ -5946,7 +6021,7 @@ function renderDeliveryTab(container, job) {
     const c = getJobConsignment(job);
     if (c) { c.weight = parseFloat(w) || 0; c.quantity = c.weight; }
     toast('Quantity saved: ' + w);
-    queueTrialEvent('weight_changed', job, { weight: w, state: 'saved locally', haultechWriteState: 'saved locally' });
+    queueTrialEvent('weight_changed', job, { weight: w, state: 'saved locally', haultechWriteState: 'saved locally' }).catch(error => showError(error.message));
   });
   attachMapChoiceListeners(container, job, 'delivery', mapQuery);
   $('detail-start-btn')?.addEventListener('click', e => departJob(job, e.target));
@@ -6481,7 +6556,7 @@ async function handleSignComplete() {
     if (!signPhotoFile && !sigData && !driverSignoff) throw new Error('Add a photo, customer signature or driver sign-off before completing');
     $('sign-save-error')?.remove();
     await ensureDriverStorageSpace().catch(() => {});
-    proofEvent = queueTrialEvent('proof_complete', job, {
+    proofEvent = await queueTrialEvent('proof_complete', job, {
       consigneeName: consignee,
       driverNotes: notes,
       notes: mergedNotes,
@@ -6503,7 +6578,7 @@ async function handleSignComplete() {
       const proofResults = [];
       if (driverSignoff) proofResults.push(await saveDriverSignoff(proofEvent, driverSignoff));
       if (!signPhotoFile && !sigData && !driverSignoff) {
-        setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
+        await setQueueState(proofEvent.eventId, 'failed', 'Not completed in Haultech; no photo or signature supplied');
         toast('⚠️ Add a photo or signature, then tap Complete job');
         return;
       }
@@ -6524,7 +6599,7 @@ async function handleSignComplete() {
       const missingHaultechProof = proofResults.filter(r => !r.haultechUploaded);
       const failedFallbacks = proofResults.filter(r => !r.fallbackSaved);
       if (failedFallbacks.length) {
-        setQueueState(
+        await setQueueState(
           proofEvent.eventId,
           'failed',
           `Not completed in Haultech; proof did not upload cleanly: ${proofSummary}`
@@ -6578,7 +6653,7 @@ async function handleSignComplete() {
             ? `Haultech complete verified; proof protected in PMG: ${proofSummary}`
             : `Haultech complete verified; ${proofSummary}`)
         : `Haultech complete call returned OK but raw diary check did not verify received/completed: ${completionCheck.reason}. ${proofSummary}`;
-      setQueueState(proofEvent.eventId, proofState, proofMessage);
+      await setQueueState(proofEvent.eventId, proofState, proofMessage);
       if(completionPricing.pricingReviewRequired) toast('Completed — pour charge needs office review');
       else toast(completionCheck.ok ? (missingHaultechProof.length ? '✓ Completed — proof saved' : '✓ Completed — Haultech verified') : '✓ Completed — sync check pending');
     } else {
@@ -6623,7 +6698,7 @@ async function handleSignComplete() {
       if(concreteType) job.concreteType=concreteType;
       updateJobStatusLocal(job, 'complete');
       await saveJobsToCloud(todayISO(), allJobs, undefined, [job]);
-      setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
+      await setQueueState(proofEvent.eventId, LIVE_WRITE ? 'pending Haultech' : 'saved locally', LIVE_WRITE ? 'Waiting for Haultech writer' : 'Proof saved locally');
       toast('✓ Complete saved');
     }
 
@@ -6634,7 +6709,7 @@ async function handleSignComplete() {
     if (completionVerified || protectedStatusSaved) {
       // The source readback and protected proof already succeeded. A phone
       // backup failure must not trap the driver or invite a second completion.
-      try { setQueueState(proofEvent.eventId, completionVerified ? 'written' : 'pending Haultech', completionVerified ? 'Haultech completion verified; phone backup needs attention' : 'Proof and completion status saved; Haultech confirmation and phone backup need office review'); } catch {}
+      try { await setQueueState(proofEvent.eventId, completionVerified ? 'written' : 'pending Haultech', completionVerified ? 'Haultech completion verified; phone backup needs attention' : 'Proof and completion status saved; Haultech confirmation and phone backup need office review'); } catch {}
       showJobList();
       try { renderJobs(); } catch {}
       showError(completionVerified
@@ -6644,7 +6719,7 @@ async function handleSignComplete() {
     }
     if (proofEvent) {
       // A storage exception must not throw again while reporting the failure.
-      try { setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed'); } catch {}
+      try { await setQueueState(proofEvent.eventId, 'failed', e.message || 'Live Haultech complete/proof failed'); } catch {}
     }
     showCompletionSaveError(e);
   } finally {
@@ -6670,7 +6745,7 @@ async function departJob(job, btn) {
   try {
     updateJobStatusLocal(job, 'started');
     await localSaveJobs(todayISO(), allJobs);
-    const event = queueTrialEvent('started', job, {
+    const event = await queueTrialEvent('started', job, {
       status: 'started',
       state: 'pending Haultech',
       haultechWriteState: 'pending Haultech',
@@ -6691,9 +6766,9 @@ async function departJob(job, btn) {
       const receipt = await response.json();
       if (receipt?.ok !== true) throw new Error('Worker status acknowledgement was not confirmed');
       workerConfirmed = true;
-      setQueueState(event.eventId, 'written', 'Started status saved locally and in PMG worker; no Haultech write');
+      await setQueueState(event.eventId, 'written', 'Started status saved locally and in PMG worker; no Haultech write');
     } catch (e) {
-      setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local status is still saved on this phone');
+      await setQueueState(event.eventId, 'failed', e.message || 'Worker status save failed; local status is still saved on this phone');
     }
     if (currentScreen === 'jobs') renderJobs();
     toast(workerConfirmed ? 'In Transit saved' : 'In Transit saved on this phone — worker sync needs attention');
@@ -7314,7 +7389,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
     await saveNewDriverRow(localDate, localJob);
     addedRowSaved = true;
     const originalAddedRow = JSON.parse(JSON.stringify(localJob));
-    if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
+    if (LIVE_WRITE) await addToRetryQueue(localDate, [localJob]);
     let haultechWriteState = 'saved locally';
     let haultechReason = DRIVER_ADDED_BACKUP_REASON;
     let confirmedJobId = localJob.id;
@@ -7337,8 +7412,8 @@ $('add-job-form').addEventListener('submit', async (e) => {
     if (await saveRetriedJobRows(localDate, [originalAddedRow], [localJob]) === false) {
       throw new Error('A newer local change was retained; creation receipt needs an office check');
     }
-    if (LIVE_WRITE) addToRetryQueue(localDate, [localJob]);
-    queueTrialEvent('day_sheet_row_added', localJob, {
+    if (LIVE_WRITE) await addToRetryQueue(localDate, [localJob]);
+    await queueTrialEvent('day_sheet_row_added', localJob, {
 	      customer: localJob.customer,
 	      addedBy: localJob.addedBy,
 	      vehicle: localJob.vehicle,
@@ -7524,9 +7599,10 @@ $('feedback-submit').addEventListener('click', () => {
     },
     state: 'written',
     haultechWriteState: 'written',
-  });
-  $('feedback-modal').classList.add('hidden');
-  toast('Feedback saved');
+  }).then(() => {
+    $('feedback-modal').classList.add('hidden');
+    toast('Feedback saved');
+  }, error => showError(error.message));
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7588,8 +7664,8 @@ function init() {
   scheduleAppAutoUpdateChecks();
 
   // Sync retry button
-  $('sync-retry-btn').addEventListener('click', () => {
-    const moved = markDriverFailedWritebacksSavedLocally();
+  $('sync-retry-btn').addEventListener('click', async () => {
+    const moved = await withDriverJournal([localQueueKey()], markDriverFailedWritebacksSavedLocally).catch(error => { showError(error.message); return false; });
     flushRetryQueue();
     updateSyncUI();
     toast(moved ? 'Saved-local queue tidied' : 'Retrying sync');
@@ -7631,6 +7707,7 @@ function init() {
 async function startDriverApp() {
   let storageError;
   try { await ensureDriverStorageSpace(); } catch (error) { storageError = error; }
+  await refreshDriverJournal();
   try { init(); } catch (error) {
     showError(PmgDriverStorage.quota(error) ? PmgDriverStorage.HELP : ('App could not open: ' + error.message));
     return;

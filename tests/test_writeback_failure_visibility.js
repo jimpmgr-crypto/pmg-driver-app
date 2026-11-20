@@ -5,7 +5,7 @@ const path = require('path');
 const projectRoot = path.resolve(__dirname, '..');
 const indexHtml = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
 
-const tidyStart = indexHtml.indexOf('function markDriverFailedWritebacksSavedLocally()');
+const tidyStart = indexHtml.indexOf('function markDriverFailedWritebacksSavedLocally(storage)');
 const tidyEnd = indexHtml.indexOf('function setQueueState', tidyStart);
 assert(tidyStart > 0 && tidyEnd > tidyStart, 'writeback tidy helper not found');
 const tidyHelper = indexHtml.slice(tidyStart, tidyEnd);

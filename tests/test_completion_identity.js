@@ -24,7 +24,7 @@ assert.equal(ctx.getHaultechJobId({_haultechJobId:a,id:'driver-one'}),a,'cached 
 assert.equal(ctx.getHaultechJobId({consignments:[{id:b,jobId:a}]}),a,'consignment GUID is not job GUID');
 assert.equal(ctx.getHaultechJobId({consignments:[{id:b}]}),null,'unknown job does not use consignment identity');
 let queue=[{state:'pending Haultech',jobId:'driver-one'}];
-Object.assign(ctx,{getWritebackQueue:()=>queue,setWritebackQueue:q=>queue=q,isLocalDriverTempJob:j=>String(j.id||'').startsWith('driver-'),getJobNumber:j=>j.id});
+Object.assign(ctx,{withDriverJournal:async(keys,change)=>change({}),localQueueKey:()=> 'queue',getWritebackQueue:()=>queue,setWritebackQueue:q=>queue=q,isLocalDriverTempJob:j=>String(j.id||'').startsWith('driver-'),getJobNumber:j=>j.id});
 vm.runInContext(fn('clearMatchedDriverWritebackQueue'),ctx);
 ctx.clearMatchedDriverWritebackQueue([{id:'driver-one'}],[{...one,_cached:true,status:'complete'}]);
 assert.equal(queue[0].state,'pending Haultech','cached completion cannot prove a live write');

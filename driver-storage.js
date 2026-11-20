@@ -68,6 +68,52 @@
               tx.onabort = tx.onerror = () => fail(tx.error || new Error('Archive verification failed'));
             });
           },
+          updateRecords(names, change) {
+            return new Promise((done, fail) => {
+              const tx = db.transaction(STORE, 'readwrite');
+              const records = tx.objectStore(STORE);
+              const values = new Map();
+              let outcome, failure;
+              function runChange() {
+                try {
+                  outcome = change(values);
+                  for (const [name, value] of values) {
+                    if (!value.changed) continue;
+                    if (root.localStorage.getItem(name) !== value.inline) {
+                      throw new Error('An older app changed saved phone records. Both copies are retained for the office.');
+                    }
+                    const id = 'driver-journal:' + name;
+                    value.persisted = value.raw !== null || value.inline !== null;
+                    if (value.persisted) records.put({ id, key: name, raw: value.raw, inline: value.inline });
+                    else records.delete(id);
+                  }
+                } catch (error) {
+                  failure = error;
+                  tx.abort();
+                }
+              }
+              let remaining = names.length;
+              for (const name of names) {
+                const request = records.get('driver-journal:' + name);
+                request.onsuccess = () => {
+                  try {
+                    const inline = root.localStorage.getItem(name);
+                    const stored = request.result;
+                    if (stored && inline !== stored.inline) {
+                      throw new Error('An older app changed saved phone records. Both copies are retained for the office.');
+                    }
+                    values.set(name, {inline, raw: stored ? stored.raw : inline, persisted: !!stored});
+                    if (--remaining === 0) runChange();
+                  } catch (error) {
+                    failure = error;
+                    tx.abort();
+                  }
+                };
+              }
+              tx.oncomplete = () => done({outcome, values});
+              tx.onabort = tx.onerror = () => fail(failure || tx.error || new Error('Phone records could not be saved'));
+            });
+          },
           latestAcknowledgedDraft(key) {
             return new Promise((done, fail) => {
               const tx = db.transaction(STORE, 'readonly');
@@ -150,6 +196,12 @@
       storage.removeItem(key);
       return true;
     } finally { db.close(); }
+  }
+  async function updateRecords(names, change) {
+    if (!names.length) throw new Error('Select phone records to read or save');
+    const db = await openArchive();
+    try { return await db.updateRecords([...new Set(names)], change); }
+    finally { db.close(); }
   }
   async function readWalkaroundReceipt(key) {
     const db = await openArchive();
@@ -249,5 +301,5 @@
       throw error;
     } finally { archive?.close(); }
   }
-  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, readWalkaroundReceipt, saveWalkaroundReceipt, readAcknowledgedWalkaroundDraft, eligible, quota, HELP, DB_NAME, STORE };
+  root.PmgDriverStorage = { readJobRaw, writeJobRaw, ensureSpace, openArchive, archiveOne, archiveAcknowledgedDraft, updateRecords, readWalkaroundReceipt, saveWalkaroundReceipt, readAcknowledgedWalkaroundDraft, eligible, quota, HELP, DB_NAME, STORE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

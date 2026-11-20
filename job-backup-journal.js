@@ -11,12 +11,16 @@
       const row=clean(original), movementId=identity(row), expectedRevision=Number.isSafeInteger(original._backupRevision)?original._backupRevision:0;
       if(!movementId) throw new Error('This backup row has no stable identity. Keep it saved and ask the office to check.');
       const key='pmg_backup_operation_'+date+'_'+await hash(canonical({movementId,expectedRevision,row}));
-      let stored; try { stored=JSON.parse(storage.getItem(key)||'null'); } catch { throw new Error('Saved backup request cannot be read. Office review required.'); }
-      if(!stored) {
-        stored={operationId:root.crypto.randomUUID(),movementId,expectedRevision,row};
-        storage.setItem(key,JSON.stringify(stored)); // Must succeed before any network write.
-      }
-      operations.push(stored);
+      const getOrCreate = records => {
+        let stored;
+        try { stored=JSON.parse(records.getItem(key)||'null'); } catch { throw new Error('Saved backup request cannot be read. Office review required.'); }
+        if (!stored) {
+          stored={operationId:root.crypto.randomUUID(),movementId,expectedRevision,row};
+          records.setItem(key,JSON.stringify(stored));
+        }
+        return stored;
+      };
+      operations.push(storage.transaction ? await storage.transaction([key], getOrCreate) : getOrCreate(storage));
     }
     return {protocol:'pmg-jobs-v3',actor:actor||'driver',operations};
   }
@@ -36,7 +40,7 @@
     // intents indefinitely, but do not fill phone storage with successful ones.
     for(const op of payload.operations) {
       const key='pmg_backup_operation_'+date+'_'+await hash(canonical({movementId:op.movementId,expectedRevision:op.expectedRevision,row:op.row}));
-      storage.removeItem(key);
+      await storage.removeItem(key);
     }
   }
   function problem(storage,date,payload,message) {

@@ -20,6 +20,9 @@ function context(values, names) {
     }
   };
   const ctx = vm.createContext({ console, Date, Set, Map, PmgDriverStorage, formatDate:x=>x, ...values });
+  ctx.withDriverJournal = async (keys, change) => change(storage || {});
+  ctx.localQueueKey = () => 'pmg_writeback_queue_fixture';
+  ctx.showError ||= () => {};
   ctx.driverFetch = (...args) => ctx.fetch(...args);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../job-backup-journal.js'),'utf8'),ctx);
   if (names.includes('flushRetryQueue')) {

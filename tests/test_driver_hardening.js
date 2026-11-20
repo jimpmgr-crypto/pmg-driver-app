@@ -4,14 +4,16 @@ const fn=n=>{let s=html.indexOf('function '+n+'(');assert(s>=0,n);if(html.slice(
 const tick=()=>new Promise(r=>setImmediate(r));
 async function main(){
  const failures=[];async function check(name,run){try{await run();console.log('PASS '+name);}catch(e){failures.push(name+': '+e.message);console.error('FAIL '+name+': '+e.message);}}
- await check('corrupt retry record cannot be silently replaced',()=>{
+ await check('corrupt retry record cannot be silently replaced',async()=>{
   let raw='{broken original';const c=vm.createContext({localStorage:{getItem:()=>raw,setItem:(k,v)=>raw=v},PmgJobBackup:{identity:r=>r.id},updateSyncUI(){}});
+  c.withDriverJournal=async(keys,change)=>change(c.localStorage);
   for(const n of ['getRetryQueue','setRetryQueue','addToRetryQueue'])vm.runInContext(fn(n),c);
-  assert.throws(()=>c.addToRetryQueue('2026-11-17',[{id:'new'}]),/read|retained/i);assert.equal(raw,'{broken original');
+  await assert.rejects(()=>c.addToRetryQueue('2026-11-17',[{id:'new'}]),/read|retained/i);assert.equal(raw,'{broken original');
  });
  await check('corrupt audit and pre-start queues are preserved and visibly require help',()=>{
   for(const bad of ['{broken original','{"unexpected":"object"}']){
    const data=new Map([['audit',bad]]);const c=vm.createContext({localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)},localQueueKey:()=> 'audit',localEventKey:()=> 'events',walkaroundTicketQueueKey:()=> 'prestart'});
+   c.driverJournalReadError='';c.readDriverJournalValue=key=>c.localStorage.getItem(key);
    vm.runInContext(fn('writeJSON')+'\n'+fn('pendingStoreReadProblem'),c);
    assert.match(c.pendingStoreReadProblem(),/Original data retained/);assert.throws(()=>c.writeJSON('audit',[]),/Original data retained/);assert.equal(data.get('audit'),bad);
    data.delete('audit');data.set('prestart',bad);assert.match(c.pendingStoreReadProblem(),/Original data retained/);assert.throws(()=>c.writeJSON('prestart',[]));assert.equal(data.get('prestart'),bad);

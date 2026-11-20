@@ -1082,3 +1082,43 @@ test('late audit quota after Add Job shows saved warning and closes resubmit for
   const rows = await page.evaluate(async () => await localGetJobs(todayISO()));
   expect(rows.filter(row => row.reference === 'SYNTHETIC-HARDENING')).toHaveLength(1);
 });
+
+test('low-space phone protects sign-off and queues added work through restart', async ({ page }) => {
+  const job = {...signoffJob(), deliveryDriverId:'f5c31070-2945-408a-bc7a-0245159a191a'};
+  const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [], completionRequests: [] };
+  await page.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (/^pmg_(trial_events_|writeback_queue_|backup_operation_|backup_problem)/.test(key) || key === 'pmg_retry_queue') {
+        throw new DOMException('legacy phone store has no space', 'QuotaExceededError');
+      }
+      return setItem.call(this, key, value);
+    };
+  });
+  await stubExternalApis(page,{captured,jobs:[job],driverAddFailures:1});
+  await page.goto(APP_URL+'/?driver=john');
+  await prepareFixturePrestart(page);
+  await page.locator('.quick-proof').click();
+  await page.getByLabel('Signed off by driver', {exact:true}).check();
+  await page.locator('#sign-notes').fill('Confirmed notes from the original form');
+  await page.locator('#sign-save-main-btn').click();
+  await expect(page.locator('#sign-screen')).toBeHidden();
+  expect(captured.completionRequests).toHaveLength(1);
+  expect(captured.completionRequests[0].body.driverNotes).toContain('Confirmed notes from the original form');
+  expect(await page.evaluate(() => getWritebackQueue().find(x => x.type === 'proof_complete')?.state)).toBe('written');
+
+  await fillHardeningAddForm(page);
+  await page.locator('#f-vehicle').selectOption('PN25FLF');
+  await page.locator('#f-unit').selectOption('t');
+  if (await page.locator('#f-concrete-type').isVisible()) await page.locator('#f-concrete-type').selectOption('quarried');
+  await page.locator('#add-job-submit').click();
+  await expect(page.locator('#job-confirm-modal')).toBeVisible();
+  expect(captured.driverAddRequests).toHaveLength(1);
+  const identity = captured.driverAddRequests[0].body.movementId;
+  await page.reload();
+  await expect.poll(() => captured.driverAddRequests.length).toBe(2);
+  expect(captured.driverAddRequests[1].body.movementId).toBe(identity);
+  expect(captured.completionRequests).toHaveLength(1);
+  expect(await page.evaluate(() => getWritebackQueue().find(x => x.type === 'proof_complete')?.state)).toBe('written');
+  expect(await page.evaluate(() => localStorage.getItem('pmg_retry_queue'))).toBe(null);
+});
