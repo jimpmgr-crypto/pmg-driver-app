@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261120-walkaround-retention-r1';
+const WORKER_BUILD_ID = '20261120-driver-retirement-r2';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -979,6 +979,12 @@ function normaliseA1PaymentStatus(body = {}) {
 }
 
 async function buildDriverAddedHaultechPayload(env, body) {
+  const driverName = cleanText(body.driver || body.driverName || body.addedBy || body.createdBy, 120);
+  const retiredDriverId = DRIVER_APP_DRIVER_IDS_BY_NAME['paul locket'];
+  if (DRIVER_APP_DRIVER_IDS_BY_NAME[driverName.toLowerCase()] === retiredDriverId ||
+      [body.driverId, body.deliveryDriverId, body.addedByDriverId].some(value => cleanText(value, 80).toLowerCase() === retiredDriverId)) {
+    return {error:'driver_access_ended',message:'This driver is inactive. The office can review any retained work.',status:403};
+  }
   const date = maybeIsoDate(body.date) || new Date().toISOString().slice(0, 10);
   const customerName = cleanText(body.customer || body.customerName || body.consignee, 200);
   if (!customerName) return { error: 'customer_required', status: 400 };
@@ -993,7 +999,6 @@ async function buildDriverAddedHaultechPayload(env, body) {
   const to = cleanText(body.to || body.deliveryAddressLine1, 240);
   const collectionAddress = normaliseStructuredAddress(body, 'collection', from);
   const deliveryAddress = normaliseStructuredAddress(body, 'delivery', to);
-  const driverName = cleanText(body.driver || body.driverName || body.addedBy || body.createdBy, 120);
   const vehicle = cleanText(body.vehicle || body.vehicleRegistration, 60);
   const movementId = cleanText(body.movementId || body.sourceMovementId || body.id, 180);
   const sourceId = movementId || cleanText(body.ticketNo, 180);

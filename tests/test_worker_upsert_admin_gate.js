@@ -356,81 +356,91 @@ async function completeJobFixture(job, quantity, extras = {}) {
   }
   sandbox.__haultechJobs=[];
 
-  const paulDriverId = '2b5eab8a-0602-47b8-b242-28ef37eb6c2d';
-  const paulVehicleId = '112689c0-e2f4-4e32-9bfb-8e4fa24bb422';
-  const paulLoadGuid = '8f4eea03-c593-4f03-a096-4143e45ff903';
+  for (const identity of [{driver:'Paul Locket'}, {driver:'Neil Antony',deliveryDriverId:'2b5eab8a-0602-47b8-b242-28ef37eb6c2d'}]) {
+    sandbox.__fetches.length = 0;
+    const retired = await workerRequest('/ht/driver-add', {method:'POST', body:JSON.stringify({
+      id:'retired-driver-fixture', customer:'Customer One', ...identity,
+    })});
+    assert.equal(retired.status,403);
+    assert.equal((await retired.json()).error,'driver_access_ended');
+    assert.equal(sandbox.__fetches.length,0);
+  }
+
+  const volumetricDriverId = '42374caa-5cf2-446e-823e-a40e9d2a2d28';
+  const volumetricVehicleId = '112689c0-e2f4-4e32-9bfb-8e4fa24bb422';
+  const volumetricLoadGuid = '8f4eea03-c593-4f03-a096-4143e45ff903';
   sandbox.__fetches.length = 0;
   sandbox.__haultechJobs = [{
     jobId: 10440,
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    customerReference: 'Office load for Paul',
-    deliveryDriverId: paulDriverId,
-    deliveryVehicleId: paulVehicleId,
-    deliveryLoadId: paulLoadGuid,
+    customerReference: 'Office load for active driver',
+    deliveryDriverId: volumetricDriverId,
+    deliveryVehicleId: volumetricVehicleId,
+    deliveryLoadId: volumetricLoadGuid,
     deliveryLoadNumber: 2169,
     consignments: [{ goodsDescription: 'Concrete', quantity: 4 }],
   }];
   resp = await workerRequest('/ht/driver-add', {
     method: 'POST',
     body: JSON.stringify({
-      id: 'paul-phone-movement-load-attach',
+      id: 'volumetric-phone-movement-load-attach',
       date: '2026-08-27',
       customer: 'Customer One',
-      driver: 'Paul Locket',
+      driver: 'Neil Antony',
       vehicle: 'LL21HJJ',
       material: 'Concrete',
       quantity: 4,
       unit: 'm3',
       from: 'PMG Yard',
       to: 'Customer site',
-      reference: 'PAUL PHONE TEST',
+      reference: 'ACTIVE PHONE TEST',
       notes: 'Ring site contact 07123 456789 before arrival',
     }),
   });
   assert.strictEqual(resp.status, 200);
-  const paulAdd = await resp.json();
-  assert.strictEqual(paulAdd.loadAttached, true, 'Paul phone row should be attached to his unique matching load');
-  assert.strictEqual(paulAdd.deliveryLoadId, paulLoadGuid);
-  assert.strictEqual(paulAdd.deliveryLoadNumber, 2169);
-  const paulAttachCall = sandbox.__fetches.find(call => call.url.includes(`/api/Load/AttachJobs/${paulLoadGuid}`));
-  assert(paulAttachCall, 'Paul phone row must call Haultech AttachJobs');
-  const paulPersisted = sandbox.__haultechJobs.find(job =>
-    String(job.accountNotes || '').includes('Driver movement: paul-phone-movement-load-attach')
+  const volumetricAdd = await resp.json();
+  assert.strictEqual(volumetricAdd.loadAttached, true, 'active driver phone row should be attached to his unique matching load');
+  assert.strictEqual(volumetricAdd.deliveryLoadId, volumetricLoadGuid);
+  assert.strictEqual(volumetricAdd.deliveryLoadNumber, 2169);
+  const volumetricAttachCall = sandbox.__fetches.find(call => call.url.includes(`/api/Load/AttachJobs/${volumetricLoadGuid}`));
+  assert(volumetricAttachCall, 'active driver phone row must call Haultech AttachJobs');
+  const volumetricPersisted = sandbox.__haultechJobs.find(job =>
+    String(job.accountNotes || '').includes('Driver movement: volumetric-phone-movement-load-attach')
   );
-  assert.strictEqual(paulPersisted.deliveryDriverId, paulDriverId);
-  assert.strictEqual(paulPersisted.deliveryVehicleId, paulVehicleId);
-  assert.strictEqual(paulPersisted.deliveryLoadId, paulLoadGuid);
-  assert.strictEqual(paulPersisted.trafficNotes, 'Ring site contact 07123 456789 before arrival', 'typed phone/contact information must reach Haultech unchanged');
+  assert.strictEqual(volumetricPersisted.deliveryDriverId, volumetricDriverId);
+  assert.strictEqual(volumetricPersisted.deliveryVehicleId, volumetricVehicleId);
+  assert.strictEqual(volumetricPersisted.deliveryLoadId, volumetricLoadGuid);
+  assert.strictEqual(volumetricPersisted.trafficNotes, 'Ring site contact 07123 456789 before arrival', 'typed phone/contact information must reach Haultech unchanged');
 
   sandbox.__fetches.length = 0;
-  paulPersisted.deliveryLoadId = '';
-  paulPersisted.deliveryLoadNumber = 0;
-  paulPersisted.deliveryDriverId = '';
-  paulPersisted.deliveryVehicleId = '';
+  volumetricPersisted.deliveryLoadId = '';
+  volumetricPersisted.deliveryLoadNumber = 0;
+  volumetricPersisted.deliveryDriverId = '';
+  volumetricPersisted.deliveryVehicleId = '';
   resp = await workerRequest('/ht/driver-add', {
     method: 'POST',
     body: JSON.stringify({
-      id: 'paul-phone-movement-load-attach',
+      id: 'volumetric-phone-movement-load-attach',
       date: '2026-08-27',
       customer: 'Customer One',
-      driver: 'Paul Locket',
+      driver: 'Neil Antony',
       vehicle: 'LL21HJJ',
       material: 'Concrete',
       quantity: 4,
       unit: 'm3',
       from: 'PMG Yard',
       to: 'Customer site',
-      reference: 'PAUL PHONE TEST',
+      reference: 'ACTIVE PHONE TEST',
       notes: 'Ring site contact 07123 456789 before arrival',
     }),
   });
   assert.strictEqual(resp.status, 200);
-  const paulRetry = await resp.json();
-  assert.strictEqual(paulRetry.alreadyPresent, true, 'retry should reuse the existing movement');
-  assert.strictEqual(paulRetry.loadAttached, true, 'retry should repair a missing Paul load assignment');
-  assert.strictEqual(paulPersisted.deliveryDriverId, paulDriverId);
-  assert.strictEqual(paulPersisted.deliveryVehicleId, paulVehicleId);
-  assert.strictEqual(paulPersisted.deliveryLoadId, paulLoadGuid);
+  const volumetricRetry = await resp.json();
+  assert.strictEqual(volumetricRetry.alreadyPresent, true, 'retry should reuse the existing movement');
+  assert.strictEqual(volumetricRetry.loadAttached, true, 'retry should repair a missing active driver load assignment');
+  assert.strictEqual(volumetricPersisted.deliveryDriverId, volumetricDriverId);
+  assert.strictEqual(volumetricPersisted.deliveryVehicleId, volumetricVehicleId);
+  assert.strictEqual(volumetricPersisted.deliveryLoadId, volumetricLoadGuid);
   sandbox.__haultechJobs = [];
 
   sandbox.__fetches.length = 0;
