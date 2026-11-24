@@ -71,7 +71,7 @@ run('unavailable list cannot create job', () => assert.equal(pick('account-b', '
   console.log(`PASS ${cases} worker customer identity cases; no network or live writes`);
 })().catch(error => { console.error(error.message); process.exitCode = 1; });
 
-vm.runInContext(section('function matchingDriverTrip(', 'function invoicePriceState('), context);
+vm.runInContext(section('function driverTripIdentity(', 'function invoicePriceState('), context);
 context.jobGoodsDescription = job => job.consignments[0].goodsDescription;
 const wyreOriginal = {
   customerId: 'wyre-fixture',

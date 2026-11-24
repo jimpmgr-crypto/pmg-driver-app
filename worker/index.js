@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261124-driver-trip-identity-r1';
+const WORKER_BUILD_ID = '20261124-driver-trip-receipts-r2';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -75,7 +75,7 @@ const CORS_HEADERS = {
 };
 
 function corsResponse(body, status = 200, extra = {}) {
-  return new Response(body, {
+  return new Response([204, 205, 304].includes(status) ? null : body, {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', ...extra },
   });
@@ -933,17 +933,16 @@ function driverMovementIdFromJob(job) {
   return cleanText(match?.[1], 180);
 }
 
+function driverTripIdentity(job) {
+  const parts = String(job?.accountNotes || job?.accountnotes || '').split('|').map(part => part.trim());
+  const marker = label => normalisedLookupText(parts.find(part => part.startsWith(label))?.slice(label.length) || '');
+  const source = marker('Driver app source:');
+  return source ? JSON.stringify([job.customerId, source, marker('Typed customer/site:'), normalisedLookupText(jobGoodsDescription(job))]) : '';
+}
+
 function matchingDriverTrip(a, b) {
-  const marker = (job, label) => {
-    const parts = String(job?.accountNotes || job?.accountnotes || '').split('|');
-    const line = parts.map(part => part.trim()).find(part => part.startsWith(label));
-    return normalisedLookupText(line?.slice(label.length) || '');
-  };
-  const source = marker(a, 'Driver app source:');
-  return !!source && a.customerId === b.customerId &&
-    source === marker(b, 'Driver app source:') &&
-    marker(a, 'Typed customer/site:') === marker(b, 'Typed customer/site:') &&
-    normalisedLookupText(jobGoodsDescription(a)) === normalisedLookupText(jobGoodsDescription(b));
+  const identity = driverTripIdentity(a);
+  return !!identity && identity === driverTripIdentity(b);
 }
 
 function invoicePriceState(job) {
@@ -2295,6 +2294,7 @@ async function htFetch(env, apiPath, opts = {}) {
     method: opts.method || 'GET',
     headers: { ...headers, ...(opts.headers || {}) },
     body: opts.body,
+    ...(opts.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : {}),
   });
 
   // If 401, try one token refresh and retry
@@ -2305,6 +2305,7 @@ async function htFetch(env, apiPath, opts = {}) {
         method: opts.method || 'GET',
         headers: { ...headers, 'Authorization': `Bearer ${newToken}`, ...(opts.headers || {}) },
         body: opts.body,
+        ...(opts.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : {}),
       });
       return corsResponse(await retryResp.text(), retryResp.status, pageHeaders(retryResp));
     }
@@ -3303,17 +3304,22 @@ async function fetchHaultechJobsByDate(env, date) {
     selectFromDate: date,
     selectToDate: date,
     take: '200',
-  }), {checkPagination:true});
+  }), {checkPagination:true, timeoutMs:12000});
   const text = await resp.text();
   if (!resp.ok) {
     return { ok: false, error: text || `haultech_jobs_http_${resp.status}` };
   }
   const payload = safeJsonParse(text);
   if (!payload) return { ok: false, error: 'bad_haultech_jobs_data' };
-  const jobs = Array.isArray(payload) ? payload : (payload.items || payload.data || payload.jobs || []);
+  const jobs = Array.isArray(payload) ? payload : (payload.items ?? payload.data ?? payload.jobs);
+  if (!Array.isArray(jobs) || jobs.some(job => !job || typeof job !== 'object' || Array.isArray(job))) {
+    return { ok: false, error: 'bad_haultech_jobs_data' };
+  }
   const total = payload.totalCount ?? payload.count ?? payload.total;
   const completeDay = !resp.headers.has('X-PMG-Partial-Page') && jobs.length < 200 &&
-    (total == null || Number(total) === jobs.length) && new Set(jobs.map(row => row.id)).size === jobs.length;
+    (total == null || (/^\d+$/.test(String(total)) && Number(total) === jobs.length)) &&
+    jobs.every(row => typeof row.id === 'string' && row.id.trim()) &&
+    new Set(jobs.map(row => row.id.toLowerCase())).size === jobs.length;
   return { ok: true, jobs, completeDay };
 }
 
@@ -3425,7 +3431,7 @@ async function attachDriverAddedJobToExistingLoad(env, date, job, dayJobs, paylo
   const attachResp = await htFetch(
     env,
     queryPath(`/api/Load/AttachJobs/${encodeURIComponent(target.loadGuid)}`, { isDelivery: 'true' }),
-    { method: 'POST', body: JSON.stringify([jobGuid]) }
+    { method: 'POST', body: JSON.stringify([jobGuid]), timeoutMs:12000 }
   );
   const attachText = await attachResp.text();
   if (!attachResp.ok) {
@@ -3803,6 +3809,166 @@ async function ticketsWithProtectedProof(env, requestedDate = '') {
   }));
 }
 
+async function saveDriverTrip(env, body, storage) {
+  const built = await buildDriverAddedHaultechPayload(env, body);
+  if (built.error) {
+    return corsResponse(JSON.stringify({ error: built.error, message: built.message || built.error }), built.status || 400);
+  }
+
+  const existingLookup = await fetchHaultechJobsByDate(env, built.date);
+  if (!existingLookup.ok || !existingLookup.completeDay) {
+    return corsResponse(JSON.stringify({
+      error: 'haultech_lookup_incomplete',
+      message: 'The full HaulTech job list could not be checked. This trip is retained on the phone for retry.',
+    }), 503);
+  }
+
+  const existing = existingLookup.jobs;
+  const jobGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const tripHash = await proofBytesHash(new TextEncoder().encode(driverTripIdentity(built.payload)));
+  const requestedSignature = driverAddSignatureFromPayload(built.payload);
+  const identity = built.movementId ? ['movement', built.movementId] : ['legacy', tripHash, requestedSignature];
+  const receiptKey = 'creation:' + await proofBytesHash(new TextEncoder().encode(JSON.stringify(identity)));
+  const receipts = await storage.list({ prefix: 'creation:' });
+  const prior = receipts.get(receiptKey);
+  const pending = () => corsResponse(JSON.stringify({
+    error: 'driver_create_unconfirmed',
+    message: 'HaulTech has not confirmed this saved trip yet. Keep the existing entry for retry or office review.',
+  }), 503);
+
+  const movementCopies = built.movementId ? existing.filter(job => driverMovementIdFromJob(job) === built.movementId) : [];
+  if (movementCopies.some(job => job.active === false || job.cancelled)) {
+    return corsResponse(JSON.stringify({error:'driver_movement_closed',message:'This saved trip was closed in HaulTech. The office can review the retained copy.'}),409);
+  }
+  if (movementCopies.length > 1) return corsResponse(JSON.stringify({error:'duplicate_driver_movement_review',message:'This movement already has multiple HaulTech copies; office reconciliation required. No additional job created.'}),409);
+  const legacyMatches = job => matchingDriverTrip(built.payload, job) && driverAddSignatureFromJob(job) === requestedSignature;
+  const ownMatches = built.movementId ? movementCopies : existing.filter(legacyMatches);
+  if (ownMatches.length > 1) return pending();
+  const exactExisting = ownMatches[0];
+  if (prior && (!exactExisting || (prior.guid && prior.guid !== exactExisting.id))) return pending();
+  if (exactExisting?.cancelled || exactExisting?.active === false) {
+    return corsResponse(JSON.stringify({ error: 'driver_movement_closed', message: 'This trip is closed in HaulTech.' }), 409);
+  }
+  if (exactExisting) {
+    if (!jobGuid.test(exactExisting.id)) return pending();
+    if (prior && !prior.guid) await storage.put(receiptKey, { ...prior, guid: exactExisting.id });
+    if (!driverAddedInvoicePriceMatches(exactExisting, built.payload)) {
+      return corsResponse(JSON.stringify({
+        error: 'haultech_driver_price_readback_failed',
+        message: 'Existing driver row does not match the app invoice-price fields; office review required',
+        jobId: exactExisting.id,
+      }), 502);
+    }
+    const loadAssignment = await attachDriverAddedJobToExistingLoad(
+      env,
+      built.date,
+      exactExisting,
+      existing,
+      built.payload
+    );
+    if (!loadAssignment.ok) {
+      return corsResponse(JSON.stringify({
+        error: loadAssignment.error || 'driver_load_attach_failed',
+        message: 'Existing driver row was found but its Haultech load assignment could not be proved',
+        jobId: exactExisting.id,
+      }), 502);
+    }
+    return corsResponse(JSON.stringify({
+      ok: true,
+      alreadyPresent: true,
+      exact: true,
+      ref: built.ref,
+      jobId: exactExisting.id,
+      loadAttached: !!loadAssignment.attached,
+      loadPending: !!loadAssignment.pending,
+      deliveryLoadId: loadAssignment.loadGuid || '',
+      deliveryLoadNumber: loadAssignment.loadNumber || 0,
+      message: 'Exact driver row already exists in Haultech',
+    }));
+  }
+
+  // A previous attempt can be missing from today's list after a crash or
+  // loss of the supplier response. Do not write another matching trip while
+  // that attempt is unaccounted for, even if a second trip was confirmed.
+  if ([...receipts.values()].some(receipt => receipt.tripHash === tripHash &&
+      !existing.some(job => receipt.guid ? job.id === receipt.guid
+        : receipt.movementId && driverMovementIdFromJob(job) === receipt.movementId))) return pending();
+
+  const similar = existing.filter(job => job.active !== false && !job.cancelled && matchingDriverTrip(built.payload, job));
+  if (similar.length && body.confirmedSeparateTrip !== true) {
+    const jobNumbers = similar.map(job => String(job.jobId || '')).filter(id => /^\d+$/.test(id));
+    return corsResponse(JSON.stringify({
+      error:'driver_trip_already_recorded',
+      message:'A trip with the same load details already exists today.',
+      jobNumbers,
+    }),409);
+  }
+
+  const referenceCollision = existing.some(job => jobCustomerReference(job) === built.ref);
+
+  const receipt = { movementId: built.movementId, tripHash };
+  // Commit the intent before calling HaulTech. A lost reply or Worker restart
+  // leaves the intent recoverable without repeating an uncertain create.
+  await storage.put(receiptKey, receipt);
+  let upsertPayload;
+  try {
+    const response = await htFetch(env, '/api/Job/UpsertJob?formId=', {
+      method: 'POST',
+      body: JSON.stringify(built.payload),
+      timeoutMs: 15000,
+    });
+    if (!response.ok) return pending();
+    upsertPayload = safeJsonParse(await response.text(), {}) || {};
+  } catch {
+    return pending();
+  }
+  const readback = await fetchHaultechJobsByDate(env, built.date);
+  if (!readback.ok || !readback.completeDay) return pending();
+  const candidates = readback.jobs.filter(job => built.movementId
+    ? driverMovementIdFromJob(job) === built.movementId : legacyMatches(job));
+  if (candidates.length !== 1) return pending();
+  const persisted = candidates[0];
+  if (!jobGuid.test(persisted.id) || persisted.cancelled || persisted.active === false) return pending();
+  if (jobGuid.test(upsertPayload.id) && upsertPayload.id.toLowerCase() !== persisted.id.toLowerCase()) return pending();
+  await storage.put(receiptKey, { ...receipt, guid: persisted.id });
+  if (!driverAddedInvoicePriceMatches(persisted, built.payload)) {
+    return corsResponse(JSON.stringify({
+      error: 'haultech_driver_price_readback_failed',
+      message: 'The saved job needs an office invoice-price check.',
+      jobId: persisted.id,
+    }), 502);
+  }
+  const loadAssignment = await attachDriverAddedJobToExistingLoad(
+    env,
+    built.date,
+    persisted,
+    readback.jobs,
+    built.payload
+  );
+  if (!loadAssignment.ok) {
+    return corsResponse(JSON.stringify({
+      error: loadAssignment.error || 'driver_load_attach_failed',
+      message: 'Driver row was saved but its Haultech load assignment could not be proved; retry queued',
+      jobId: persisted.id,
+    }), 502);
+  }
+  return corsResponse(JSON.stringify({
+    ok: true,
+    alreadyPresent: false,
+    referenceCollision,
+    ref: built.ref,
+    customerName: built.customerName,
+    a1Fallback: !!built.useA1Fallback,
+    a1PaymentStatus: built.a1PaymentStatus || '',
+    jobId: persisted.id,
+    loadAttached: !!loadAssignment.attached,
+    loadPending: !!loadAssignment.pending,
+    deliveryLoadId: loadAssignment.loadGuid || '',
+    deliveryLoadNumber: loadAssignment.loadNumber || 0,
+    haultech: upsertPayload,
+  }));
+}
+
 async function handleDriverRequest(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -4113,149 +4279,16 @@ async function handleDriverRequest(request, env) {
       return corsResponse(JSON.stringify({ok:true,pricingReviewRequired:!!noteResult.pricingReviewRequired,pricingReviewReason:noteResult.pricingReviewReason||null}),200);
     }
 
-    // POST /ht/driver-add — restricted live write for rows added by lads on phones.
-    // The phone can create a real Haultech row, but the worker owns customer
-    // matching, blank pricing and duplicate checks.
+    // All clients saving on the same date share one durable creation queue.
     if (path === '/ht/driver-add' && request.method === 'POST') {
+      if (!env.PMG_APP_STORE) return corsResponse(JSON.stringify({ error: 'transactional_storage_unavailable' }), 503);
       const body = safeJsonParse(await request.text(), {}) || {};
-      const built = await buildDriverAddedHaultechPayload(env, body);
-      if (built.error) {
-        return corsResponse(JSON.stringify({ error: built.error, message: built.message || built.error }), built.status || 400);
-      }
-
-      const existingLookup = await fetchHaultechJobsByDate(env, built.date);
-      if (!existingLookup.ok) {
-        return corsResponse(JSON.stringify({
-          error: 'haultech_lookup_failed',
-          message: existingLookup.error || 'Could not check existing Haultech jobs before adding driver row',
-        }), 502);
-      }
-
-      const existing = safeArray(existingLookup.jobs);
-      // The phone-generated movement id is the idempotency key. It survives an
-      // Android process restart, so retrying one saved row is safe while two
-      // genuinely identical loads still create two Haultech jobs.
-      const movementCopies = built.movementId ? existing.filter(job => driverMovementIdFromJob(job) === built.movementId) : [];
-      if (movementCopies.some(job => job.active === false || job.cancelled)) {
-        return corsResponse(JSON.stringify({error:'driver_movement_closed',message:'This saved trip was closed in HaulTech. The office can review the retained copy.'}),409);
-      }
-      if (movementCopies.length > 1) return corsResponse(JSON.stringify({error:'duplicate_driver_movement_review',message:'This movement already has multiple HaulTech copies; office reconciliation required. No additional job created.'}),409);
-      const movementExisting = movementCopies[0] || null;
-      const requestedSignature = driverAddSignatureFromPayload(built.payload);
-      const exactExisting = movementExisting || (!built.movementId
-        ? existing.find(job => driverAddSignatureFromJob(job) === requestedSignature)
-        : null);
-      if (exactExisting) {
-        if (!driverAddedInvoicePriceMatches(exactExisting, built.payload)) {
-          return corsResponse(JSON.stringify({
-            error: 'haultech_driver_price_readback_failed',
-            message: 'Existing driver row does not match the app invoice-price fields; office review required',
-            jobId: haultechJobIds(exactExisting)[0] || '',
-          }), 502);
-        }
-        const loadAssignment = await attachDriverAddedJobToExistingLoad(
-          env,
-          built.date,
-          exactExisting,
-          existing,
-          built.payload
-        );
-        if (!loadAssignment.ok) {
-          return corsResponse(JSON.stringify({
-            error: loadAssignment.error || 'driver_load_attach_failed',
-            message: 'Existing driver row was found but its Haultech load assignment could not be proved',
-            jobId: haultechJobIds(exactExisting)[0] || '',
-          }), 502);
-        }
-        return corsResponse(JSON.stringify({
-          ok: true,
-          alreadyPresent: true,
-          exact: true,
-          ref: built.ref,
-          jobId: haultechJobIds(exactExisting)[0] || '',
-          loadAttached: !!loadAssignment.attached,
-          loadPending: !!loadAssignment.pending,
-          deliveryLoadId: loadAssignment.loadGuid || '',
-          deliveryLoadNumber: loadAssignment.loadNumber || 0,
-          message: 'Exact driver row already exists in Haultech',
-        }));
-      }
-
-      // Customer references are not unique movement ids.  Drivers regularly
-      // make two real loads for the same reference (Honeywells, Carnforth,
-      // Ryan Holt).  A reference-only collision must therefore not swallow
-      // the later movement; the semantic signature above remains idempotent
-      // for retries of the same row.
-      const similar = existing.filter(job => job.active !== false && !job.cancelled && matchingDriverTrip(built.payload, job));
-      if (similar.length && body.confirmedSeparateTrip !== true) {
-        const jobNumbers = similar.map(job => String(job.jobId || '')).filter(id => /^\d+$/.test(id));
-        return corsResponse(JSON.stringify({
-          error:'driver_trip_already_recorded',
-          message:'A trip with the same load details already exists today.',
-          jobNumbers,
-        }),409);
-      }
-
-      const referenceCollision = existing.some(job => jobCustomerReference(job) === built.ref);
-
-      const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {
+      const date = maybeIsoDate(body.date) || new Date().toISOString().slice(0, 10);
+      const stub = env.PMG_APP_STORE.get(env.PMG_APP_STORE.idFromName('driver-add:' + date));
+      return withStoreCors(await stub.fetch(new Request('https://store/__driver_add/' + date, {
         method: 'POST',
-        body: JSON.stringify(built.payload),
-      });
-      const upsertText = await upsertResp.text();
-      if (!upsertResp.ok) {
-        return corsResponse(JSON.stringify({
-          error: 'haultech_driver_add_failed',
-          message: upsertText || `Haultech HTTP ${upsertResp.status}`,
-        }), 502);
-      }
-      const upsertPayload = safeJsonParse(upsertText, {}) || {};
-      const readback = await fetchHaultechJobsByDate(env, built.date);
-      const returnedIds = [upsertPayload.id, upsertPayload.jobId, upsertPayload.jobNumber]
-        .filter(Boolean).map(String);
-      const persisted = readback.ok
-        ? safeArray(readback.jobs).find(job => (
-          (built.movementId && driverMovementIdFromJob(job) === built.movementId)
-          || haultechJobIds(job).some(id => returnedIds.includes(String(id)))
-        ))
-        : null;
-      if (!persisted || !driverAddedInvoicePriceMatches(persisted, built.payload)) {
-        return corsResponse(JSON.stringify({
-          error: 'haultech_driver_price_readback_failed',
-          message: 'Driver row was submitted but its Haultech invoice-price fields could not be proved; office review required',
-          jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
-          readbackError: readback.ok ? '' : readback.error,
-        }), 502);
-      }
-      const loadAssignment = await attachDriverAddedJobToExistingLoad(
-        env,
-        built.date,
-        persisted,
-        readback.jobs,
-        built.payload
-      );
-      if (!loadAssignment.ok) {
-        return corsResponse(JSON.stringify({
-          error: loadAssignment.error || 'driver_load_attach_failed',
-          message: 'Driver row was saved but its Haultech load assignment could not be proved; retry queued',
-          jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
-        }), 502);
-      }
-      return corsResponse(JSON.stringify({
-        ok: true,
-        alreadyPresent: false,
-        referenceCollision,
-        ref: built.ref,
-        customerName: built.customerName,
-        a1Fallback: !!built.useA1Fallback,
-        a1PaymentStatus: built.a1PaymentStatus || '',
-        jobId: upsertPayload.id || upsertPayload.jobId || upsertPayload.jobNumber || '',
-        loadAttached: !!loadAssignment.attached,
-        loadPending: !!loadAssignment.pending,
-        deliveryLoadId: loadAssignment.loadGuid || '',
-        deliveryLoadNumber: loadAssignment.loadNumber || 0,
-        haultech: upsertPayload,
-      }));
+        body: JSON.stringify({ ...body, date }),
+      })));
     }
 
     // POST /ht/upsert — UpsertJob (Add new job to Haultech)
@@ -5113,6 +5146,15 @@ export class PmgAppStore {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(request) {
     const url = new URL(request.url);
+    const driverAdd = url.pathname.match(/^\/__driver_add\/(\d{4}-\d{2}-\d{2})$/);
+    if (driverAdd && request.method === 'POST' && isValidIsoDate(driverAdd[1])) {
+      const body = await request.json();
+      if (body?.date !== driverAdd[1]) return corsResponse(JSON.stringify({ error: 'invalid_driver_add_date' }), 400);
+      const save = (this.driverAddTail || Promise.resolve()).then(() => saveDriverTrip(this.env, body, this.ctx.storage));
+      this.driverAddTail = save.then(() => undefined, () => undefined);
+      try { return await save; }
+      catch { return corsResponse(JSON.stringify({ error: 'driver_add_confirmation_unavailable', message: 'The saved trip still needs HaulTech confirmation.' }), 503); }
+    }
     const diary = url.pathname.match(/^\/__diary_snapshot\/(\d{4}-\d{2}-\d{2})$/);
     if (diary && isValidIsoDate(diary[1])) {
       const data = request.method === 'POST'

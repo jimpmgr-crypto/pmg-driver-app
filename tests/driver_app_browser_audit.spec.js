@@ -1108,6 +1108,30 @@ for (const confirmed of [false, true]) {
   });
 }
 
+test('a save without a job GUID stays pending and retries the same saved movement after reload', async ({ page }) => {
+  await stubExternalApis(page);
+  const attempts = [];
+  const guid = '33333333-3333-4333-8333-333333333333';
+  let sendGuid = false;
+  await page.route('**/ht/driver-add', async route => {
+    attempts.push(route.request().postDataJSON());
+    await route.fulfill({status:200, json:{ok:true, ref:'FIXTURE', jobId:sendGuid ? guid : ''}});
+  });
+  await page.goto(`${APP_URL}/?driver=neil`);
+  await fillHardeningAddForm(page);
+  await page.locator('#add-job-submit').click();
+  await expect(page.locator('#job-confirm-modal')).toBeVisible();
+  const savedRow = () => page.evaluate(async () => (await localGetJobs(todayISO()))
+    .find(row => row.reference === 'SYNTHETIC-HARDENING'));
+  expect((await savedRow()).haultechWriteState).toBe('pending Haultech');
+  sendGuid = true;
+  await page.reload();
+  await expect.poll(async () => (await savedRow())?.haultechJobId).toBe(guid);
+  expect((await savedRow()).haultechWriteState).toBe('written');
+  expect(attempts.length).toBeGreaterThan(1);
+  expect(new Set(attempts.map(row => row.movementId)).size).toBe(1);
+});
+
 test('late audit quota after Add Job shows saved warning and closes resubmit form', async ({ page }) => {
   const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
   await stubExternalApis(page, { captured });

@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261124-driver-trip-identity-r1';
+const APP_BUILD_ID = '20261124-driver-trip-receipts-r2';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2812,6 +2812,7 @@ async function submitDriverAddedRow(job, date) {
         error.jobNumbers = Array.isArray(result.jobNumbers) ? result.jobNumbers.filter(id => /^\d+$/.test(id)) : [];
         throw error;
       }
+      if (!isGuidId(result.jobId)) throw new Error('HaulTech has not confirmed this trip’s job ID. Keep the saved entry for retry.');
       return result;
     })();
     driverAddRequests.set(key, request);

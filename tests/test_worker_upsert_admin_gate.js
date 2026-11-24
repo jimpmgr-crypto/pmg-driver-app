@@ -24,8 +24,10 @@ function mockCalculatorResponse() {
 const sandbox = {
   TextEncoder,
   TextDecoder,
+  AbortSignal,
   Request,
   Response,
+  Headers,
   URL,
   URLSearchParams,
   console,
@@ -35,7 +37,7 @@ const sandbox = {
   crypto: {
     randomUUID: () => '00000000-0000-4000-8000-000000000000',
     subtle: {
-      digest: async () => new Uint8Array(32),
+      digest: require('node:crypto').webcrypto.subtle.digest.bind(require('node:crypto').webcrypto.subtle),
     },
   },
   fetch: async (url, options = {}) => {
@@ -110,7 +112,7 @@ const sandbox = {
 };
 
 vm.runInNewContext(
-  workerSource.replace(/^import .+;$/gm, '').replace('export class PmgAppStore', 'class PmgAppStore').replace('export default {', 'globalThis.__worker = {'),
+  workerSource.replace(/^import .+;$/gm, '').replace('export class PmgAppStore', 'globalThis.PmgAppStore = class PmgAppStore').replace('export default {', 'globalThis.__worker = {'),
   sandbox
 );
 
@@ -125,8 +127,17 @@ function env(adminKey = 'admin-key') {
     ])],
   ]);
   const statusOverrides = new Map();
-  return {
+  const addStores = new Map();
+  const testEnv = {
     PMG_APP_STORE: { idFromName: n => n, get: name => ({ fetch: async request => {
+      if (name.startsWith('driver-add:')) {
+        if (!addStores.has(name)) {
+          const receipts = new Map();
+          const storage = { list: async () => new Map(receipts), put: async (key, value) => { receipts.set(key, value); } };
+          addStores.set(name, new sandbox.PmgAppStore({ storage }, testEnv));
+        }
+        return addStores.get(name).fetch(request);
+      }
       const url = new URL(request.url);
       const date = name.replace('jobs:', '');
       if (request.method === 'GET') return new Response(JSON.stringify({...JSON.parse(store.get('job-status-index:' + date) || '{}'),...Object.fromEntries(statusOverrides)}));
@@ -159,6 +170,7 @@ function env(adminKey = 'admin-key') {
     },
     __store: store,
   };
+  return testEnv;
 }
 
 async function upsertRequest(headers = {}, body = {}, adminKey = 'admin-key') {
