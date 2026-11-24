@@ -13,7 +13,7 @@ function collectedConcreteQuote(material, quantity, unit) {
 }
 // END GENERATED PMG_YARD_PRICES:COLLECTED_CONCRETE
 const API_KEY = 'pmg2026driver';
-const WORKER_BUILD_ID = '20261120-driver-retirement-r2';
+const WORKER_BUILD_ID = '20261124-driver-trip-identity-r1';
 const WORKER_RUNTIME_PATCH_ID = '20261021-distinct-trip-pricing-r1';
 const DRIVER_API_CONTRACT = 'pmg-driver-api-v2';
 const HT_BASE = 'https://httms.azurewebsites.net';
@@ -931,6 +931,19 @@ function driverMovementIdFromJob(job) {
     .join(' | ');
   const match = notes.match(/driver movement\s*:\s*([^|\r\n]+)/i);
   return cleanText(match?.[1], 180);
+}
+
+function matchingDriverTrip(a, b) {
+  const marker = (job, label) => {
+    const parts = String(job?.accountNotes || job?.accountnotes || '').split('|');
+    const line = parts.map(part => part.trim()).find(part => part.startsWith(label));
+    return normalisedLookupText(line?.slice(label.length) || '');
+  };
+  const source = marker(a, 'Driver app source:');
+  return !!source && a.customerId === b.customerId &&
+    source === marker(b, 'Driver app source:') &&
+    marker(a, 'Typed customer/site:') === marker(b, 'Typed customer/site:') &&
+    normalisedLookupText(jobGoodsDescription(a)) === normalisedLookupText(jobGoodsDescription(b));
 }
 
 function invoicePriceState(job) {
@@ -4122,7 +4135,10 @@ async function handleDriverRequest(request, env) {
       // The phone-generated movement id is the idempotency key. It survives an
       // Android process restart, so retrying one saved row is safe while two
       // genuinely identical loads still create two Haultech jobs.
-      const movementCopies = built.movementId ? existing.filter(job => job.active !== false && !job.cancelled && driverMovementIdFromJob(job) === built.movementId) : [];
+      const movementCopies = built.movementId ? existing.filter(job => driverMovementIdFromJob(job) === built.movementId) : [];
+      if (movementCopies.some(job => job.active === false || job.cancelled)) {
+        return corsResponse(JSON.stringify({error:'driver_movement_closed',message:'This saved trip was closed in HaulTech. The office can review the retained copy.'}),409);
+      }
       if (movementCopies.length > 1) return corsResponse(JSON.stringify({error:'duplicate_driver_movement_review',message:'This movement already has multiple HaulTech copies; office reconciliation required. No additional job created.'}),409);
       const movementExisting = movementCopies[0] || null;
       const requestedSignature = driverAddSignatureFromPayload(built.payload);
@@ -4170,6 +4186,16 @@ async function handleDriverRequest(request, env) {
       // Ryan Holt).  A reference-only collision must therefore not swallow
       // the later movement; the semantic signature above remains idempotent
       // for retries of the same row.
+      const similar = existing.filter(job => job.active !== false && !job.cancelled && matchingDriverTrip(built.payload, job));
+      if (similar.length && body.confirmedSeparateTrip !== true) {
+        const jobNumbers = similar.map(job => String(job.jobId || '')).filter(id => /^\d+$/.test(id));
+        return corsResponse(JSON.stringify({
+          error:'driver_trip_already_recorded',
+          message:'A trip with the same load details already exists today.',
+          jobNumbers,
+        }),409);
+      }
+
       const referenceCollision = existing.some(job => jobCustomerReference(job) === built.ref);
 
       const upsertResp = await htFetch(env, '/api/Job/UpsertJob?formId=', {

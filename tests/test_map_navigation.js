@@ -138,10 +138,11 @@ for (const [name, address, leg] of [['renderDeliveryTab', delivery, 'delivery'],
 
   // Immediate driver-created card before the next refresh uses the same address.
   const marker = html.indexOf('jobId: confirmedJobId, _cached: true, _driverAdded: true');
-  const start = html.lastIndexOf('allJobs.push({', marker);
+  const start = html.lastIndexOf('const savedCard = {', marker);
   const end = html.indexOf("finishAddedJobForm();", marker);
   assert(start > 0 && end > start);
   Object.assign(ctx, { allJobs: [], localJob: driverLocal, confirmedJobId: driverLocal.id, movementId: driverLocal.movementId });
+  vm.runInContext(fn('keepOneSavedDriverCard'), ctx);
   vm.runInContext(html.slice(start, end), ctx);
   checkRoutes(ctx.allJobs[0]);
   for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) new vm.Script(script[1]);

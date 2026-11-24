@@ -1691,7 +1691,7 @@ const SAVED_ADDRESSES = [{
 }];
 
 const WALKAROUND_VISIBLE_AFTER = '2026-06-03T20:00:00+01:00';
-const APP_BUILD_ID = '20261120-driver-retention-r2';
+const APP_BUILD_ID = '20261124-driver-trip-identity-r1';
 const APP_VERSION_URL = '/app-version.json';
 const APP_UPDATE_CHECK_MS = 60 * 1000;
 const WALKAROUND_DRAFT_KEY = 'pmg_walkaround_draft_v1';
@@ -2806,7 +2806,12 @@ async function submitDriverAddedRow(job, date) {
         body: JSON.stringify({ ...job, date }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
+      if (!response.ok || !result.ok) {
+        const error = new Error(result.message || result.error || `HTTP ${response.status}`);
+        error.code = result.error;
+        error.jobNumbers = Array.isArray(result.jobNumbers) ? result.jobNumbers.filter(id => /^\d+$/.test(id)) : [];
+        throw error;
+      }
       return result;
     })();
     driverAddRequests.set(key, request);
@@ -3102,6 +3107,10 @@ function sameDriverAddedMovement(a, b) {
   return !!(aMovement && bMovement && aMovement === bMovement);
 }
 
+function keepOneSavedDriverCard(jobs, savedCard) {
+  if (!jobs.some(job => sameDriverAddedMovement(job, savedCard))) jobs.push(savedCard);
+}
+
 function findMatchingLiveDriverJob(localJob, jobs = allJobs) {
   const matches = (jobs || []).filter(candidate =>
     candidate && candidate !== localJob && getHaultechJobId(candidate) &&
@@ -3157,7 +3166,7 @@ function mergeWithLocal(date, cloudJobs, localJobs, options = {}) {
     const retained = semanticLocal ? { ...cachedDriverFields(semanticLocal), ...j, jobNumber: getJobNumber(j), _backupRevision: semanticLocal._backupRevision } : j;
     if (!semanticLocal || !semanticLocal.status || semanticLocal.status === 'scheduled') return retained;
     const liveStatus = getJobStatus(j);
-    if (liveStatus === 'complete') return retained;
+    if (liveStatus === 'complete' || liveStatus === 'cancelled') return retained;
     return { ...retained, status: semanticLocal.status };
   });
   const toAdd = [];
@@ -7423,14 +7432,31 @@ $('add-job-form').addEventListener('submit', async (e) => {
     localJob.attachments = await saveAddedJobProof(movementId, addSignature, addPhoto);
     await saveNewDriverRow(localDate, localJob);
     addedRowSaved = true;
-    const originalAddedRow = JSON.parse(JSON.stringify(localJob));
+    let originalAddedRow = JSON.parse(JSON.stringify(localJob));
     if (LIVE_WRITE) await addToRetryQueue(localDate, [localJob]);
     let haultechWriteState = 'saved locally';
     let haultechReason = DRIVER_ADDED_BACKUP_REASON;
     let confirmedJobId = localJob.id;
     if (LIVE_WRITE) {
       try {
-        const liveResult = await submitDriverAddedRow(localJob, localDate);
+        let liveResult;
+        try {
+          liveResult = await submitDriverAddedRow(localJob, localDate);
+        } catch (error) {
+          if (error.code !== 'driver_trip_already_recorded') throw error;
+          const jobs = error.jobNumbers.length ? ' (job ' + error.jobNumbers.join(', ') + ')' : '';
+          if (!window.confirm('These load details are already recorded today' + jobs + '. Save this only if you made a separate trip.')) {
+            localJob.status = 'needs-office-review';
+            throw error;
+          }
+          localJob.confirmedSeparateTrip = true;
+          if (await saveRetriedJobRows(localDate, [originalAddedRow], [localJob]) === false) {
+            throw new Error('A newer saved row was retained; the office needs to review this trip');
+          }
+          originalAddedRow = JSON.parse(JSON.stringify(localJob));
+          await addToRetryQueue(localDate, [localJob]);
+          liveResult = await submitDriverAddedRow(localJob, localDate);
+        }
         haultechWriteState = 'written';
         confirmedJobId = liveResult.jobId || liveResult.ref || localJob.id;
         localJob.haultechWriteState = 'written';
@@ -7440,7 +7466,7 @@ $('add-job-form').addEventListener('submit', async (e) => {
           : DRIVER_ADDED_LIVE_REASON;
       } catch (writeErr) {
         haultechWriteState = 'saved locally';
-        localJob.haultechWriteState = 'pending Haultech';
+        localJob.haultechWriteState = localJob.status === 'needs-office-review' ? 'saved locally' : 'pending Haultech';
         haultechReason = `${DRIVER_ADDED_BACKUP_REASON}: ${writeErr.message || 'Haultech write failed'}`;
       }
     }
@@ -7474,7 +7500,9 @@ $('add-job-form').addEventListener('submit', async (e) => {
       haultechWriteState,
       reason: haultechReason,
     });
-    allJobs.push({
+    // The polling refresh can already have loaded this movement while Save
+    // was waiting for its receipt. Keep the single mapped diary card.
+    const savedCard = {
 	      jobId: confirmedJobId, _cached: true, _driverAdded: true,
 	      _movementId: movementId,
 	      _haultechJobId: localJob.haultechJobId || '',
@@ -7501,8 +7529,14 @@ $('add-job-form').addEventListener('submit', async (e) => {
       _sicCode: localJob.sicCode,
       _containment: localJob.containment,
       savedAt: localJob.savedAt,
-    });
+    };
+    keepOneSavedDriverCard(allJobs, savedCard);
     finishAddedJobForm();
+    if (localJob.status === 'needs-office-review') {
+      renderJobs();
+      toast('Possible duplicate saved for office review');
+      return;
+    }
     showJobConfirmation({
       customer: localJob.customer,
       vehicle: localJob.vehicle,

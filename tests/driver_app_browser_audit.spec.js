@@ -1065,6 +1065,49 @@ test('late Add Job receipt retains another change in native phone storage', asyn
   expect(saved.filter(row => row.reference === 'SYNTHETIC-HARDENING')).toHaveLength(1);
 });
 
+for (const confirmed of [false, true]) {
+  test(`same trip warning ${confirmed ? 'preserves explicitly confirmed second trip' : 'holds an unconfirmed entry locally'}`, async ({ page }) => {
+    await stubExternalApis(page);
+    const attempts = [];
+    await page.route('**/ht/driver-add', async route => {
+      const body = route.request().postDataJSON();
+      attempts.push(body);
+      await route.fulfill({
+        status: body.confirmedSeparateTrip ? 200 : 409,
+        json: body.confirmedSeparateTrip
+          ? {ok:true, jobId:'33333333-3333-4333-8333-333333333333'}
+          : {error:'driver_trip_already_recorded', jobNumbers:['90001']},
+      });
+    });
+    await page.goto(`${APP_URL}/?driver=neil`);
+    await expect(page.locator('#jobs-screen')).toBeVisible();
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('90001');
+      if (confirmed) await dialog.accept();
+      else await dialog.dismiss();
+    });
+    await fillHardeningAddForm(page);
+    await page.locator('#add-job-submit').click();
+    await expect(page.locator('#add-job-modal')).toBeHidden();
+    await expect.poll(() => attempts.length).toBe(confirmed ? 2 : 1);
+    const row = await page.evaluate(async () =>
+      (await localGetJobs(todayISO())).find(job => job.reference === 'SYNTHETIC-HARDENING'));
+    expect(row.movementId).toBe(attempts[0].movementId);
+    if (confirmed) {
+      expect(attempts[1].confirmedSeparateTrip).toBe(true);
+      expect(attempts[1].movementId).toBe(row.movementId);
+      expect(row.haultechWriteState).toBe('written');
+    } else {
+      expect(row.status).toBe('needs-office-review');
+      expect(row.haultechWriteState).toBe('saved locally');
+      await page.reload();
+      await expect(page.locator('#jobs-screen')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => !!flushRetryQueue.running)).toBe(false);
+      expect(attempts).toHaveLength(1);
+    }
+  });
+}
+
 test('late audit quota after Add Job shows saved warning and closes resubmit form', async ({ page }) => {
   const captured = { workerRequests: [], photoUploads: [], ticketSaves: [], driverAddRequests: [] };
   await stubExternalApis(page, { captured });

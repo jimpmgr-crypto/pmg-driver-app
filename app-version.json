@@ -1,10 +1,10 @@
 {
-  "buildId": "20261120-driver-retention-r2",
-  "updatedAt": "2026-11-20",
+  "buildId": "20261124-driver-trip-identity-r1",
+  "updatedAt": "2026-11-24",
   "baselineCommit": "51791cd",
-  "expectedWorkerBuildId": "20261120-driver-retirement-r2",
+  "expectedWorkerBuildId": "20261124-driver-trip-identity-r1",
   "driverApiContract": "pmg-driver-api-v2",
   "walkaroundVisibleAfter": "2026-06-03T20:00:00+01:00",
-  "notes": "Keep current and previous full UK weeks. Reclaim older walkaround duplicates only after verified office receipts, preserving active drafts and pending work. Honour live HaulTech cancellation even when delivery status is blank. Persist driver audit, writeback, exact backup requests and retry queue in transactional phone storage. Preserve the original legacy bytes. Keep acknowledged pre-start receipts in verified IndexedDB when the inline phone copy cannot be written. Recover the exact acknowledged walkaround on its original phone using its saved draft and an original photo match. Recover the exact acknowledged pre-start draft when phone storage is full and retry only the phone save. Pre-start remains available while the job plan loads or retries need office review. Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage.",
+  "notes": "Keep current and previous full UK weeks. Reclaim older walkaround duplicates only after verified office receipts, preserving active drafts and pending work. Honour live HaulTech cancellation even when delivery status is blank. Persist driver audit, writeback, exact backup requests and retry queue in transactional phone storage. Preserve the original legacy bytes. Keep acknowledged pre-start receipts in verified IndexedDB when the inline phone copy cannot be written. Recover the exact acknowledged walkaround on its original phone using its saved draft and an original photo match. Recover the exact acknowledged pre-start draft when phone storage is full and retry only the phone save. Pre-start remains available while the job plan loads or retries need office review. Preserve newer local work after late Add receipts; retain unreadable retries; separate saved work from later backup faults; bound request and acknowledgement waits without replaying unknown writes. Fleet Live owns Gary wagon compliance; Tony's plant app remains the plant lane. Preserves prestart-fleet-torque-source lineage. Keep one card when a live diary refresh precedes the Add receipt. Check repeated driver trip details before a second HaulTech write and require explicit confirmation for a separate trip.",
   "plantBuildId": "20261108-current-alerts"
 }

@@ -1,5 +1,5 @@
 // Lineage marker: prestart-fleet-torque-source remains part of this driver build.
-const CACHE_NAME = 'pmg-driver-live-v20261120-driver-retention-r2';
+const CACHE_NAME = 'pmg-driver-live-v20261124-driver-trip-identity-r1';
 const APP_SHELL = [
   '/',
   '/index.html',

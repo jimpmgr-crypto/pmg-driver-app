@@ -11,13 +11,19 @@ function fn(name) {
 }
 const ctx={console,Set,allJobs:[],getJobConsignment:j=>j?.consignments?.[0],getJobStatus:j=>j.status||'scheduled',toast:()=>{},activeJob:null};
 vm.createContext(ctx);
-for(const n of ['isGuidId','getHaultechJobId','driverMovementId','sameDriverAddedMovement','findMatchingLiveDriverJob'])vm.runInContext(fn(n),ctx);
+for(const n of ['isGuidId','getHaultechJobId','driverMovementId','sameDriverAddedMovement','keepOneSavedDriverCard','findMatchingLiveDriverJob'])vm.runInContext(fn(n),ctx);
 const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222';
 const one={id:a,movementId:'driver-one',material:'6f2',quantity:20},two={...one,id:b,movementId:'driver-two'};
 assert.equal(ctx.sameDriverAddedMovement(one,two),false,'two identical loads distinct');
 assert.equal(ctx.sameDriverAddedMovement(one,{...two,movementId:'driver-one'}),false,'different live IDs never coalesce');
 assert.equal(ctx.findMatchingLiveDriverJob(one,[two]),null,'real row cannot redirect');
 assert.equal(ctx.findMatchingLiveDriverJob({id:'driver-one'},[one,two]),one,'temp resolves exact movement');
+const refreshedCards = [one];
+ctx.keepOneSavedDriverCard(refreshedCards, {id:'driver-one', _cached:true});
+assert.deepEqual(refreshedCards, [one], 'a late add receipt does not append a second card after a refresh');
+ctx.keepOneSavedDriverCard(refreshedCards, two);
+assert.deepEqual(refreshedCards, [one,two], 'another trip remains visible even with the same material and quantity');
+
 assert.equal(ctx.findMatchingLiveDriverJob({id:'driver-one'},[one,{...two,movementId:'driver-one'}]),null,'ambiguous movement holds');
 assert.equal(ctx.findMatchingLiveDriverJob({id:'driver-legacy'},[{id:a,material:'6f2',quantity:20}]),null,'no fuzzy fallback');
 assert.equal(ctx.getHaultechJobId({_haultechJobId:a,id:'driver-one'}),a,'cached real identity');

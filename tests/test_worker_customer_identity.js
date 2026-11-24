@@ -70,3 +70,18 @@ run('unavailable list cannot create job', () => assert.equal(pick('account-b', '
   assert.equal(blocked.payload, undefined); cases++;
   console.log(`PASS ${cases} worker customer identity cases; no network or live writes`);
 })().catch(error => { console.error(error.message); process.exitCode = 1; });
+
+vm.runInContext(section('function matchingDriverTrip(', 'function invoicePriceState('), context);
+context.jobGoodsDescription = job => job.consignments[0].goodsDescription;
+const wyreOriginal = {
+  customerId: 'wyre-fixture',
+  customerReference: 'Wyre drives.',
+  consignments: [{goodsDescription:'Rec GRIT SAND, plastic cement, membrane.'}],
+  accountNotes: 'Added by Neil Antony | Driver app source: Neil Antony / YJ13GRF / 11t / PMG yard to Longridge | Driver movement: driver-original',
+};
+const wyreRepeat = {...wyreOriginal, customerReference:'Wy', accountNotes:wyreOriginal.accountNotes.replace('driver-original','driver-repeat')};
+assert.equal(context.matchingDriverTrip(wyreOriginal, wyreRepeat), true, 'a changed reference does not bypass the same trip check');
+assert.equal(context.matchingDriverTrip(wyreOriginal, {...wyreRepeat, accountNotes:wyreRepeat.accountNotes.replace('11t','20t')}), false, 'different quantity is not an exact repeat');
+assert.equal(context.matchingDriverTrip(wyreOriginal, {...wyreRepeat, accountNotes:wyreRepeat.accountNotes.replace('Longridge','Morecambe')}), false, 'different destination is not an exact repeat');
+assert.equal(context.matchingDriverTrip(wyreOriginal, {...wyreRepeat, customerId:'another-account'}), false, 'different customer is not an exact repeat');
+assert.equal(context.matchingDriverTrip(wyreOriginal, {...wyreRepeat, accountNotes:''}), false, 'unbound office row is not treated as a driver repeat');
