@@ -12,17 +12,20 @@ function fn(name) {
   for (const driver of ['john', 'andrew', 'neil', 'ian', 'richard', 'paul']) {
     const remote = {id:'other-driver-row', movementId:'driver-other', _driverAdded:true, savedAt:'old'};
     const localProposal = {id:'local-row', movementId:'driver-local', _driverAdded:true, status:'problem', proofReceipt:{protected:true}};
+    const pendingDraft = {id:'driver-pending',movementId:'driver-pending',haultechWriteState:'pending Haultech',confirmedSeparateTrip:true,proofReceipt:{protected:true}};
+    const snapshot = JSON.stringify([localProposal,pendingDraft]);
     let writes=0, saved, retries=0, mergeOptions;
     const c=vm.createContext({
       document:{hidden:false}, formatDate:x=>x, todayISO:()=> '2026-11-13', $:()=>({innerHTML:''}), showError(){},
       flushRetryQueue:async()=>{retries++;}, customers:[{}],
       api:async()=>({ok:true,json:async()=>({date:'2026-11-13',complete:true,state:'live',savedAt:'2026-11-13T12:00:00Z',jobs:[remote]})}),
       hydrateBackupRevisions:async(d,j)=>j,
-      PmgDriverStorage:{readJobRaw:async()=>JSON.stringify([localProposal])},
-      mergeWithLocal:(d,j,l,options)=>{mergeOptions=options;return [...j,...l];},
+      PmgDriverStorage:{readJobRaw:async()=>snapshot,writeJobRaw:async(d,raw,expected)=>{saved=JSON.parse(raw);assert.equal(expected,snapshot);return true;}},
+      driverMovementId:job=>job.movementId,
+      jobToLocal:job=>job.movementId==='driver-pending' ? {id:job.id,movementId:job.movementId} : job,
+      mergeWithLocal:(d,j,l,options)=>{mergeOptions=options;return [...j,l[0],{...l[1], confirmedSeparateTrip:undefined}];},
       renderJobs(){}, updateSyncUI(){}, console,
       ensureDriverStorageSpace:async()=>{},
-      localSaveJobs:async(d,j,expected)=>{saved=JSON.parse(JSON.stringify(j));assert.equal(expected,JSON.stringify([localProposal]));return true;},
       saveJobsToCloud:async()=>{writes++;}, cloudPutJobs:async()=>{writes++;},
       loadJobsFallback:async()=>{throw Error('Unexpected fallback');},
     });
@@ -35,8 +38,9 @@ function fn(name) {
     assert.equal(writes,0,driver+' refresh must not create backup requests');
     assert.equal(retries,1,'existing exact pending intents still get their normal retry');
     assert.equal(mergeOptions.retryLocalRows,false);
-    assert.equal(saved.length,2);
+    assert.equal(saved.length,3);
     assert.deepEqual(saved[1],localProposal);
+    assert.deepEqual(saved[2],pendingDraft);
   }
   let uploads=0;
   const pending={id:'driver-pending',movementId:'driver-pending',status:'problem',notes:'retain this'};

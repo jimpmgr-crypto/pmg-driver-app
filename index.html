@@ -2994,7 +2994,13 @@ async function saveRefreshedJobsLocally(date, jobs, expected) {
   // and a new retained conflict on every refresh. Keep the offline copy, while
   // explicit edits and the existing exact retry queue keep their write paths.
   await ensureDriverStorageSpace().catch(() => {});
-  const saved = await localSaveJobs(date, jobs, expected);
+  const pending = new Map(JSON.parse(expected ?? '[]')
+    .filter(row => row.movementId && row.haultechWriteState === 'pending Haultech')
+    .map(row => [row.movementId, row]));
+  // A display projection must not change the saved row whose exact contents
+  // an in-flight retry is about to compare before recording its receipt.
+  const offline = jobs.map(job => pending.get(driverMovementId(job)) || jobToLocal(job));
+  const saved = await PmgDriverStorage.writeJobRaw(date, JSON.stringify(offline), expected);
   updateSyncUI();
   return saved;
 }
